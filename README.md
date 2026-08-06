@@ -49,6 +49,21 @@ git remote add origin <url-repository-github>
 git push -u origin main
 ```
 
+## Cara Join untuk Tim
+
+Anggota tim yang baru join bisa mengikuti langkah berikut:
+
+1. Clone repository dari GitHub.
+2. Jalankan `composer install` dan `npm install`.
+3. Salin `.env.example` menjadi `.env`.
+4. Sesuaikan konfigurasi database di `.env`.
+5. Jalankan `php artisan key:generate`.
+6. Jalankan `php artisan migrate --seed`.
+7. Jalankan `npm run dev` untuk asset frontend.
+8. Jalankan `php artisan serve` untuk membuka aplikasi.
+
+Jika memakai alur branch, setiap orang sebaiknya membuat branch kerja sendiri dari `main`, lalu kirim perubahan lewat pull request.
+
 ## Catatan
 
 File ini dibuat sebagai panduan ringkas. Jika ada perubahan environment atau dependency baru, update juga [REQUIREMENTS.md](REQUIREMENTS.md).
