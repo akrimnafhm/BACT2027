@@ -35,6 +35,12 @@ Route::middleware('guest')->group(function () {
 
     Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
     Route::post('/register', [AuthController::class, 'processRegister']);
+
+    // Lupa Password (Multi-Step)
+    Route::get('/forgot-password', [AuthController::class, 'showForgotPassword'])->name('forgot-password');
+    Route::post('/forgot-password', [AuthController::class, 'sendResetCode'])->name('forgot-password.send');
+    Route::post('/forgot-password/verify', [AuthController::class, 'verifyResetCode'])->name('forgot-password.verify');
+    Route::post('/forgot-password/reset', [AuthController::class, 'processResetPassword'])->name('forgot-password.reset');
 });
 
 

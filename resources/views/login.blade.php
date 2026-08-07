@@ -47,6 +47,7 @@
                 <label class="flex items-center text-sm text-gray-600 cursor-pointer">
                     <input type="checkbox" name="remember" class="w-4 h-4 mr-2 text-[#E19404] focus:ring-[#E19404]"> Remember me
                 </label>
+                <a href="{{ route('forgot-password') }}" class="text-sm text-[#E19404] font-semibold hover:underline">Lupa Password?</a>
             </div>
 
             <button type="submit" class="w-full bg-[#FFC32D] hover:bg-[#E19404] text-[#FFFFFF] font-bold py-3 px-4 rounded-full transition shadow-md mt-6">
