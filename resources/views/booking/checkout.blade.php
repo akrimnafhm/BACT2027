@@ -25,7 +25,7 @@
                 <a href="/#galeri" class="nav-scroll hover:text-[#E19404] transition text-gray-700">Galeri</a>
                 <a href="/program-ilmiah" class="hover:text-[#E19404] transition {{ request()->is('program-ilmiah*') ? 'text-[#E19404]' : 'text-gray-700' }}">Program Ilmiah</a>
                 <a href="{{ route('booking.index') }}" class="hover:text-[#E19404] transition {{ request()->routeIs('booking.*') || request()->is('booking*') || request()->is('checkout*') ? 'text-[#E19404]' : 'text-gray-700' }}">Pesan Tiket</a>
-                <a href="/#hotel" class="hover:text-[#E19404] transition {{ request()->is('hotel*') ? 'text-[#E19404]' : 'text-gray-700' }}">Pesan Hotel</a>
+                <a href="/hotel" class="hover:text-[#E19404] transition {{ request()->is('hotel*') ? 'text-[#E19404]' : 'text-gray-700' }}">Pesan Hotel</a>
                 
                 @auth
                     @if(Auth::user()->role === 'admin')
@@ -179,10 +179,18 @@
                             Rp{{ number_format($booking->amount, 0, ',', '.') }}
                         </span>
                     </div>
-
                     <a href="{{ $paymentUrl }}" class="bg-white text-[#E19404] hover:bg-gray-50 font-extrabold py-2.5 px-6 rounded-lg shadow-sm transition transform active:scale-95 flex justify-center items-center gap-2 text-sm text-center whitespace-nowrap">
-                        <span>Bayar Sekarang</span>
+                            <span>Bayar Sekarang</span>
                     </a>
+
+                    <!-- <div class="grid gap-4 grid-cols-2">
+                        <a href="{{ route('booking.form') }}" class="text-white border border-white hover:bg-yellow-600 font-extrabold py-2.5 px-6 rounded-lg shadow-sm transition transform active:scale-95 flex justify-center items-center gap-2 text-sm text-center whitespace-nowrap">
+                            <span>Edit Data</span>
+                        </a>
+                        <a href="{{ $paymentUrl }}" class="bg-white text-[#E19404] hover:bg-gray-50 font-extrabold py-2.5 px-6 rounded-lg shadow-sm transition transform active:scale-95 flex justify-center items-center gap-2 text-sm text-center whitespace-nowrap">
+                            <span>Bayar Sekarang</span>
+                        </a>
+                    </div> -->
                 </div>
 
             </div>

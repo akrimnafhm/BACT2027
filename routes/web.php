@@ -21,8 +21,9 @@ use Illuminate\Http\Request;
 // Halaman Utama (Landing Page dengan data Info, Pembicara, Jadwal, Galeri, Sponsor)
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
-// Halaman Booking (Diletakkan di luar middleware auth agar bisa mengecek status login guest)
+// Halaman Bridge Booking (Diletakkan di luar middleware auth agar bisa mengecek status login guest)
 Route::get('/booking', [BookingController::class, 'index'])->name('booking.index');
+Route::get('/booking/form', [BookingController::class, 'form'])->name('booking.form');
 Route::get('/hotel', [HotelBookingController::class, 'index'])->name('hotels.index');
 
 
@@ -35,6 +36,12 @@ Route::middleware('guest')->group(function () {
 
     Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
     Route::post('/register', [AuthController::class, 'processRegister']);
+
+    // Lupa Password (Multi-Step)
+    Route::get('/forgot-password', [AuthController::class, 'showForgotPassword'])->name('forgot-password');
+    Route::post('/forgot-password', [AuthController::class, 'sendResetCode'])->name('forgot-password.send');
+    Route::post('/forgot-password/verify', [AuthController::class, 'verifyResetCode'])->name('forgot-password.verify');
+    Route::post('/forgot-password/reset', [AuthController::class, 'processResetPassword'])->name('forgot-password.reset');
 });
 
 
@@ -67,12 +74,19 @@ Route::middleware('auth')->group(function () {
     // Proses Pengiriman Form Booking (Menyimpan data dengan status pending)
     Route::post('/booking/process', [BookingController::class, 'process'])->name('booking.process');
 
+    // Return URL dari DOKU agar status booking bisa disinkronkan saat user kembali ke site
+    Route::get('/booking/return/{booking}', [BookingController::class, 'paymentReturn'])->name('booking.return');
+
     // Halaman Checkout & Pembayaran Midtrans
     Route::get('/checkout/{id}', [BookingController::class, 'checkout'])->name('checkout');
 
     // AKOMODASI HOTEL (Katalog & Pemesanan Peserta)
     Route::get('/hotel/book/{id}', [HotelBookingController::class, 'create'])->name('hotels.book');
     Route::post('/hotel/book/{id}', [HotelBookingController::class, 'store'])->name('hotels.store');
+    Route::get('/hotel/checkout/{id}', [HotelBookingController::class, 'checkout'])->name('hotels.checkout');
+
+    // Return URL dari DOKU agar status reservasi hotel bisa disinkronkan saat user kembali ke site
+    Route::get('/hotel/return/{reservation}', [HotelBookingController::class, 'paymentReturn'])->name('hotels.return');
 });
 
 
@@ -160,6 +174,7 @@ Route::middleware(['auth', IsAdmin::class])->prefix('admin')->group(function () 
 
     // =========================================================
     // 7. BROADCAST WA
+    // 7. BROADCAST WA & 8. QR CHECK-IN
     // =========================================================
     Route::get('/broadcast', [\App\Http\Controllers\BroadcastController::class, 'index'])->name('admin.broadcast.index');
     Route::post('/broadcast/send', [\App\Http\Controllers\BroadcastController::class, 'send'])->name('admin.broadcast.send');
@@ -170,4 +185,7 @@ Route::middleware(['auth', IsAdmin::class])->prefix('admin')->group(function () 
     Route::get('/checkin', function () {
         return 'Halaman Scanner QR Check-in (Coming Soon)';
     })->name('admin.checkin.index');
+    Route::get('/checkin', [AdminController::class, 'checkin'])->name('admin.checkin.index');
+    Route::post('/checkin/scan', [AdminController::class, 'scanCheckin'])->name('admin.checkin.scan');
+    Route::post('/checkin/{id}/confirm', [AdminController::class, 'confirmCheckin'])->name('admin.checkin.confirm');
 });

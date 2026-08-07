@@ -244,6 +244,7 @@
                         <button type="submit" 
                                 id="submit_btn" 
                                 disabled
+                            
                                 class="w-full py-4 px-6 rounded-2xl bg-gray-300 text-gray-500 font-extrabold text-base transition duration-300 cursor-not-allowed text-center">
                             Konfirmasi & Pesan Kamar &rarr;
                         </button>

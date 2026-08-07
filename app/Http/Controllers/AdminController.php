@@ -513,4 +513,87 @@ class AdminController extends Controller
 
         return back()->with('success', 'Peserta manual baru berhasil ditambahkan ke sistem!');
     }
+
+    // ==========================================
+    // 4. QR CHECK-IN PESERTA
+    // ==========================================
+
+    /**
+     * Halaman Scanner QR Check-in (2 Tab: Scan/Input & Peserta Sudah Check-in).
+     */
+    public function checkin(Request $request): View
+    {
+        $activeTab = $request->input('tab', 'scan') === 'checked' ? 'checked' : 'scan';
+
+        return view('admin.checkin', [
+            'activeTab'             => $activeTab,
+            'checkedInParticipants' => $this->checkedInParticipants(),
+        ]);
+    }
+
+    /**
+     * Proses hasil pindai QR / input manual: cari peserta berdasarkan checkin_token.
+     */
+    public function scanCheckin(Request $request): View
+    {
+        $request->validate([
+            'token' => 'required|string',
+        ]);
+
+        $token = trim($request->token);
+        $booking = \App\Models\TicketBooking::with('ticket')
+                    ->where('checkin_token', $token)
+                    ->first();
+
+        $data = [
+            'activeTab'             => 'scan',
+            'checkedInParticipants' => $this->checkedInParticipants(),
+        ];
+
+        if (!$booking) {
+            return view('admin.checkin', $data + ['error' => 'Kode QR tidak ditemukan. Pastikan QR yang dipindai adalah QR tiket peserta BACT.']);
+        }
+
+        if ($booking->status !== 'paid') {
+            return view('admin.checkin', $data + [
+                'error'   => 'Peserta "' . $booking->full_name . '" belum melakukan pembayaran. Check-in tidak dapat dilakukan.',
+                'booking' => $booking,
+            ]);
+        }
+
+        return view('admin.checkin', $data + ['booking' => $booking]);
+    }
+
+    /**
+     * Konfirmasi Check-in peserta (menandai waktu check-in).
+     */
+    public function confirmCheckin(Request $request, $id): \Illuminate\Http\RedirectResponse
+    {
+        $booking = \App\Models\TicketBooking::findOrFail($id);
+
+        if ($booking->status !== 'paid') {
+            return back()->with('error', 'Peserta belum melakukan pembayaran, tidak dapat check-in.');
+        }
+
+        if ($booking->checked_in_at) {
+            return back()->with('error', 'Peserta "' . $booking->full_name . '" sudah check-in pada ' . $booking->checked_in_at->format('d M Y H:i') . '.');
+        }
+
+        $booking->update(['checked_in_at' => now()]);
+
+        return redirect()->route('admin.checkin.index')
+                         ->with('success', 'Check-in berhasil untuk ' . $booking->full_name . '.');
+    }
+
+    /**
+     * Daftar peserta yang sudah check-in (urutan terbaru).
+     */
+    private function checkedInParticipants(): \Illuminate\Contracts\Pagination\LengthAwarePaginator
+    {
+        return \App\Models\TicketBooking::with('ticket')
+                    ->whereNotNull('checked_in_at')
+                    ->latest('checked_in_at')
+                    ->paginate(10)
+                    ->withQueryString();
+    }
 }

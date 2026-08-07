@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\TicketBooking;
+use App\Models\HotelReservation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -17,44 +18,127 @@ class DokuWebhookController extends Controller
 
         // 2. Ambil status transaksi dari berbagai kemungkinan struktur DOKU
         $status = $payload['transaction']['status'] 
+                  ?? $payload['transaction_status']
                   ?? $payload['status'] 
                   ?? $payload['service']['status'] 
+                  ?? $payload['payment']['status']
                   ?? null;
 
         // 3. Ambil invoice_number dari berbagai kemungkinan struktur DOKU
         $invoiceNumber = $payload['order']['invoice_number'] 
                          ?? $payload['order']['invoice_no'] 
                          ?? $payload['invoice_number'] 
+                         ?? $payload['payment']['invoice_number']
+                         ?? $payload['merchant_ref']
+                         ?? $payload['reference_number']
+                         ?? $payload['reference_no']
                          ?? null;
 
-        Log::info("Parsed DOKU Data -> Invoice: {$invoiceNumber} | Status: {$status}");
+        $customerId = $payload['customer']['id']
+                      ?? $payload['customer_id']
+                      ?? $payload['customer']['customer_id']
+                      ?? null;
 
-        // 4. Jika status SUCCESS / BERHASIL / PAID
-        if (in_array(strtoupper((string) $status), ['SUCCESS', 'PAID', 'COMPLETED'])) {
+        // 3b. Susun label metode pembayaran spesifik dari channel & method DOKU
+        $paymentMethod = $this->composePaymentMethod($payload);
+
+        Log::info("Parsed DOKU Data -> Invoice: {$invoiceNumber} | Customer: {$customerId} | Status: {$status} | Channel: {$paymentMethod}");
+
+        // 4. Jika status SUCCESS / BERHASIL / PAID / SETTLEMENT
+        $normalizedStatus = strtoupper(trim((string) $status));
+        $paidStatuses = ['SUCCESS', 'PAID', 'COMPLETED', 'SETTLED', 'SETTLEMENT', 'CAPTURED'];
+
+        if (in_array($normalizedStatus, $paidStatuses, true)) {
+            $booking = null;
+            $reservation = null;
+
             if ($invoiceNumber) {
                 // Cari booking berdasarkan invoice_number
                 $booking = TicketBooking::where('invoice_number', $invoiceNumber)->first();
-
-                if ($booking) {
-                    $booking->update([
-                        'status' => 'paid',
-                    ]);
-
-                    Log::info("SUKSES: Booking ID {$booking->id} (Invoice: {$invoiceNumber}) berhasil diubah menjadi PAID.");
-
-                    return response()->json([
-                        'status' => 'SUCCESS',
-                        'message' => 'Booking status updated to paid successfully'
-                    ], 200);
-                } else {
-                    Log::warning("GAGAL: Invoice {$invoiceNumber} tidak ditemukan di tabel ticket_bookings.");
-                }
+                $reservation = HotelReservation::where('invoice_number', $invoiceNumber)->first();
             }
+
+            if (!$booking && $customerId !== null) {
+                $booking = TicketBooking::where('user_id', $customerId)
+                    ->where('status', 'pending')
+                    ->latest()
+                    ->first();
+            }
+
+            if ($booking) {
+                $booking->update([
+                    'status' => 'paid',
+                ]);
+
+                Log::info("SUKSES: Booking ID {$booking->id} (Invoice: {$invoiceNumber}) berhasil diubah menjadi PAID.");
+
+                return response()->json([
+                    'status' => 'SUCCESS',
+                    'message' => 'Booking status updated to paid successfully'
+                ], 200);
+            }
+
+            if ($reservation) {
+                $reservation->update([
+                    'status' => 'paid',
+                    'payment_method' => $paymentMethod ?: $reservation->payment_method,
+                ]);
+
+                Log::info("SUKSES: Reservasi Hotel ID {$reservation->id} (Invoice: {$invoiceNumber}) berhasil diubah menjadi PAID.");
+
+                return response()->json([
+                    'status' => 'SUCCESS',
+                    'message' => 'Hotel reservation status updated to paid successfully'
+                ], 200);
+            }
+
+            Log::warning("GAGAL: Invoice {$invoiceNumber} / customer {$customerId} tidak ditemukan di tabel ticket_bookings / hotel_reservations.");
         }
 
         return response()->json([
             'status' => 'IGNORED',
             'message' => 'Notification processed'
         ], 200);
+    }
+
+    /**
+     * Susun label metode pembayaran spesifik dari data channel & method DOKU.
+     * Contoh output: "Virtual Account BSI", "Wallet OVO", "Credit Card".
+     */
+    private function composePaymentMethod(array $payload): ?string
+    {
+        $channelName = $payload['payment']['channel_name']
+                       ?? $payload['payment']['channel']
+                       ?? $payload['channel_name']
+                       ?? $payload['channel']
+                       ?? null;
+
+        $method = strtoupper(trim((string) (
+            $payload['payment']['method']
+            ?? $payload['payment_method']
+            ?? $payload['method']
+            ?? ''
+        )));
+
+        $methodLabels = [
+            'VIRTUAL_ACCOUNT' => 'Virtual Account',
+            'VA' => 'Virtual Account',
+            'WALLET' => 'Wallet',
+            'EWALLET' => 'Wallet',
+            'CREDIT_CARD' => 'Credit Card',
+            'OVER_THE_COUNTER' => 'Over the Counter',
+            'CASH_ON_DELIVERY' => 'Cash on Delivery',
+            'KLIKPAY' => 'KlikPay',
+            'PAYLATER' => 'PayLater',
+            'QUICK_PAY' => 'Quick Pay',
+        ];
+
+        $methodLabel = $methodLabels[$method] ?? ($method ?: null);
+
+        if ($channelName && $methodLabel) {
+            return $methodLabel . ' ' . $channelName;
+        }
+
+        return $channelName ?: $methodLabel;
     }
 }

@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 
 class AuthController extends Controller
 {
@@ -75,5 +76,142 @@ class AuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
         return redirect('/');
+    }
+
+    // ==========================================
+    // LUPA PASSWORD (Multi-Step: Email -> Kode -> Password Baru)
+    // ==========================================
+
+    /**
+     * Menampilkan halaman lupa password.
+     */
+    public function showForgotPassword()
+    {
+        return view('forgot-password');
+    }
+
+    /**
+     * Step 1: Kirim kode 6 digit ke email (disimulasikan via log).
+     */
+    public function sendResetCode(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+        ], [
+            'email.required' => 'Email wajib diisi.',
+            'email.email'    => 'Format email tidak valid.',
+        ]);
+
+        $email = strtolower(trim($request->email));
+        $user = User::where('email', $email)->first();
+
+        // Jangan ungkap apakah email terdaftar (cegah user enumeration)
+        if (!$user) {
+            return back()->with('success', 'Jika email terdaftar di sistem, kode reset telah dikirim.');
+        }
+
+        // Buat & simpan kode 6 digit, berlaku 10 menit
+        $code = str_pad((string) rand(0, 999999), 6, '0', STR_PAD_LEFT);
+        $user->reset_code = $code;
+        $user->reset_code_expires_at = now()->addMinutes(10);
+        $user->save();
+
+        // Simulasi pengiriman email (MAIL_MAILER=log)
+        Log::info("SIMULASI EMAIL BACT: Kode reset password untuk {$user->email} adalah [ {$code} ]");
+
+        // Simpan state step di session
+        session(['reset_email' => $email, 'reset_attempts' => 0]);
+
+        return redirect()->route('forgot-password')
+                         ->with('success', 'Kode reset 6 digit telah dikirim ke email Anda. Silakan cek inbox / log.');
+    }
+
+    /**
+     * Step 2: Verifikasi kode 6 digit.
+     */
+    public function verifyResetCode(Request $request)
+    {
+        $email = session('reset_email');
+
+        if (!$email) {
+            return redirect()->route('forgot-password');
+        }
+
+        $request->validate([
+            'code' => 'required|digits:6',
+        ], [
+            'code.required' => 'Kode wajib diisi.',
+            'code.digits'   => 'Kode harus berjumlah 6 digit angka.',
+        ]);
+
+        $user = User::where('email', $email)->first();
+
+        // Hapus state jika user sudah tidak ada
+        if (!$user) {
+            $request->session()->forget(['reset_email', 'reset_attempts', 'reset_verified']);
+            return redirect()->route('forgot-password')->withErrors(['email' => 'Sesi tidak valid. Silakan ulangi dari awal.']);
+        }
+
+        $attempts = (int) session('reset_attempts', 0);
+
+        // Batas percobaan maksimal 5x, jika lewat wajib kirim ulang
+        if ($attempts >= 5) {
+            return back()->withErrors(['code' => 'Terlalu banyak percobaan. Silakan kirim ulang kode.']);
+        }
+
+        $expired = !$user->reset_code_expires_at || now()->greaterThan($user->reset_code_expires_at);
+
+        if ($expired || $user->reset_code !== $request->code) {
+            session(['reset_attempts' => $attempts + 1]);
+            $remaining = 5 - ($attempts + 1);
+            return back()->withErrors([
+                'code' => $expired
+                    ? 'Kode sudah kedaluwarsa. Silakan kirim ulang kode.'
+                    : 'Kode salah. Sisa percobaan: ' . max($remaining, 0) . 'x.',
+            ]);
+        }
+
+        // Kode benar: tandai terverifikasi & lanjut ke step 3
+        session(['reset_verified' => true]);
+
+        return redirect()->route('forgot-password');
+    }
+
+    /**
+     * Step 3: Setel password baru.
+     */
+    public function processResetPassword(Request $request)
+    {
+        $email = session('reset_email');
+
+        if (!$email || !session('reset_verified')) {
+            return redirect()->route('forgot-password');
+        }
+
+        $request->validate([
+            'password' => 'required|string|min:8|confirmed',
+        ], [
+            'password.required'  => 'Password baru wajib diisi.',
+            'password.min'       => 'Password baru minimal harus terdiri dari 8 karakter.',
+            'password.confirmed' => 'Konfirmasi password baru tidak cocok.',
+        ]);
+
+        $user = User::where('email', $email)->first();
+
+        if (!$user) {
+            $request->session()->forget(['reset_email', 'reset_attempts', 'reset_verified']);
+            return redirect()->route('forgot-password')->withErrors(['email' => 'Sesi tidak valid. Silakan ulangi dari awal.']);
+        }
+
+        $user->password = Hash::make($request->password);
+        $user->reset_code = null;
+        $user->reset_code_expires_at = null;
+        $user->save();
+
+        // Bersihkan state sesi reset
+        $request->session()->forget(['reset_email', 'reset_attempts', 'reset_verified']);
+
+        return redirect()->route('login')
+                         ->with('success', 'Password berhasil diperbarui! Silakan login dengan password baru Anda.');
     }
 }

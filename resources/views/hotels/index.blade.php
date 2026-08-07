@@ -120,7 +120,33 @@
             </div>
 
         <!-- =========================================================
-             C. KONDISI SIAP / READY (SUDAH LOGIN & PROFIL LENGKAP)
+             C. KONDISI RESERVASI PENDING (BELUM LUNAS)
+             ========================================================= -->
+        @elseif(isset($status) && $status === 'pending')
+            <div class="max-w-3xl mx-auto space-y-6">
+
+                <div class="bg-yellow-50 rounded-2xl shadow-sm p-8 border border-yellow-200 text-center">
+                    <h3 class="text-lg font-bold text-yellow-800 mb-2">Pembayaran Belum Selesai</h3>
+                    <p class="text-yellow-700 mb-6 text-sm">Mohon selesaikan pembayaran untuk reservasi hotel Anda. Pesanan akan diproses setelah pembayaran dikonfirmasi.</p>
+                    <a href="{{ route('hotels.checkout', $reservation->id) }}" class="inline-flex justify-center items-center bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-6 rounded-xl transition shadow-md">
+                        Lanjutkan Pembayaran
+                    </a>
+                </div>
+
+                @include('hotels.partials.invoice', ['reservation' => $reservation, 'statusLabel' => 'Pending'])
+            </div>
+
+        <!-- =========================================================
+             D. KONDISI RESERVASI PAID (SUDAH DIBAYAR)
+             ========================================================= -->
+        @elseif(isset($status) && $status === 'paid')
+            <div class="max-w-3xl mx-auto space-y-6">
+
+                @include('hotels.partials.invoice', ['reservation' => $reservation, 'statusLabel' => 'Sudah Dibayar'])
+            </div>
+
+        <!-- =========================================================
+             E. KONDISI SIAP / READY (SUDAH LOGIN & PROFIL LENGKAP)
              ========================================================= -->
         @else
             <!-- Grid Daftar Kamar (Deluxe King & Deluxe Twin) -->
@@ -135,15 +161,6 @@
                             @else
                                 <div class="w-full h-full flex items-center justify-center text-gray-400 font-bold text-sm">Foto Tidak Tersedia</div>
                             @endif
-
-                            <!-- Badge Kuota Sisa -->
-                            <div class="absolute top-4 right-4 bg-white/95 backdrop-blur-md px-3.5 py-1.5 rounded-full text-xs font-extrabold shadow-md border border-gray-100">
-                                @if($hotel->quota > 0)
-                                    <span class="text-green-600">Sisa Kuota: {{ $hotel->quota }} Kamar</span>
-                                @else
-                                    <span class="text-red-600">Habis Terpesan</span>
-                                @endif
-                            </div>
                         </div>
 
                         <!-- Detail & Spesifikasi Kamar -->
@@ -179,15 +196,9 @@
 
                             <!-- Tombol Action -->
                             <div class="pt-4 border-t border-gray-100">
-                                @if($hotel->quota > 0)
-                                    <a href="{{ route('hotels.book', $hotel->id) }}" class="block w-full text-center py-3.5 px-6 rounded-2xl bg-[#E19404] hover:bg-orange-600 text-white font-extrabold text-sm transition shadow-md hover:shadow-lg">
-                                        Pesan Kamar Ini &rarr;
-                                    </a>
-                                @else
-                                    <button disabled class="w-full py-3.5 px-6 rounded-2xl bg-gray-200 text-gray-400 font-extrabold text-sm cursor-not-allowed">
-                                        Kamar Sudah Habis
-                                    </button>
-                                @endif
+                                <a href="{{ route('hotels.book', $hotel->id) }}" class="block w-full text-center py-3.5 px-6 rounded-2xl bg-[#E19404] hover:bg-orange-600 text-white font-extrabold text-sm transition shadow-md hover:shadow-lg">
+                                    Pesan Kamar Ini &rarr;
+                                </a>
                             </div>
                         </div>
 
