@@ -28,6 +28,12 @@ class TicketBooking extends Model
         'institution_district',
         'institution_city',
         'institution_province',
+        'checkin_token',
+        'checked_in_at',
+    ];
+
+    protected $casts = [
+        'checked_in_at' => 'datetime',
     ];
 
     public function user()

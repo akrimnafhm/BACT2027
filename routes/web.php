@@ -166,13 +166,13 @@ Route::middleware(['auth', IsAdmin::class])->prefix('admin')->group(function () 
     Route::delete('/content/sponsors/{id}', [ContentController::class, 'destroySponsor'])->name('admin.sponsors.destroy');
 
     // =========================================================
-    // 7. BROADCAST WA & 8. QR CHECK-IN (Placeholder)
+    // 7. BROADCAST WA & 8. QR CHECK-IN
     // =========================================================
     Route::get('/broadcast', function () {
         return 'Halaman Broadcast WA (Coming Soon)';
     })->name('admin.broadcast.index');
 
-    Route::get('/checkin', function () {
-        return 'Halaman Scanner QR Check-in (Coming Soon)';
-    })->name('admin.checkin.index');
+    Route::get('/checkin', [AdminController::class, 'checkin'])->name('admin.checkin.index');
+    Route::post('/checkin/scan', [AdminController::class, 'scanCheckin'])->name('admin.checkin.scan');
+    Route::post('/checkin/{id}/confirm', [AdminController::class, 'confirmCheckin'])->name('admin.checkin.confirm');
 });

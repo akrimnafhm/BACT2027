@@ -111,7 +111,7 @@
 
                 <div class="flex flex-col md:flex-row gap-6 items-center bg-gray-50 p-6 rounded-xl border border-dashed border-gray-300">
                     <div class="w-32 h-32 bg-white p-2 border border-gray-200 rounded-lg flex items-center justify-center shadow-sm">
-                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ $booking->id }}-{{ $user->email }}" alt="QR Code" class="w-full">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ $booking->checkin_token }}" alt="QR Code" class="w-full">
                     </div>
                     <div class="flex-1 text-center md:text-left">
                         <h2 class="font-extrabold text-[#E19404] text-xl mb-1">{{ $bookedTicket ? str_replace([' - ', ' -', '- '], ': ', $bookedTicket->display_name) : 'Tiket Anda' }}</h2>

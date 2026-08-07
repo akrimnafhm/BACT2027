@@ -47,6 +47,8 @@ class BookingController extends Controller
                 $bookedTicket->display_name = $bookedTicket->ticket_name . ' - ' . $bookedTicket->ticket_category;
             }
 
+            $this->ensureCheckinToken($existingBooking);
+
             return view('booking.bridge', [
                 'status'       => 'post_purchase',
                 'user'         => $user,
@@ -327,6 +329,21 @@ class BookingController extends Controller
                !empty($user->name) &&
                !empty($user->nik) &&
                !empty($user->gender);
+    }
+
+    /**
+     * Pastikan booking punya checkin_token unik (dipakai di QR check-in).
+     */
+    private function ensureCheckinToken(TicketBooking $booking): TicketBooking
+    {
+        if (empty($booking->checkin_token)) {
+            $booking->update([
+                'checkin_token' => 'BACT-' . $booking->id . '-' . strtoupper(Str::random(10)),
+            ]);
+            $booking->refresh();
+        }
+
+        return $booking;
     }
 
     private function syncBookingFromCallback(Request $request, $user, ?TicketBooking $existingBooking): ?TicketBooking
