@@ -1,6 +1,7 @@
 <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
     <!-- Header Card -->
     @php($isPaid = $reservation->status === 'paid')
+    @php($paymentMethod = $reservation->payment_method ?: ($isPaid ? 'DOKU Payment Gateway' : 'Menunggu Pembayaran'))
     <div class="px-8 py-6 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 {{ $isPaid ? 'bg-green-50 border-green-200' : 'bg-[#FBE39D] border-[#E19404]/20' }}">
         <div>
             <h2 class="text-xl font-extrabold text-gray-900">Detail Pemesanan Hotel</h2>
@@ -61,6 +62,10 @@
                 <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center py-3 px-5">
                     <span class="text-gray-500 font-medium">Total Harga</span>
                     <span class="font-bold text-[#E19404] mt-0.5 sm:mt-0 text-base">Rp {{ number_format($reservation->total_price, 0, ',', '.') }}</span>
+                </div>
+                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center py-3 px-5">
+                    <span class="text-gray-500 font-medium">Metode Pembayaran</span>
+                    <span class="font-bold text-gray-900 mt-0.5 sm:mt-0">{{ $paymentMethod }}</span>
                 </div>
             </div>
         </div>

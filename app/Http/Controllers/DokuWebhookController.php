@@ -39,7 +39,10 @@ class DokuWebhookController extends Controller
                       ?? $payload['customer']['customer_id']
                       ?? null;
 
-        Log::info("Parsed DOKU Data -> Invoice: {$invoiceNumber} | Customer: {$customerId} | Status: {$status}");
+        // 3b. Susun label metode pembayaran spesifik dari channel & method DOKU
+        $paymentMethod = $this->composePaymentMethod($payload);
+
+        Log::info("Parsed DOKU Data -> Invoice: {$invoiceNumber} | Customer: {$customerId} | Status: {$status} | Channel: {$paymentMethod}");
 
         // 4. Jika status SUCCESS / BERHASIL / PAID / SETTLEMENT
         $normalizedStatus = strtoupper(trim((string) $status));
@@ -78,6 +81,7 @@ class DokuWebhookController extends Controller
             if ($reservation) {
                 $reservation->update([
                     'status' => 'paid',
+                    'payment_method' => $paymentMethod ?: $reservation->payment_method,
                 ]);
 
                 Log::info("SUKSES: Reservasi Hotel ID {$reservation->id} (Invoice: {$invoiceNumber}) berhasil diubah menjadi PAID.");
@@ -95,5 +99,46 @@ class DokuWebhookController extends Controller
             'status' => 'IGNORED',
             'message' => 'Notification processed'
         ], 200);
+    }
+
+    /**
+     * Susun label metode pembayaran spesifik dari data channel & method DOKU.
+     * Contoh output: "Virtual Account BSI", "Wallet OVO", "Credit Card".
+     */
+    private function composePaymentMethod(array $payload): ?string
+    {
+        $channelName = $payload['payment']['channel_name']
+                       ?? $payload['payment']['channel']
+                       ?? $payload['channel_name']
+                       ?? $payload['channel']
+                       ?? null;
+
+        $method = strtoupper(trim((string) (
+            $payload['payment']['method']
+            ?? $payload['payment_method']
+            ?? $payload['method']
+            ?? ''
+        )));
+
+        $methodLabels = [
+            'VIRTUAL_ACCOUNT' => 'Virtual Account',
+            'VA' => 'Virtual Account',
+            'WALLET' => 'Wallet',
+            'EWALLET' => 'Wallet',
+            'CREDIT_CARD' => 'Credit Card',
+            'OVER_THE_COUNTER' => 'Over the Counter',
+            'CASH_ON_DELIVERY' => 'Cash on Delivery',
+            'KLIKPAY' => 'KlikPay',
+            'PAYLATER' => 'PayLater',
+            'QUICK_PAY' => 'Quick Pay',
+        ];
+
+        $methodLabel = $methodLabels[$method] ?? ($method ?: null);
+
+        if ($channelName && $methodLabel) {
+            return $methodLabel . ' ' . $channelName;
+        }
+
+        return $channelName ?: $methodLabel;
     }
 }

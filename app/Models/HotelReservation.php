@@ -26,6 +26,7 @@ class HotelReservation extends Model
         'guest_email',
         'status',
         'invoice_number',
+        'payment_method',
     ];
 
     /**
