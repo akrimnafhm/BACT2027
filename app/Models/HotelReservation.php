@@ -13,6 +13,7 @@ class HotelReservation extends Model
      * Menggunakan $fillable secara eksplisit agar aman saat updateOrCreate()
      */
     protected $fillable = [
+        'booking_code',
         'user_id',
         'hotel_room_id',
         'check_in',
@@ -24,6 +25,7 @@ class HotelReservation extends Model
         'guest_phone',
         'guest_email',
         'status',
+        'invoice_number',
     ];
 
     /**

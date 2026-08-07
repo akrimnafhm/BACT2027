@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\TicketBooking;
+use App\Models\HotelReservation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -46,10 +47,12 @@ class DokuWebhookController extends Controller
 
         if (in_array($normalizedStatus, $paidStatuses, true)) {
             $booking = null;
+            $reservation = null;
 
             if ($invoiceNumber) {
                 // Cari booking berdasarkan invoice_number
                 $booking = TicketBooking::where('invoice_number', $invoiceNumber)->first();
+                $reservation = HotelReservation::where('invoice_number', $invoiceNumber)->first();
             }
 
             if (!$booking && $customerId !== null) {
@@ -72,7 +75,20 @@ class DokuWebhookController extends Controller
                 ], 200);
             }
 
-            Log::warning("GAGAL: Invoice {$invoiceNumber} / customer {$customerId} tidak ditemukan di tabel ticket_bookings.");
+            if ($reservation) {
+                $reservation->update([
+                    'status' => 'paid',
+                ]);
+
+                Log::info("SUKSES: Reservasi Hotel ID {$reservation->id} (Invoice: {$invoiceNumber}) berhasil diubah menjadi PAID.");
+
+                return response()->json([
+                    'status' => 'SUCCESS',
+                    'message' => 'Hotel reservation status updated to paid successfully'
+                ], 200);
+            }
+
+            Log::warning("GAGAL: Invoice {$invoiceNumber} / customer {$customerId} tidak ditemukan di tabel ticket_bookings / hotel_reservations.");
         }
 
         return response()->json([

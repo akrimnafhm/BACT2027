@@ -76,6 +76,10 @@ Route::middleware('auth')->group(function () {
     // AKOMODASI HOTEL (Katalog & Pemesanan Peserta)
     Route::get('/hotel/book/{id}', [HotelBookingController::class, 'create'])->name('hotels.book');
     Route::post('/hotel/book/{id}', [HotelBookingController::class, 'store'])->name('hotels.store');
+    Route::get('/hotel/checkout/{id}', [HotelBookingController::class, 'checkout'])->name('hotels.checkout');
+
+    // Return URL dari DOKU agar status reservasi hotel bisa disinkronkan saat user kembali ke site
+    Route::get('/hotel/return/{reservation}', [HotelBookingController::class, 'paymentReturn'])->name('hotels.return');
 });
 
 
