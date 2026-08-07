@@ -20,8 +20,9 @@ use Illuminate\Http\Request;
 // Halaman Utama (Landing Page dengan data Info, Pembicara, Jadwal, Galeri, Sponsor)
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
-// Halaman Booking (Diletakkan di luar middleware auth agar bisa mengecek status login guest)
+// Halaman Bridge Booking (Diletakkan di luar middleware auth agar bisa mengecek status login guest)
 Route::get('/booking', [BookingController::class, 'index'])->name('booking.index');
+Route::get('/booking/form', [BookingController::class, 'form'])->name('booking.form');
 Route::get('/hotel', [HotelBookingController::class, 'index'])->name('hotels.index');
 
 
@@ -65,6 +66,9 @@ Route::middleware('auth')->group(function () {
 
     // Proses Pengiriman Form Booking (Menyimpan data dengan status pending)
     Route::post('/booking/process', [BookingController::class, 'process'])->name('booking.process');
+
+    // Return URL dari DOKU agar status booking bisa disinkronkan saat user kembali ke site
+    Route::get('/booking/return/{booking}', [BookingController::class, 'paymentReturn'])->name('booking.return');
 
     // Halaman Checkout & Pembayaran Midtrans
     Route::get('/checkout/{id}', [BookingController::class, 'checkout'])->name('checkout');

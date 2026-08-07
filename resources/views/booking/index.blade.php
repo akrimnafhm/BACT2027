@@ -81,9 +81,21 @@
     </nav>
 
     <!-- KONTEN UTAMA HALAMAN -->
-    <div class="max-w-4xl mx-auto px-4 pt-32 pb-16 flex-grow w-full">
+    <div class="max-w-4xl mx-auto px-4 pt-32 pb-16 grow w-full">
 
         <div class="space-y-8">
+
+            @if(session('success'))
+                <div class="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-800">
+                    {{ session('success') }}
+                </div>
+            @endif
+
+            @if(session('error'))
+                <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">
+                    {{ session('error') }}
+                </div>
+            @endif
             
             <!-- 2. TAMPILAN POST-PURCHASE (E-TICKET JIKA SUDAH LUNAS) -->
             @if($status === 'post_purchase')
@@ -156,7 +168,7 @@
                                 
                                 <div class="absolute inset-0 border-2 border-transparent peer-checked:border-[#E19404] peer-checked:bg-[#FFF8E7] transition pointer-events-none"></div>
 
-                                <div class="relative z-10 md:w-40 flex-shrink-0">
+                                <div class="relative z-10 md:w-40 shrink-0">
                                     <span class="text-base font-extrabold text-gray-800">Rp{{ number_format($ticket->price, 0, ',', '.') }}</span>
                                 </div>
 

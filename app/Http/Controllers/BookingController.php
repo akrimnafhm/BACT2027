@@ -14,14 +14,93 @@ use Illuminate\Support\Str;
 class BookingController extends Controller
 {
     /**
-     * Menampilkan halaman daftar pemesanan tiket sesuai status user.
+     * Menampilkan halaman bridge tiket.
      */
-    public function index()
+    public function index(Request $request)
     {
+        if (!Auth::check()) {
+            return view('booking.bridge', [
+                'status'  => 'guest',
+            ]);
+        }
+
+        $user = Auth::user();
+
+        $existingBooking = TicketBooking::where('user_id', $user->id)
+                            ->latest()
+                            ->first();
+
+        $existingBooking = $this->syncBookingFromCallback($request, $user, $existingBooking);
+
+        if (!$this->isProfileComplete($user)) {
+            return view('booking.bridge', [
+                'status'          => 'incomplete',
+                'user'            => $user,
+                'existingBooking' => $existingBooking,
+            ]);
+        }
+
+        if ($existingBooking && $existingBooking->status === 'paid') {
+            $bookedTicket = Ticket::find($existingBooking->ticket_id);
+
+            if ($bookedTicket) {
+                $bookedTicket->display_name = $bookedTicket->ticket_name . ' - ' . $bookedTicket->ticket_category;
+            }
+
+            return view('booking.bridge', [
+                'status'       => 'post_purchase',
+                'user'         => $user,
+                'booking'      => $existingBooking,
+                'bookedTicket' => $bookedTicket,
+            ]);
+        }
+
+        if ($existingBooking && $existingBooking->status === 'pending') {
+            return view('booking.bridge', [
+                'status'          => 'pending',
+                'user'            => $user,
+                'existingBooking' => $existingBooking,
+            ]);
+        }
+
+        return view('booking.bridge', [
+            'status'          => 'bridge',
+            'user'            => $user,
+            'existingBooking' => $existingBooking ?? null
+        ]);
+    }
+
+    /**
+     * Menampilkan halaman form booking tiket.
+     */
+    public function form()
+    {
+        if (!Auth::check()) {
+            return redirect()->route('booking.index');
+        }
+
+        $user = Auth::user();
+
+        if (!$this->isProfileComplete($user)) {
+            return redirect()->route('booking.index')
+                ->with('error', 'Mohon lengkapi profil terlebih dahulu sebelum melanjutkan ke halaman booking.');
+        }
+
+        $existingBooking = TicketBooking::where('user_id', $user->id)
+                            ->latest()
+                            ->first();
+
+        if ($existingBooking && $existingBooking->status === 'paid') {
+            return redirect()->route('booking.index');
+        }
+
+        if ($existingBooking && $existingBooking->status === 'pending') {
+            return redirect()->route('booking.index');
+        }
+
         $hotels = HotelRoom::where('is_active', true)->get();
         $now = Carbon::now();
 
-        // 1. QUERY TIKET AKTIF (Waktu Valid & is_active = 1)
         $activeTickets = Ticket::where('is_active', true)
             ->where(function ($query) use ($now) {
                 $query->whereNull('start_date')
@@ -33,60 +112,16 @@ class BookingController extends Controller
             })
             ->get();
 
-        // Gabungkan nama tiket dan kategori untuk Tampilan di UI
         foreach ($activeTickets as $ticket) {
             $ticket->display_name = $ticket->ticket_name . ' - ' . $ticket->ticket_category;
         }
 
-        // --- SKENARIO 1: TAMU (GUEST) ---
-        if (!Auth::check()) {
-            return view('booking.index', [
-                'status'  => 'guest',
-                'tickets' => $activeTickets
-            ]);
-        }
-
-        $user = Auth::user();
-
-        // SATPAM BACKEND: Tolak proses jika profil belum 100% lengkap
-        $isProfileComplete = !empty($user->email_verified_at) &&
-                             !empty($user->phone_verified_at) &&
-                             !empty($user->name) &&
-                             !empty($user->nik) &&
-                             !empty($user->gender);
-
-        if (!$isProfileComplete) {
-            return redirect()->route('profile.edit')
-                ->withErrors(['error' => 'Mohon lengkapi data diri, serta verifikasi akun Anda terlebih dahulu sebelum pesan tiket.']);
-        }
-
-        // Cari transaksi terakhir milik user ini
-        $existingBooking = TicketBooking::where('user_id', $user->id)
-                            ->latest()
-                            ->first();
-
-        // --- SKENARIO 3: SUDAH BAYAR / LUNAS (E-TICKET) ---
-        if ($existingBooking && $existingBooking->status === 'paid') {
-            $bookedTicket = Ticket::find($existingBooking->ticket_id);
-            
-            // Tampilkan nama utuh gabungan gelombang & kategori pada E-Ticket
-            $bookedTicket->display_name = $bookedTicket->ticket_name . ' - ' . $bookedTicket->ticket_category;
-            
-            return view('booking.index', [
-                'status'       => 'post_purchase',
-                'user'         => $user,
-                'booking'      => $existingBooking,
-                'bookedTicket' => $bookedTicket,
-                'hotels'       => $hotels
-            ]);
-        }
-
-        // --- SKENARIO 4: PENDING / SIAP PESAN ---
         return view('booking.index', [
             'status'          => 'ready',
             'user'            => $user,
             'tickets'         => $activeTickets,
-            'existingBooking' => $existingBooking ?? null
+            'existingBooking' => $existingBooking ?? null,
+            'hotels'          => $hotels,
         ]);
     }
 
@@ -192,7 +227,12 @@ class BookingController extends Controller
                 'amount' => $booking->amount,
                 'invoice_number' => $invoiceNumber,
                 'currency' => 'IDR',
-                'callback_url' => route('booking.index'), // URL kembali setelah bayar
+                'callback_url' => route('booking.return', [
+                    'booking' => $booking->id,
+                    'invoice_number' => $invoiceNumber,
+                    'simulated_paid' => 1,
+                ]),
+                'notification_url' => env('DOKU_NOTIFICATION_URL', url('/api/doku/notification')),
             ],
             'payment' => [
                 'payment_due_date' => 60 // Expired VA/Link dalam menit (1 jam)
@@ -248,5 +288,83 @@ class BookingController extends Controller
 
         // Jika gagal konek ke DOKU
         return back()->with('error', 'Gagal memproses ke gerbang pembayaran DOKU. Silakan coba lagi.');
+    }
+
+    /**
+     * Menangani user kembali dari DOKU agar status booking tersinkron sebelum masuk bridge.
+     */
+    public function paymentReturn(Request $request, TicketBooking $booking)
+    {
+        $user = Auth::user();
+
+        if ($booking->user_id !== $user->id) {
+            abort(403);
+        }
+
+        $booking = $this->syncBookingFromCallback($request, $user, $booking);
+
+        $isProduction = filter_var(env('DOKU_IS_PRODUCTION', false), FILTER_VALIDATE_BOOLEAN);
+        $shouldAutoFinalize = !$isProduction && ((int) $request->query('simulated_paid', 0) === 1 || $booking->status === 'pending');
+
+        if ($shouldAutoFinalize && $booking->status !== 'paid') {
+            $booking->update(['status' => 'paid']);
+        }
+
+        return redirect()->route('booking.index', array_filter([
+            'transaction_status' => $request->query('transaction_status'),
+            'payment_status' => $request->query('payment_status'),
+            'status' => $request->query('status'),
+            'invoice_number' => $request->query('invoice_number') ?? $request->query('invoice_no') ?? $request->query('invoice'),
+            'order_id' => $request->query('order_id'),
+            'simulated_paid' => $request->query('simulated_paid'),
+        ], fn ($value) => $value !== null && $value !== ''));
+    }
+
+    private function isProfileComplete($user): bool
+    {
+        return !empty($user->email_verified_at) &&
+               !empty($user->phone_verified_at) &&
+               !empty($user->name) &&
+               !empty($user->nik) &&
+               !empty($user->gender);
+    }
+
+    private function syncBookingFromCallback(Request $request, $user, ?TicketBooking $existingBooking): ?TicketBooking
+    {
+        $incomingStatus = strtoupper((string) (
+            $request->query('transaction_status')
+            ?? $request->query('payment_status')
+            ?? $request->query('status')
+            ?? ''
+        ));
+
+        $incomingInvoice = $request->query('invoice_number')
+            ?? $request->query('invoice_no')
+            ?? $request->query('invoice')
+            ?? $request->query('order_id');
+
+        $isPaidCallback = in_array($incomingStatus, ['SUCCESS', 'PAID', 'COMPLETED', 'SETTLED', 'CAPTURED'], true);
+
+        if (!$isPaidCallback && !$incomingInvoice) {
+            return $existingBooking;
+        }
+
+        $targetBooking = null;
+
+        if ($incomingInvoice) {
+            $targetBooking = TicketBooking::where('user_id', $user->id)
+                ->where('invoice_number', $incomingInvoice)
+                ->first();
+        }
+
+        if (!$targetBooking) {
+            $targetBooking = $existingBooking;
+        }
+
+        if ($targetBooking && $isPaidCallback && $targetBooking->status !== 'paid') {
+            $targetBooking->update(['status' => 'paid']);
+        }
+
+        return $targetBooking ?: $existingBooking;
     }
 }
