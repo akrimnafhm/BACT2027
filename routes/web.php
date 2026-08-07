@@ -10,6 +10,7 @@ use App\Http\Controllers\HotelController;
 use App\Http\Controllers\HotelBookingController;
 use App\Http\Controllers\ContentController;
 use App\Http\Middleware\IsAdmin;
+use App\Services\FonnteService;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\Request;
 
@@ -158,12 +159,14 @@ Route::middleware(['auth', IsAdmin::class])->prefix('admin')->group(function () 
     Route::delete('/content/sponsors/{id}', [ContentController::class, 'destroySponsor'])->name('admin.sponsors.destroy');
 
     // =========================================================
-    // 7. BROADCAST WA & 8. QR CHECK-IN (Placeholder)
+    // 7. BROADCAST WA
     // =========================================================
-    Route::get('/broadcast', function () {
-        return 'Halaman Broadcast WA (Coming Soon)';
-    })->name('admin.broadcast.index');
+    Route::get('/broadcast', [\App\Http\Controllers\BroadcastController::class, 'index'])->name('admin.broadcast.index');
+    Route::post('/broadcast/send', [\App\Http\Controllers\BroadcastController::class, 'send'])->name('admin.broadcast.send');
 
+        // =========================================================
+    // 8. QR CHECK-IN (Placeholder)
+    // =========================================================
     Route::get('/checkin', function () {
         return 'Halaman Scanner QR Check-in (Coming Soon)';
     })->name('admin.checkin.index');
