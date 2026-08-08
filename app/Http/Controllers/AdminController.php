@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Ticket;
 use App\Models\TicketBooking;
 use App\Models\HotelRoom;
+use App\Services\TicketNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
@@ -471,6 +472,11 @@ class AdminController extends Controller
         $booking->whatsapp_number = $request->whatsapp_number;
         $booking->save();
 
+        // Kirim notifikasi WA & Email jika status diubah menjadi LUNAS
+        if ($booking->status === 'paid') {
+            app(TicketNotificationService::class)->sendTicketPaid($booking);
+        }
+
         return back()->with('success', 'Data dan status peserta berhasil diperbarui!');
     }
 
@@ -510,6 +516,18 @@ class AdminController extends Controller
             'plataran_sehat_email' => $request->plataran_sehat_email ?? $request->gmail_account,
             'payment_method'       => 'MANUAL_ADMIN'
         ]);
+
+        // Kirim notifikasi jika peserta manual langsung LUNAS
+        if ($request->status === 'paid') {
+            $newBooking = \App\Models\TicketBooking::where('gmail_account', $request->gmail_account)
+                            ->where('status', 'paid')
+                            ->latest()
+                            ->first();
+
+            if ($newBooking) {
+                app(TicketNotificationService::class)->sendTicketPaid($newBooking);
+            }
+        }
 
         return back()->with('success', 'Peserta manual baru berhasil ditambahkan ke sistem!');
     }

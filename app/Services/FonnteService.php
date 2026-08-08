@@ -37,20 +37,28 @@ class FonnteService
      *
      * @param string $target Nomor HP tujuan (08xxx / 628xxx)
      * @param string $message Isi pesan teks
+     * @param string|null $imageUrl URL media/gambar (mis. QR tiket) yang dilampirkan ke pesan
      * @return array|bool
      */
-    public function sendMessage($target, $message)
+    public function sendMessage($target, $message, $imageUrl = null)
     {
         $formattedPhone = $this->formatPhoneNumber($target);
 
         try {
-            $response = Http::withHeaders([
-                'Authorization' => $this->token,
-            ])->post($this->apiUrl, [
+            $payload = [
                 'target'  => $formattedPhone,
                 'message' => $message,
                 'countryCode' => '62', // Default kode negara Indonesia
-            ]);
+            ];
+
+            // Jika ada media (QR), sertakan parameter url ke API Fonnte
+            if ($imageUrl) {
+                $payload['url'] = $imageUrl;
+            }
+
+            $response = Http::withHeaders([
+                'Authorization' => $this->token,
+            ])->post($this->apiUrl, $payload);
 
             $result = $response->json();
 

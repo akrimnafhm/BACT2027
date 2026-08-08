@@ -13,6 +13,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             TicketSeeder::class,
             HotelRoomSeeder::class,
+            NotificationTemplateSeeder::class,
         ]);
     }
 }

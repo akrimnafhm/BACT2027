@@ -74,6 +74,9 @@
                 <a href="/admin/broadcast"
                     class="border-b-2 border-transparent text-gray-500 hover:text-[#E19404] hover:border-gray-300 py-3.5 px-1 text-sm font-semibold transition whitespace-nowrap">Broadcast
                     WA</a>
+                <a href="/admin/notifications"
+                    class="border-b-2 border-transparent text-gray-500 hover:text-[#E19404] hover:border-gray-300 py-3.5 px-1 text-sm font-semibold transition whitespace-nowrap">Template
+                    Notifikasi</a>
                 <a href="/admin/checkin"
                     class="border-b-2 border-transparent text-gray-500 hover:text-[#E19404] hover:border-gray-300 py-3.5 px-1 text-sm font-semibold transition whitespace-nowrap">QR
                     Check-In</a>

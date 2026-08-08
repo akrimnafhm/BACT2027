@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\TicketBooking;
 use App\Models\HotelReservation;
+use App\Services\TicketNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -71,6 +72,9 @@ class DokuWebhookController extends Controller
                 ]);
 
                 Log::info("SUKSES: Booking ID {$booking->id} (Invoice: {$invoiceNumber}) berhasil diubah menjadi PAID.");
+
+                // Kirim notifikasi WA & Email ke peserta
+                app(TicketNotificationService::class)->sendTicketPaid($booking);
 
                 return response()->json([
                     'status' => 'SUCCESS',

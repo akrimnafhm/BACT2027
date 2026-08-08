@@ -9,6 +9,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\HotelController;
 use App\Http\Controllers\HotelBookingController;
 use App\Http\Controllers\ContentController;
+use App\Http\Controllers\NotificationTemplateController;
 use App\Http\Middleware\IsAdmin;
 use App\Services\FonnteService;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
@@ -178,6 +179,12 @@ Route::middleware(['auth', IsAdmin::class])->prefix('admin')->group(function () 
     // =========================================================
     Route::get('/broadcast', [\App\Http\Controllers\BroadcastController::class, 'index'])->name('admin.broadcast.index');
     Route::post('/broadcast/send', [\App\Http\Controllers\BroadcastController::class, 'send'])->name('admin.broadcast.send');
+
+    // =========================================================
+    // 7B. TEMPLATE NOTIFIKASI (WA & EMAIL)
+    // =========================================================
+    Route::get('/notifications', [NotificationTemplateController::class, 'index'])->name('admin.notifications.index');
+    Route::post('/notifications', [NotificationTemplateController::class, 'update'])->name('admin.notifications.update');
 
         // =========================================================
     // 8. QR CHECK-IN (Placeholder)

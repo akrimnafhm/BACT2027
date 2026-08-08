@@ -30,10 +30,12 @@ class TicketBooking extends Model
         'institution_province',
         'checkin_token',
         'checked_in_at',
+        'notified_at',
     ];
 
     protected $casts = [
         'checked_in_at' => 'datetime',
+        'notified_at'   => 'datetime',
     ];
 
     public function user()

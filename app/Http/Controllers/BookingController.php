@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Ticket;
 use App\Models\HotelRoom;
 use App\Models\TicketBooking;
+use App\Services\TicketNotificationService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -310,6 +311,7 @@ class BookingController extends Controller
 
         if ($shouldAutoFinalize && $booking->status !== 'paid') {
             $booking->update(['status' => 'paid']);
+            app(TicketNotificationService::class)->sendTicketPaid($booking);
         }
 
         return redirect()->route('booking.index', array_filter([
@@ -380,6 +382,7 @@ class BookingController extends Controller
 
         if ($targetBooking && $isPaidCallback && $targetBooking->status !== 'paid') {
             $targetBooking->update(['status' => 'paid']);
+            app(TicketNotificationService::class)->sendTicketPaid($targetBooking);
         }
 
         return $targetBooking ?: $existingBooking;
