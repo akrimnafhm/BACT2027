@@ -14,11 +14,13 @@ class TicketPaidMail extends Mailable
 
     public $subjectText;
     public $bodyHtml;
+    public $qrPath;
 
-    public function __construct(string $subjectText, string $bodyHtml)
+    public function __construct(string $subjectText, string $bodyHtml, ?string $qrPath = null)
     {
         $this->subjectText = $subjectText;
         $this->bodyHtml = $bodyHtml;
+        $this->qrPath = $qrPath;
     }
 
     public function envelope(): Envelope
@@ -34,6 +36,7 @@ class TicketPaidMail extends Mailable
             view: 'emails.ticket-paid',
             with: [
                 'bodyHtml' => $this->bodyHtml,
+                'qrPath' => $this->qrPath,
             ],
         );
     }

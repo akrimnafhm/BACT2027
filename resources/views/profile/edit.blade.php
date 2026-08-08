@@ -72,7 +72,8 @@
     </nav>
 
     <!-- FORM TERSEMBUNYI UNTUK VERIFIKASI -->
-    <form id="form-email-verify" action="{{ route('verification.send') }}" method="POST" class="hidden">@csrf</form>
+    <form id="form-send-email-otp" action="{{ route('email.sendOtp') }}" method="POST" class="hidden">@csrf</form>
+    <form id="form-verify-email-otp" action="{{ route('email.verifyOtp') }}" method="POST" class="hidden">@csrf</form>
     <form id="form-send-otp" action="{{ route('phone.sendOtp') }}" method="POST" class="hidden">
         @csrf
         <input type="hidden" name="phone_number" id="hidden_phone_number">
@@ -87,6 +88,12 @@
             <div class="bg-green-50 border border-green-200 text-green-800 px-4 py-3.5 rounded-xl mb-6 text-sm font-medium shadow-sm flex items-center gap-2">
                 <svg class="w-5 h-5 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                 <span>{{ session('success') }}</span>
+            </div>
+        @endif
+        @if(session('error'))
+            <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3.5 rounded-xl mb-6 text-sm font-medium shadow-sm flex items-center gap-2">
+                <svg class="w-5 h-5 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span>{{ session('error') }}</span>
             </div>
         @endif
         @if($errors->any())
@@ -118,9 +125,16 @@
                                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Terverifikasi
                                 </span>
                             @else
-                                <button type="submit" form="form-email-verify" class="text-xs font-bold px-4 py-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-full transition whitespace-nowrap shadow-sm">
-                                    Verifikasi
-                                </button>
+                                @if(session('email_otp_sent'))
+                                    <div class="flex items-center gap-2">
+                                        <input type="text" name="email_otp_code" form="form-verify-email-otp" placeholder="6 Digit" required maxlength="6" class="w-24 px-3 py-2 border border-gray-300 rounded-lg text-center tracking-widest text-sm focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] outline-none">
+                                        <button type="submit" form="form-verify-email-otp" class="text-xs font-bold px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg transition shadow-sm">Cek</button>
+                                    </div>
+                                @else
+                                    <button type="submit" form="form-send-email-otp" class="text-xs font-bold px-4 py-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-full transition whitespace-nowrap shadow-sm">
+                                        Verifikasi
+                                    </button>
+                                @endif
                             @endif
                         </div>
                     </div>

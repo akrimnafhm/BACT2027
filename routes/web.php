@@ -68,6 +68,10 @@ Route::middleware('auth')->group(function () {
         return redirect('/profile')->with('success', 'Email berhasil diverifikasi!');
     })->middleware('signed')->name('verification.verify');
 
+    // Verifikasi OTP Email (untuk membeli tiket / pesan hotel)
+    Route::post('/email/send-otp', [ProfileController::class, 'sendEmailOtp'])->name('email.sendOtp');
+    Route::post('/email/verify-otp', [ProfileController::class, 'verifyEmailOtp'])->name('email.verifyOtp');
+
     // Verifikasi OTP HP
     Route::post('/phone/send-otp', [ProfileController::class, 'sendOtp'])->name('phone.sendOtp');
     Route::post('/phone/verify-otp', [ProfileController::class, 'verifyOtp'])->name('phone.verifyOtp');

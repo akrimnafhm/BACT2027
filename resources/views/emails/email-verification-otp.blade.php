@@ -1,21 +1,9 @@
-@php
-    $renderedBody = $bodyHtml;
-
-    // Ganti placeholder {qr} dengan gambar QR yang di-embed sebagai CID
-    // ($message->embed() tersedia di view mail dan menghasilkan cid yang didukung Gmail/Outlook)
-    if ($qrPath && is_file($qrPath) && str_contains($renderedBody, '{qr}')) {
-        $qrImg = '<img src="' . $message->embed($qrPath) . '" alt="QR Tiket" style="max-width:220px;height:auto;">';
-        $renderedBody = str_replace('{qr}', $qrImg, $renderedBody);
-    } else {
-        $renderedBody = str_replace('{qr}', '', $renderedBody);
-    }
-@endphp
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Konfirmasi Tiket BACT</title>
+    <title>Verifikasi Email - BACT 2027</title>
 </head>
 <body style="margin:0;padding:0;background-color:#F4F5F7;font-family:Arial,Helvetica,sans-serif;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F4F5F7;padding:24px 0;">
@@ -30,7 +18,13 @@
                     <tr>
                         <td style="padding:32px;">
                             <div style="font-size:15px;line-height:1.7;color:#374151;">
-                                {!! $renderedBody !!}
+                                <p>Halo, <strong>{{ $userName }}</strong>,</p>
+                                <p>Untuk melanjutkan pembelian tiket atau pemesanan hotel, mohon verifikasi alamat email Anda terlebih dahulu.</p>
+                                <p>Masukkan kode verifikasi berikut:</p>
+                                <p style="text-align:center;margin:28px 0;">
+                                    <span style="display:inline-block;font-size:30px;font-weight:800;letter-spacing:8px;color:#1f2937;background:#FFF8E7;border:2px dashed #E19404;border-radius:12px;padding:14px 28px;">{{ $code }}</span>
+                                </p>
+                                <p>Kode berlaku selama <strong>{{ $expiresInMinutes }} menit</strong>. Jika Anda tidak merasa meminta kode ini, abaikan email ini.</p>
                             </div>
                         </td>
                     </tr>

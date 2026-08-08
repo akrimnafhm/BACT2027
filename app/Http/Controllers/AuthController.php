@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\ResetPasswordCodeMail;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class AuthController extends Controller
 {
@@ -116,14 +118,22 @@ class AuthController extends Controller
         $user->reset_code_expires_at = now()->addMinutes(10);
         $user->save();
 
-        // Simulasi pengiriman email (MAIL_MAILER=log)
+        // Simulasi pengiriman email (fallback: tercatat di log)
         Log::info("SIMULASI EMAIL BACT: Kode reset password untuk {$user->email} adalah [ {$code} ]");
+
+        // Kirim email sungguhan via Brevo (jika mailer sudah dikonfigurasi)
+        try {
+            Mail::to($user->email)->send(new ResetPasswordCodeMail($user->name, $code));
+            Log::info("Email reset password terkirim ke {$user->email}");
+        } catch (\Throwable $e) {
+            Log::error('Gagal mengirim email reset password: ' . $e->getMessage());
+        }
 
         // Simpan state step di session
         session(['reset_email' => $email, 'reset_attempts' => 0]);
 
         return redirect()->route('forgot-password')
-                         ->with('success', 'Kode reset 6 digit telah dikirim ke email Anda. Silakan cek inbox / log.');
+                         ->with('success', 'Kode reset 6 digit telah dikirim ke email Anda. Silakan cek inbox email Anda.');
     }
 
     /**

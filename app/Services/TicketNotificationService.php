@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Mail\TicketPaidMail;
 use App\Models\NotificationTemplate;
 use App\Models\TicketBooking;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -34,23 +33,22 @@ class TicketNotificationService
         $phone = $booking->whatsapp_number ?: $booking->user->phone_number ?? null;
         $email = $booking->gmail_account ?: $booking->user->email ?? null;
 
-        $qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' . urlencode($booking->checkin_token);
+        // Generate QR PNG di server sendiri (tidak bergantung api.qrserver.com)
+        $qrPath = app(QrService::class)->generatePng($booking->checkin_token, 'ticket-' . $booking->id);
 
-        // 1. KIRIM WHATSAPP VIA FONNTE
+        // 1. KIRIM WHATSAPP VIA FONNTE (media dikirim dari file lokal -> cocok untuk localhost/private IP)
         if ($waTemplate && $waTemplate->is_active && $phone) {
             $body = $this->renderPlaceholders($waTemplate->body, $booking);
-            $imageUrl = null;
 
-            if ($waTemplate->include_qr) {
+            if ($waTemplate->include_qr && $qrPath) {
                 $note = '(QR tiket Anda terlampir pada pesan ini)';
                 $body = $this->attachQrToBody($body, '{qr}', $note);
-                $imageUrl = $qrUrl;
             } else {
                 $body = str_replace('{qr}', '', $body);
             }
 
             try {
-                $result = app(FonnteService::class)->sendMessage($phone, $body, $imageUrl);
+                $result = app(FonnteService::class)->sendMessageWithFile($phone, $body, $qrPath, 'qr-' . $booking->id . '.png');
                 Log::info("Notifikasi WA tiket dikirim ke {$phone} (Booking {$booking->id})", [
                     'response' => $result,
                 ]);
@@ -59,29 +57,22 @@ class TicketNotificationService
             }
         }
 
-        // 2. KIRIM EMAIL (MAIL_MAILER=log -> tercatat di storage/logs/laravel.log)
+        // 2. KIRIM EMAIL (QR di-embed sebagai CID attachment agar tampil di Gmail/Outlook)
         if ($emailTemplate && $emailTemplate->is_active && $email) {
             $body = $this->renderPlaceholders($emailTemplate->body, $booking);
             $subject = $this->renderPlaceholders($emailTemplate->subject ?? 'Konfirmasi Pembelian Tiket - BACT 2027', $booking);
 
-            // Sertakan QR sebagai gambar base64 di dalam email
-            $qrImageHtml = null;
-            if ($emailTemplate->include_qr) {
-                $qrImageHtml = $this->buildQrImageHtml($qrUrl);
-            }
-
-            if ($qrImageHtml) {
-                $body = $this->attachQrToBody($body, '{qr}', $qrImageHtml);
-            } else {
-                $body = str_replace('{qr}', '', $body);
-            }
-
             try {
-                Mail::to($email)->send(new TicketPaidMail($subject, $body));
+                Mail::to($email)->send(new TicketPaidMail($subject, $body, $qrPath));
                 Log::info("Notifikasi email tiket dikirim ke {$email} (Booking {$booking->id})");
             } catch (\Throwable $e) {
                 Log::error('Gagal kirim notifikasi email tiket: ' . $e->getMessage());
             }
+        }
+
+        // Bersihkan file QR sementara setelah dipakai
+        if ($qrPath) {
+            app(QrService::class)->delete($qrPath);
         }
 
         // Tandai sudah dinotifikasi agar tidak terkirim ulang
@@ -89,7 +80,7 @@ class TicketNotificationService
     }
 
     /**
-     * Ganti placeholder {nama}, {tiket}, {id_pesanan}, {invoice}, {harga}, {email}.
+     * Ganti placeholder {nama}, {tiket}, {id_pesanan}, {invoice}, {harga}, {email}, {kode_tiket}.
      */
     protected function renderPlaceholders(string $template, TicketBooking $booking): string
     {
@@ -100,6 +91,7 @@ class TicketNotificationService
             '{invoice}'     => $booking->invoice_number ?: '-',
             '{harga}'       => number_format($booking->amount, 0, ',', '.'),
             '{email}'       => $booking->gmail_account ?: $booking->user->email ?? '',
+            '{kode_tiket}'  => $booking->checkin_token ?: '-',
         ];
 
         return str_replace(array_keys($replacers), array_values($replacers), $template);
@@ -115,24 +107,5 @@ class TicketNotificationService
         }
 
         return trim($body) . "\n\n" . $replacement;
-    }
-
-    /**
-     * Ambil gambar QR dari qrserver dan embed sebagai data URI (base64) agar aman di email.
-     */
-    protected function buildQrImageHtml(string $qrUrl): ?string
-    {
-        try {
-            $response = Http::timeout(15)->get($qrUrl);
-            if ($response->successful()) {
-                $base64 = base64_encode($response->body());
-                return '<img src="data:image/png;base64,' . $base64 . '" alt="QR Tiket" style="max-width:220px;height:auto;">';
-            }
-        } catch (\Throwable $e) {
-            Log::warning('Gagal mengambil gambar QR untuk email: ' . $e->getMessage());
-        }
-
-        // Fallback: pakai URL langsung dari qrserver
-        return '<img src="' . e($qrUrl) . '" alt="QR Tiket" style="max-width:220px;height:auto;">';
     }
 }

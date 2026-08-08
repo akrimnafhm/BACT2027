@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\EmailVerificationOtpMail;
+use App\Services\FonnteService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class ProfileController extends Controller
 {
@@ -87,7 +90,24 @@ class ProfileController extends Controller
         $user->otp_expires_at = now()->addMinutes(10);
         $user->save();
 
+        // Simulasi pengiriman WhatsApp (fallback: tercatat di log)
         Log::info("SIMULASI WHATSAPP BACT: Kode OTP untuk {$user->phone_number} adalah [ {$otp} ]");
+
+        // Kirim OTP via Fonnte (WhatsApp sungguhan)
+        $message = "Halo {$user->name},\n\n"
+            . "Kode verifikasi WhatsApp Anda untuk BACT 2027 adalah:\n\n"
+            . "{$otp}\n\n"
+            . "Kode berlaku selama 10 menit. Mohon jangan bagikan kode ini kepada siapa pun.\n\n"
+            . "Terima kasih,\nPanitia BACT 2027";
+
+        try {
+            $result = app(FonnteService::class)->sendMessage($user->phone_number, $message);
+            Log::info("Notifikasi WA OTP dikirim ke {$user->phone_number}", [
+                'response' => $result,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Gagal kirim OTP via Fonnte: ' . $e->getMessage());
+        }
 
         return back()->with('otp_sent', true)->with('success', "Kode OTP telah dikirim ke nomor {$user->phone_number}!");
     }
@@ -112,5 +132,51 @@ class ProfileController extends Controller
 
         // Jika salah, form OTP tetap dimunculkan beserta pesan error
         return back()->with('otp_sent', true)->withErrors(['otp_code' => 'Kode OTP salah atau sudah kedaluwarsa.']);
+    }
+
+    public function sendEmailOtp(Request $request)
+    {
+        $user = Auth::user();
+
+        // 1. Buat & simpan OTP email (berlaku 10 menit)
+        $otp = rand(100000, 999999);
+        $user->email_otp_code = $otp;
+        $user->email_otp_expires_at = now()->addMinutes(10);
+        $user->email_verified_at = null; // Pastikan statusnya reset
+        $user->save();
+
+        Log::info("SIMULASI EMAIL BACT: Kode OTP verifikasi email untuk {$user->email} adalah [ {$otp} ]");
+
+        // 2. Kirim email sungguhan via Brevo (jika mailer sudah dikonfigurasi)
+        try {
+            Mail::to($user->email)->send(new EmailVerificationOtpMail($user->name, $otp));
+            Log::info("Email verifikasi terkirim ke {$user->email}");
+        } catch (\Throwable $e) {
+            Log::error('Gagal mengirim email verifikasi: ' . $e->getMessage());
+        }
+
+        return back()->with('email_otp_sent', true)->with('success', 'Kode verifikasi telah dikirim ke email Anda!');
+    }
+
+    public function verifyEmailOtp(Request $request)
+    {
+        $user = Auth::user();
+
+        $request->validate([
+            'email_otp_code' => 'required|numeric'
+        ]);
+
+        // Cek apakah kodenya sama dan belum kedaluwarsa
+        if ($user->email_otp_code === $request->email_otp_code && now()->lessThanOrEqualTo($user->email_otp_expires_at)) {
+            $user->email_verified_at = now();
+            $user->email_otp_code = null; // Bersihkan kode setelah dipakai
+            $user->email_otp_expires_at = null;
+            $user->save();
+
+            return back()->with('success', 'Email berhasil diverifikasi!');
+        }
+
+        // Jika salah, form OTP tetap dimunculkan beserta pesan error
+        return back()->with('email_otp_sent', true)->withErrors(['email_otp_code' => 'Kode verifikasi salah atau sudah kedaluwarsa.']);
     }
 }

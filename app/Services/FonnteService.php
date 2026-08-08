@@ -33,6 +33,63 @@ class FonnteService
     }
 
     /**
+     * Kirim Pesan WhatsApp dengan Media dari FILE LOKAL (untuk localhost / private IP).
+     *
+     * Menurut dokumentasi Fonnte, parameter 'file' (CURLFile) justru dirancang
+     * untuk mengirim media dari localhost/form upload, tanpa perlu URL publik.
+     *
+     * @param string $target Nomor HP tujuan (08xxx / 628xxx)
+     * @param string $message Isi pesan teks
+     * @param string|null $filePath Path absolut file lokal (PNG/JPEG/dll)
+     * @param string|null $filename Nama file yang tampil di penerima (opsional)
+     * @return array|bool
+     */
+    public function sendMessageWithFile($target, $message, $filePath = null, $filename = null)
+    {
+        $formattedPhone = $this->formatPhoneNumber($target);
+
+        try {
+            $payload = [
+                'target'  => $formattedPhone,
+                'message' => $message,
+                'countryCode' => '62',
+            ];
+
+            if ($filePath && is_file($filePath)) {
+                $payload['filename'] = $filename ?: basename($filePath);
+                // Lampirkan media dari file lokal via Laravel Http attach() (multipart otomatis)
+                $request = Http::withHeaders([
+                    'Authorization' => $this->token,
+                ])->asMultipart();
+
+                $request = $request->attach('file', fopen($filePath, 'r'), $filename ?: basename($filePath));
+
+                $response = $request->post($this->apiUrl, $payload);
+            } else {
+                $response = Http::withHeaders([
+                    'Authorization' => $this->token,
+                ])->post($this->apiUrl, $payload);
+            }
+
+            $result = $response->json();
+
+            // Catat log jika pengiriman gagal dari sisi Fonnte
+            if (!isset($result['status']) || $result['status'] != true) {
+                Log::warning('Fonnte Send Message With File Failed', [
+                    'target' => $formattedPhone,
+                    'response' => $result,
+                ]);
+            }
+
+            return $result;
+
+        } catch (\Exception $e) {
+            Log::error('Fonnte Connection Error (With File): ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Kirim Pesan WhatsApp Tunggal (Untuk Konfirmasi Tiket & Hotel)
      *
      * @param string $target Nomor HP tujuan (08xxx / 628xxx)

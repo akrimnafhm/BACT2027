@@ -77,6 +77,11 @@ class HotelBookingController extends Controller
     {
         $user = Auth::user();
 
+        // 0. Pastikan profil lengkap & email terverifikasi sebelum pesan hotel
+        if (!$this->isProfileComplete($user)) {
+            return redirect()->route('profile.edit')->with('error', 'Silakan lengkapi profil dan verifikasi email/WhatsApp Anda sebelum memesan hotel.');
+        }
+
         // 1. Validasi Tanggal Check-in & Check-out (Kunci 18-21 Jan 2027)
         $request->validate([
             'check_in' => 'required|date|after_or_equal:2027-01-18|before_or_equal:2027-01-20',
@@ -120,6 +125,18 @@ class HotelBookingController extends Controller
 
         // 5. Redirect langsung ke halaman pembayaran DOKU
         return redirect()->route('hotels.checkout', $reservation->id);
+    }
+
+    /**
+     * Cek apakah profil user sudah lengkap (email & WA terverifikasi, data pribadi terisi).
+     */
+    private function isProfileComplete($user): bool
+    {
+        return !empty($user->email_verified_at) &&
+               !empty($user->phone_verified_at) &&
+               !empty($user->name) &&
+               !empty($user->nik) &&
+               !empty($user->gender);
     }
 
     /**

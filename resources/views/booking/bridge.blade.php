@@ -110,7 +110,7 @@
                 <p class="text-sm text-gray-500 mb-6">Halaman ini menampilkan QR pesanan tiket Anda. Simpan halaman ini untuk registrasi.</p>
 
                 <div class="flex flex-col md:flex-row gap-6 items-center bg-gray-50 p-6 rounded-xl border border-dashed border-gray-300">
-                    <div class="w-32 h-32 bg-white p-2 border border-gray-200 rounded-lg flex items-center justify-center shadow-sm">
+                    <div class="w-48 h-48 bg-white p-2 border border-gray-200 rounded-lg flex items-center justify-center shadow-sm">
                         <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ $booking->checkin_token }}" alt="QR Code" class="w-full">
                     </div>
                     <div class="flex-1 text-center md:text-left">
@@ -120,6 +120,10 @@
                         <span class="inline-block bg-green-100 text-green-800 px-3 py-1 text-xs font-bold rounded-full uppercase tracking-wide">
                             Status: {{ $booking->status }}
                         </span>
+                        <div class="mt-3">
+                            <span class="text-xs text-gray-500 block mb-1">Kode Tiket (untuk check-in manual jika QR gagal dipindai):</span>
+                            <span class="inline-block bg-white border-2 border-dashed border-[#E19404] text-[#E19404] font-extrabold tracking-widest px-4 py-2 rounded-lg text-sm select-all">{{ $booking->checkin_token }}</span>
+                        </div>
                     </div>
                 </div>
             </div>
