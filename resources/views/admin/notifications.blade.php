@@ -169,6 +169,98 @@
             </form>
         @endif
 
+        <!-- ============================================================ -->
+        <!-- TEMPLATE NOTIFIKASI HOTEL LUNAS -->
+        <!-- ============================================================ -->
+        <div class="border-t-4 border-[#E19404]/20 pt-10">
+            <div class="mb-4">
+                <h2 class="text-xl font-black text-gray-900">Template Notifikasi Hotel Lunas</h2>
+                <p class="text-sm text-gray-500 mt-1">Ubah isi pesan notifikasi yang dikirim otomatis ke peserta ketika pembayaran reservasi hotel berhasil (via WhatsApp & Email).</p>
+            </div>
+
+            <!-- Daftar Placeholder Hotel -->
+            <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 mb-6">
+                <p class="text-xs font-extrabold text-[#E19404] uppercase tracking-wider mb-2">Placeholder yang didukung:</p>
+                <div class="flex flex-wrap gap-2">
+                    @foreach(['{nama}', '{hotel}', '{kode_booking}', '{id_pesanan}', '{invoice}', '{check_in}', '{check_out}', '{malam}', '{harga}'] as $ph)
+                        <code class="px-2 py-1 bg-[#FFF8E7] border border-[#E19404]/30 rounded-lg text-xs font-bold text-gray-800">{{ $ph }}</code>
+                    @endforeach
+                </div>
+            </div>
+
+            <!-- Form WhatsApp Hotel -->
+            @php($waHotel = $templates->firstWhere('key', 'hotel_paid_wa'))
+            @if($waHotel)
+                <form action="{{ route('admin.notifications.update') }}" method="POST" class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-6">
+                    @csrf
+                    <div class="px-6 sm:px-8 py-5 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div>
+                            <h3 class="text-lg font-extrabold text-gray-900">{{ $waHotel->label }}</h3>
+                            <p class="text-xs text-gray-500 mt-0.5">Dikirim via Fonnte ke WhatsApp pemesan hotel.</p>
+                        </div>
+                        <label class="flex items-center gap-2 text-sm font-bold text-gray-700 cursor-pointer">
+                            <input type="checkbox" name="hotel_paid_wa_is_active" value="1" {{ $waHotel->is_active ? 'checked' : '' }} class="w-4 h-4 text-[#E19404] focus:ring-[#FBE39D]">
+                            Aktif
+                        </label>
+                    </div>
+
+                    <div class="p-6 sm:p-8 space-y-5">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Isi Pesan WhatsApp</label>
+                            <textarea name="hotel_paid_wa_body" rows="10" required
+                                class="w-full px-4 py-3 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] font-mono leading-relaxed">{{ $waHotel->body }}</textarea>
+                            <p class="text-[11px] text-gray-400 mt-1">Formatting WA: <code class="font-bold">*teks tebal*</code>, <code class="font-bold italic">_teks miring_</code>.</p>
+                        </div>
+
+                        <div class="flex justify-end">
+                            <button type="submit" class="px-8 py-3 bg-[#E19404] hover:bg-orange-600 text-white text-xs font-black uppercase tracking-wider rounded-xl shadow-md transition">
+                                Simpan Template WA Hotel
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            @endif
+
+            <!-- Form Email Hotel -->
+            @php($emailHotel = $templates->firstWhere('key', 'hotel_paid_email'))
+            @if($emailHotel)
+                <form action="{{ route('admin.notifications.update') }}" method="POST" class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                    @csrf
+                    <div class="px-6 sm:px-8 py-5 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div>
+                            <h3 class="text-lg font-extrabold text-gray-900">{{ $emailHotel->label }}</h3>
+                            <p class="text-xs text-gray-500 mt-0.5">Dikirim ke email pemesan hotel.</p>
+                        </div>
+                        <label class="flex items-center gap-2 text-sm font-bold text-gray-700 cursor-pointer">
+                            <input type="checkbox" name="hotel_paid_email_is_active" value="1" {{ $emailHotel->is_active ? 'checked' : '' }} class="w-4 h-4 text-[#E19404] focus:ring-[#FBE39D]">
+                            Aktif
+                        </label>
+                    </div>
+
+                    <div class="p-6 sm:p-8 space-y-5">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Subject Email</label>
+                            <input type="text" name="hotel_paid_email_subject" value="{{ $emailHotel->subject }}"
+                                class="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404]">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Isi Email (HTML)</label>
+                            <textarea name="hotel_paid_email_body" rows="12" required
+                                class="w-full px-4 py-3 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] font-mono leading-relaxed">{{ $emailHotel->body }}</textarea>
+                            <p class="text-[11px] text-gray-400 mt-1">Mendukung tag HTML (contoh <code class="font-bold">&lt;p&gt;</code>, <code class="font-bold">&lt;strong&gt;</code>, <code class="font-bold">&lt;ul&gt;</code>).</p>
+                        </div>
+
+                        <div class="flex justify-end">
+                            <button type="submit" class="px-8 py-3 bg-[#E19404] hover:bg-orange-600 text-white text-xs font-black uppercase tracking-wider rounded-xl shadow-md transition">
+                                Simpan Template Email Hotel
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            @endif
+        </div>
+
     </main>
 
     <!-- FOOTER -->

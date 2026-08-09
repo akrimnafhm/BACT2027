@@ -27,6 +27,7 @@ class HotelReservation extends Model
         'status',
         'invoice_number',
         'payment_method',
+        'notified_at',
     ];
 
     /**
@@ -37,6 +38,7 @@ class HotelReservation extends Model
         'check_out'    => 'date',
         'total_nights' => 'integer',
         'total_price'  => 'decimal:2',
+        'notified_at'  => 'datetime',
     ];
 
     /**

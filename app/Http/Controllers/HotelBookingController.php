@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\HotelRoom;
 use App\Models\HotelReservation;
+use App\Services\HotelNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
@@ -257,6 +258,7 @@ class HotelBookingController extends Controller
 
         if ($shouldAutoFinalize && $reservation->status !== 'paid') {
             $reservation->update(['status' => 'paid']);
+            app(HotelNotificationService::class)->sendHotelPaid($reservation);
         }
 
         return redirect()->route('hotels.index', array_filter([
@@ -303,6 +305,7 @@ class HotelBookingController extends Controller
 
         if ($targetReservation && $isPaidCallback && $targetReservation->status !== 'paid') {
             $targetReservation->update(['status' => 'paid']);
+            app(HotelNotificationService::class)->sendHotelPaid($targetReservation);
         }
 
         return $targetReservation ?: $existingReservation;

@@ -22,7 +22,7 @@ class NotificationTemplateController extends Controller
      */
     public function update(Request $request)
     {
-        $keys = ['ticket_paid_wa', 'ticket_paid_email'];
+        $keys = ['ticket_paid_wa', 'ticket_paid_email', 'hotel_paid_wa', 'hotel_paid_email'];
 
         foreach ($keys as $key) {
             $template = NotificationTemplate::where('key', $key)->first();
