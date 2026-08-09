@@ -15,49 +15,9 @@
 
 <body class="bg-[#F4F5F7] min-h-screen flex flex-col font-sans">
 
-    <!-- 1. NAVBAR UTAMA -->
-    <nav class="bg-white border-b border-gray-100 shadow-sm sticky top-0 z-30 px-6 py-4">
-        <div class="max-w-7xl mx-auto flex justify-between items-center">
-            <div class="flex items-center gap-4">
-                <a href="/">
-                    <img src="{{ asset('images/logo.png') }}" alt="Logo BACT" class="h-10 w-auto">
-                </a>
-                <span class="text-xs font-bold uppercase tracking-widest px-2.5 py-1 bg-[#FBE39D] text-[#E19404] rounded-md hidden sm:inline-block">
-                    Admin Panel
-                </span>
-            </div>
+        <!-- 1-2. NAVBAR UTAMA + SUB-NAVBAR -->
+    @include('partials.admin-navbar', ['active' => 'broadcast'])
 
-            <div class="flex items-center gap-6">
-                <span class="text-sm font-semibold text-gray-600 hidden md:inline">
-                    Halo, <span class="text-gray-900 font-bold">{{ Auth::user()->name }}</span>
-                </span>
-                <form action="{{ route('logout') }}" method="POST" class="m-0">
-                    @csrf
-                    <button type="submit"
-                        class="border border-red-200 hover:bg-red-50 text-red-600 px-4 py-2 rounded-full text-xs font-bold transition shadow-sm">
-                        Keluar Akun
-                    </button>
-                </form>
-            </div>
-        </div>
-    </nav>
-
-    <!-- 2. SUB-NAVBAR KONSISTEN -->
-    <div class="bg-white border-b border-gray-200 shadow-sm sticky top-[73px] z-20">
-        <div class="max-w-7xl mx-auto px-6">
-            <div class="flex space-x-6 overflow-x-auto no-scrollbar py-1">
-                <a href="/admin/dashboard" class="border-b-2 border-transparent text-gray-500 hover:text-[#E19404] hover:border-gray-300 py-3.5 px-1 text-sm font-semibold transition whitespace-nowrap">Dashboard</a>
-                <a href="/admin/tickets" class="border-b-2 border-transparent text-gray-500 hover:text-[#E19404] hover:border-gray-300 py-3.5 px-1 text-sm font-semibold transition whitespace-nowrap">Kuota & Harga</a>
-                <a href="/admin/participants" class="border-b-2 border-transparent text-gray-500 hover:text-[#E19404] hover:border-gray-300 py-3.5 px-1 text-sm font-semibold transition whitespace-nowrap">Tiket Peserta</a>
-                <a href="/admin/hotels" class="border-b-2 border-transparent text-gray-500 hover:text-[#E19404] hover:border-gray-300 py-3.5 px-1 text-sm font-semibold transition whitespace-nowrap">Tiket Hotel</a>
-                <a href="/admin/submissions" class="border-b-2 border-transparent text-gray-500 hover:text-[#E19404] hover:border-gray-300 py-3.5 px-1 text-sm font-semibold transition whitespace-nowrap">Karya Lomba</a>
-                <a href="/admin/content" class="border-b-2 border-transparent text-gray-500 hover:text-[#E19404] hover:border-gray-300 py-3.5 px-1 text-sm font-semibold transition whitespace-nowrap">Kelola Konten</a>
-                <a href="/admin/broadcast" class="border-b-2 border-[#E19404] text-[#E19404] py-3.5 px-1 text-sm font-bold transition whitespace-nowrap">Broadcast WA</a>
-                <a href="/admin/notifications" class="border-b-2 border-transparent text-gray-500 hover:text-[#E19404] hover:border-gray-300 py-3.5 px-1 text-sm font-semibold transition whitespace-nowrap">Template Notifikasi</a>
-                <a href="/admin/checkin" class="border-b-2 border-transparent text-gray-500 hover:text-[#E19404] hover:border-gray-300 py-3.5 px-1 text-sm font-semibold transition whitespace-nowrap">QR Check-In</a>
-            </div>
-        </div>
-    </div>
 
     <!-- 3. KONTEN UTAMA -->
     <main class="max-w-4xl mx-auto px-6 py-10 flex-grow w-full space-y-6" x-data="{ targetType: 'manual' }">
@@ -168,13 +128,9 @@
 
     </main>
 
-    <!-- FOOTER -->
-    <footer class="bg-white border-t border-gray-200 mt-auto py-6 w-full">
-        <div class="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-gray-400">
-            <p>&copy; {{ date('Y') }} BACT Event System - Admin Portal.</p>
-            <p class="font-semibold">Simposium Nasional Medis & Kesehatan 2027</p>
-        </div>
-    </footer>
+        <!-- FOOTER -->
+    @include('partials.admin-footer')
+
 
 </body>
 </html>
