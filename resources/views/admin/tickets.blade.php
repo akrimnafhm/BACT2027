@@ -382,7 +382,7 @@
                     <textarea name="description" rows="3" placeholder="Contoh: Luas kamar 32m² dengan pemandangan kota..." class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404]"></textarea>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Foto Kamar (Bisa Pilih Banyak Foto)</label>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Foto Kamar</label>
                     <input type="file" name="photos[]" multiple required accept="image/*" class="w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-[#FBE39D] file:text-[#E19404] hover:file:bg-orange-100 cursor-pointer border border-gray-300 rounded-xl">
                 </div>
                 <div class="flex justify-end gap-2 pt-3 border-t border-gray-100">
@@ -424,7 +424,7 @@
                     <textarea name="description" id="edit_description" rows="3" class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404]"></textarea>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Ganti Foto Kamar (Opsional, Bisa Pilih Banyak)</label>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Ganti Foto Kamar</label>
                     <input type="file" name="photos[]" multiple accept="image/*" class="w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-[#FBE39D] file:text-[#E19404] hover:file:bg-orange-100 cursor-pointer border border-gray-300 rounded-xl">
                 </div>
                 <div class="flex justify-end gap-2 pt-3 border-t border-gray-100">

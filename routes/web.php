@@ -137,6 +137,7 @@ Route::middleware(['auth', IsAdmin::class])->prefix('admin')->group(function () 
     // =========================================================
     Route::get('/hotels', [HotelController::class, 'index'])->name('admin.hotels.index');
     Route::post('/hotels/reservations/{id}/status', [HotelController::class, 'updateReservationStatus'])->name('admin.hotels.reservations.status');
+    Route::get('/admin/hotels/export', [App\Http\Controllers\HotelController::class, 'exportReservations'])->name('admin.hotels.export');
 
     // =========================================================
     // 5. KARYA LOMBA (Placeholder)

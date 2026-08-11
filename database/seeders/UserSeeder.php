@@ -12,11 +12,11 @@ class UserSeeder extends Seeder
     {
         // 1. AKUN ADMIN
         User::create([
-            'name' => 'Administrator',
-            'email' => 'admin@bact.com',
+            'name' => 'Admin BACT',
+            'email' => 'sekretariatbact@gmail.com',
             'phone_number' => '080000000000',
             'nik' => '0000000000000000',
-            'password' => Hash::make('password123'),
+            'password' => Hash::make('B4CT2023'),
             'role' => 'admin',
             'email_verified_at' => now(),
             'phone_verified_at' => now(),
@@ -26,7 +26,7 @@ class UserSeeder extends Seeder
         User::create([
             'name' => 'Akrimna Fahma',
             'email' => 'akrimnafhm@gmail.com',
-            'phone_number' => '081234567891',
+            'phone_number' => '081911296903',
             'nik' => '1234567890123456',
             'password' => Hash::make('password123'),
             'role' => 'peserta',

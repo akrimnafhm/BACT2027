@@ -10,20 +10,124 @@ use Illuminate\Support\Facades\Storage;
 class HotelController extends Controller
 {
     /**
-     * Tampilan Utama Manajemen Hotel
+     * Tampilan Utama Manajemen Reservasi Hotel (Dengan Filter & Pagination)
      */
-    /**
-     * Tampilan Utama Manajemen Hotel (Tipe Kamar & Reservasi)
-     */
-    public function index()
+    public function index(Request $request)
     {
-        $hotels = HotelRoom::oldest()->get();
-        
-        // Ambil daftar reservasi beserta data user dan kamar terkait
-        $reservations = HotelReservation::with(['user', 'hotelRoom'])->latest()->get();
+        $search   = $request->input('search');
+        $roomType = $request->input('room_type');
+        $status   = $request->input('status');
 
-        // Pastikan 'reservations' masuk ke dalam compact()
-        return view('admin.hotels', compact('hotels', 'reservations'));
+        $query = \App\Models\HotelReservation::with(['user', 'hotelRoom'])->latest();
+
+        // Filter Pencarian (Kode, Nama, Email)
+        if (!empty($search)) {
+            $query->where(function ($q) use ($search) {
+                $q->where('booking_code', 'like', "%{$search}%")
+                  ->orWhereHas('user', function ($q2) use ($search) {
+                      $q2->where('name', 'like', "%{$search}%")
+                         ->orWhere('email', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        // Filter Tipe Kamar
+        if (!empty($roomType)) {
+            $query->whereHas('hotelRoom', function ($q) use ($roomType) {
+                $q->where('room_type', $roomType);
+            });
+        }
+
+        // Filter Status
+        if (!empty($status)) {
+            $query->where('status', $status);
+        }
+
+        $reservations = $query->paginate(10)->withQueryString();
+        $roomTypes = \App\Models\HotelRoom::select('room_type')->distinct()->pluck('room_type');
+
+        return view('admin.hotels', compact('reservations', 'search', 'roomType', 'status', 'roomTypes'));
+    }
+
+    /**
+     * EXPORT EXCEL (.CSV) UNTUK DATA RESERVASI HOTEL
+     */
+    public function exportReservations(Request $request)
+    {
+        $search   = $request->input('search');
+        $roomType = $request->input('room_type');
+        $status   = $request->input('status');
+
+        $query = \App\Models\HotelReservation::with(['user', 'hotelRoom'])->oldest();
+
+        if (!empty($search)) {
+            $query->where(function ($q) use ($search) {
+                $q->where('booking_code', 'like', "%{$search}%")
+                  ->orWhereHas('user', function ($q2) use ($search) {
+                      $q2->where('name', 'like', "%{$search}%")
+                         ->orWhere('email', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        if (!empty($roomType)) {
+            $query->whereHas('hotelRoom', function ($q) use ($roomType) {
+                $q->where('room_type', $roomType);
+            });
+        }
+
+        if (!empty($status)) {
+            $query->where('status', $status);
+        }
+
+        $reservations = $query->get();
+        $fileName = 'Data-Reservasi-Hotel-BACT2027-' . date('Y-m-d-His') . '.csv';
+
+        $headers = [
+            "Content-type"        => "text/csv; charset=UTF-8",
+            "Content-Disposition" => "attachment; filename=$fileName",
+            "Pragma"              => "no-cache",
+            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+            "Expires"             => "0"
+        ];
+
+        $callback = function () use ($reservations) {
+            $file = fopen('php://output', 'w');
+            fwrite($file, "\xEF\xBB\xBF"); // BOM untuk UTF-8 Excel
+
+            fputcsv($file, [
+                'Kode Booking',
+                'Tanggal Pesan',
+                'Nama Pemesan',
+                'Email',
+                'Tipe Kamar',
+                'Check-In',
+                'Check-Out',
+                'Total Malam',
+                'Total Tagihan',
+                'Status',
+                'Catatan Khusus'
+            ], ',');
+
+            foreach ($reservations as $row) {
+                fputcsv($file, [
+                    $row->booking_code,
+                    $row->created_at ? $row->created_at->format('Y-m-d H:i:s') : '-',
+                    $row->user->name ?? 'User Terhapus',
+                    $row->user->email ?? '-',
+                    $row->hotelRoom->room_type ?? 'Kamar Dihapus',
+                    $row->check_in,
+                    $row->check_out,
+                    $row->total_nights,
+                    $row->total_price,
+                    strtoupper($row->status),
+                    $row->special_request ?? '-'
+                ], ',');
+            }
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 
     /**
