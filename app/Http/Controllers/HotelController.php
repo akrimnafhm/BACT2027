@@ -135,6 +135,10 @@ class HotelController extends Controller
      */
     public function store(Request $request)
     {
+        if ($reject = $this->rejectOversizedUploads($request, 'image')) {
+            return $reject;
+        }
+
         $request->validate([
             'room_type'       => 'required|string|max:255',
             'price_per_night' => 'required|numeric|min:0',
@@ -142,6 +146,8 @@ class HotelController extends Controller
             'description'     => 'nullable|string',
             'facilities'      => 'nullable|string',
             'image'           => 'required|image|mimes:jpeg,png,jpg,webp|max:2048',
+        ], [
+            'image.max' => 'Ukuran foto kamar melebihi batas maksimal 2 MB.',
         ]);
 
         $imagePath = $request->file('image')->store('hotels', 'public');
@@ -164,6 +170,10 @@ class HotelController extends Controller
      */
     public function update(Request $request, $id)
     {
+        if ($reject = $this->rejectOversizedUploads($request, 'image')) {
+            return $reject;
+        }
+
         $request->validate([
             'room_type'       => 'required|string|max:255',
             'price_per_night' => 'required|numeric|min:0',
@@ -171,6 +181,8 @@ class HotelController extends Controller
             'description'     => 'nullable|string',
             'facilities'      => 'nullable|string',
             'image'           => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+        ], [
+            'image.max' => 'Ukuran foto kamar melebihi batas maksimal 2 MB.',
         ]);
 
         $hotel = HotelRoom::findOrFail($id);

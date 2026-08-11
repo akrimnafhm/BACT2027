@@ -604,7 +604,7 @@
                     <label class="block text-xs font-bold text-gray-700 uppercase mb-1">
                         Foto Profil Pembicara (JPG/PNG, Maks 2MB) <span class="text-red-500">*</span>
                     </label>
-                    <input type="file" name="image" required accept="image/*"
+                    <input type="file" name="image" required accept="image/*" data-max-size="2097152" data-max-label="foto pembicara"
                         class="w-full text-xs text-gray-500 file:mr-3 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-[#FBE39D] file:text-[#E19404] hover:file:bg-orange-100 cursor-pointer border border-gray-300 rounded-xl transition">
                 </div>
 
@@ -663,7 +663,7 @@
                     <label class="block text-xs font-bold text-gray-700 uppercase mb-1">
                         Ganti Foto Profil (Opsional - Kosongkan jika tidak diganti)
                     </label>
-                    <input type="file" name="image" accept="image/*"
+                    <input type="file" name="image" accept="image/*" data-max-size="2097152" data-max-label="foto pembicara"
                         class="w-full text-xs text-gray-500 file:mr-3 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-[#FBE39D] file:text-[#E19404] hover:file:bg-orange-100 cursor-pointer border border-gray-300 rounded-xl transition">
                 </div>
 
@@ -805,7 +805,7 @@
                 @csrf
                 <div>
                     <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Pilih File Foto (JPG/PNG/WEBP, Maks 3MB)</label>
-                    <input type="file" name="image" required accept="image/*"
+                    <input type="file" name="image" required accept="image/*" data-max-size="3145728" data-max-label="foto galeri"
                         class="w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-[#FBE39D] file:text-[#E19404] hover:file:bg-orange-100 cursor-pointer border border-gray-300 rounded-xl">
                 </div>
                 <div class="flex justify-end gap-2 pt-3 border-t border-gray-100">
@@ -847,7 +847,7 @@
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-gray-700 uppercase mb-1">File Logo Sponsor (PNG/JPG/SVG, Maks 2MB) <span class="text-red-500">*</span></label>
-                    <input type="file" name="logo" required accept="image/*"
+                    <input type="file" name="logo" required accept="image/*" data-max-size="2097152" data-max-label="logo sponsor"
                         class="w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-[#FBE39D] file:text-[#E19404] hover:file:bg-orange-100 cursor-pointer border border-gray-300 rounded-xl">
                     <p class="text-[11px] text-gray-400 mt-1">Disarankan menggunakan format logo berlatar transparan (.PNG / .SVG).</p>
                 </div>
@@ -891,7 +891,7 @@
                 <div>
                     <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Ganti Logo (Opsional - Kosongkan
                         jika tidak diganti)</label>
-                    <input type="file" name="logo" accept="image/*"
+                    <input type="file" name="logo" accept="image/*" data-max-size="2097152" data-max-label="logo sponsor"
                         class="w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-[#FBE39D] file:text-[#E19404] hover:file:bg-orange-100 cursor-pointer border border-gray-300 rounded-xl">
                 </div>
                 <div class="flex justify-end gap-2 pt-3 border-t border-gray-100">
@@ -990,6 +990,8 @@
             document.getElementById('editSponsorModal').classList.add('hidden');
         }
     </script>
+
+    @include('partials.admin-upload-validation')
 
 </body>
 

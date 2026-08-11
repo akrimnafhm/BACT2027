@@ -573,5 +573,7 @@
         });
     </script>
 
+    @include('partials.admin-upload-validation')
+
 </body>
 </html>

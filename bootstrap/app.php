@@ -19,4 +19,20 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*'),
         );
+
+        $exceptions->render(function (\Illuminate\Http\Exceptions\PostTooLargeException $e, Request $request) {
+            $max = ini_get('post_max_size') ?: '8M';
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => "Ukuran data yang diunggah melebihi batas maksimal yang diizinkan server ($max).",
+                ], 413);
+            }
+
+            return response(
+                view('errors.post-too-large', ['max' => $max]),
+                413,
+                ['Content-Type' => 'text/html'],
+            );
+        });
     })->create();

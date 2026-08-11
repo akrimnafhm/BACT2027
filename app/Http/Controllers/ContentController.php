@@ -114,10 +114,16 @@ class ContentController extends Controller
      */
     public function storeSpeaker(Request $request)
     {
+        if ($reject = $this->rejectOversizedUploads($request, 'image')) {
+            return $reject;
+        }
+
         $request->validate([
             'name'        => 'required|string|max:255',
             'institution' => 'required|string|max:255',
             'image'       => 'required|image|mimes:jpeg,png,jpg,webp|max:2048',
+        ], [
+            'image.max'   => 'Ukuran foto pembicara melebihi batas maksimal 2 MB.',
         ]);
 
         $imagePath = $request->file('image')->store('speakers', 'public');
@@ -214,10 +220,16 @@ class ContentController extends Controller
      */
     public function updateSpeaker(Request $request, $id)
     {
+        if ($reject = $this->rejectOversizedUploads($request, 'image')) {
+            return $reject;
+        }
+
         $request->validate([
             'name'        => 'required|string|max:255',
             'institution' => 'required|string|max:255',
             'image'       => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+        ], [
+            'image.max'   => 'Ukuran foto pembicara melebihi batas maksimal 2 MB.',
         ]);
 
         $speaker = Speaker::findOrFail($id);
@@ -331,8 +343,14 @@ class ContentController extends Controller
      */
     public function storeGallery(Request $request)
     {
+        if ($reject = $this->rejectOversizedUploads($request, 'image')) {
+            return $reject;
+        }
+
         $request->validate([
             'image' => 'required|image|mimes:jpeg,png,jpg,webp|max:3072', // Maks. 3MB
+        ], [
+            'image.max' => 'Ukuran foto galeri melebihi batas maksimal 3 MB.',
         ]);
 
         $imagePath = $request->file('image')->store('galleries', 'public');
@@ -370,10 +388,16 @@ class ContentController extends Controller
      */
     public function storeSponsor(Request $request)
     {
+        if ($reject = $this->rejectOversizedUploads($request, 'logo')) {
+            return $reject;
+        }
+
         $request->validate([
             'name' => 'required|string|max:255',
             'link' => 'nullable|string|max:255',
             'logo' => 'required|image|mimes:jpeg,png,jpg,webp,svg|max:2048',
+        ], [
+            'logo.max' => 'Ukuran logo sponsor melebihi batas maksimal 2 MB.',
         ]);
 
         $logoPath = $request->file('logo')->store('sponsors', 'public');
@@ -392,10 +416,16 @@ class ContentController extends Controller
      */
     public function updateSponsor(Request $request, $id)
     {
+        if ($reject = $this->rejectOversizedUploads($request, 'logo')) {
+            return $reject;
+        }
+
         $request->validate([
             'name' => 'required|string|max:255',
             'link' => 'nullable|string|max:255',
             'logo' => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:2048',
+        ], [
+            'logo.max' => 'Ukuran logo sponsor melebihi batas maksimal 2 MB.',
         ]);
 
         $sponsor = Sponsor::findOrFail($id);
