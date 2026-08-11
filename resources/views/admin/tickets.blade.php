@@ -205,7 +205,7 @@
                                             <input type="checkbox" 
                                                    class="sr-only peer hotel-toggle" 
                                                    data-id="{{ $hotel->id }}" 
-                                                   data-url="/admin/hotels/{{ $hotel->id }}/toggle-status"
+                                                   data-url="{{ route('admin.hotels.toggle', $hotel->id) }}"
                                                    {{ $hotel->is_active ? 'checked' : '' }}>
                                             <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-500"></div>
                                         </label>
