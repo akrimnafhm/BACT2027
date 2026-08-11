@@ -207,6 +207,10 @@ class AdminController extends Controller
      */
     public function storeHotel(Request $request): \Illuminate\Http\RedirectResponse
     {
+        if ($reject = $this->rejectOversizedUploads($request, 'photos')) {
+            return $reject;
+        }
+
         $request->validate([
             'room_type'       => 'required|string|max:255',
             'price_per_night' => 'required|numeric|min:0',
@@ -214,6 +218,9 @@ class AdminController extends Controller
             'description'     => 'nullable|string',
             'photos'          => 'required|array|max:5', // Maksimal 5 foto
             'photos.*'        => 'image|mimes:jpeg,png,jpg,webp|max:2048',
+        ], [
+            'photos.max'     => 'Maksimal 5 foto kamar yang dapat diunggah.',
+            'photos.*.max'   => 'Ukuran foto kamar melebihi batas maksimal 2 MB.',
         ]);
 
         $photoPaths = [];
@@ -241,6 +248,10 @@ class AdminController extends Controller
      */
     public function updateHotel(Request $request, int $id): \Illuminate\Http\RedirectResponse
     {
+        if ($reject = $this->rejectOversizedUploads($request, 'photos')) {
+            return $reject;
+        }
+
         $request->validate([
             'room_type'       => 'required|string|max:255',
             'price_per_night' => 'required|numeric|min:0',
@@ -248,6 +259,9 @@ class AdminController extends Controller
             'description'     => 'nullable|string',
             'photos'          => 'nullable|array|max:5',
             'photos.*'        => 'image|mimes:jpeg,png,jpg,webp|max:2048',
+        ], [
+            'photos.max'     => 'Maksimal 5 foto kamar yang dapat diunggah.',
+            'photos.*.max'   => 'Ukuran foto kamar melebihi batas maksimal 2 MB.',
         ]);
 
         $hotel = HotelRoom::findOrFail($id);
@@ -519,6 +533,8 @@ class AdminController extends Controller
         \App\Models\TicketBooking::create([
             'user_id'              => auth()->id(),
             'ticket_id'            => $ticket->id,
+            'ticket_name'          => $ticket->ticket_name,
+            'ticket_category'      => $ticket->ticket_category,
             'full_name'            => $request->full_name,
             'name_with_title'      => $request->name_with_title,
             'gmail_account'        => $request->gmail_account,
@@ -529,6 +545,7 @@ class AdminController extends Controller
             'institution_name'     => $request->institution_name,
             'institution_city'     => $request->institution_city ?? 'Kota Instansi',
             'institution_province' => $request->institution_province ?? 'Provinsi Instansi',
+            'institution_district' => $request->institution_district ?? 'Kecamatan Instansi',
             'profession'           => $request->profession,
             'plataran_sehat_email' => $request->plataran_sehat_email ?? $request->gmail_account,
             'payment_method'       => 'MANUAL_ADMIN'

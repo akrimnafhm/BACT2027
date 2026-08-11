@@ -268,12 +268,12 @@
     </div>
 
     <!-- =========================================================
-         8. MODAL TAMBAH PESERTA MANUAL (TITIPAN ADMIN)
+         8. MODAL TAMBAH PESERTA MANUAL
          ========================================================= -->
     <div id="manualModal" class="fixed inset-0 z-50 hidden overflow-y-auto bg-gray-900/60 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full border border-gray-200 overflow-hidden">
             <div class="bg-[#FBE39D] px-6 py-4 border-b border-[#E19404]/20 flex justify-between items-center">
-                <h3 class="font-extrabold text-gray-900 text-lg">Tambah Peserta Manual (Titipan / Admin)</h3>
+                <h3 class="font-extrabold text-gray-900 text-lg">Tambah Peserta Manual</h3>
                 <button type="button" onclick="closeManualModal()" class="text-gray-500 hover:text-gray-800">✕</button>
             </div>
             <form action="{{ route('admin.participants.storeManual') }}" method="POST" class="p-6 space-y-4">
