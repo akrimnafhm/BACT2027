@@ -93,10 +93,10 @@
                 @forelse($hotels as $hotel)
                     <div class="bg-white rounded-3xl border border-gray-200 shadow-sm hover:shadow-xl transition duration-300 flex flex-col overflow-hidden group">
                         
-                        <!-- Foto Kamar -->
+                        <!-- Foto Kamar-->
                         <div class="h-64 sm:h-72 w-full overflow-hidden relative bg-gray-100">
-                            @if($hotel->image)
-                                <img src="{{ asset('storage/' . $hotel->image) }}" alt="{{ $hotel->room_type }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                            @if(is_array($hotel->photos) && count($hotel->photos) > 0)
+                                <img src="{{ asset('storage/' . $hotel->photos[0]) }}" alt="{{ $hotel->room_type }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
                             @else
                                 <div class="w-full h-full flex items-center justify-center text-gray-400 font-bold text-sm">Foto Tidak Tersedia</div>
                             @endif

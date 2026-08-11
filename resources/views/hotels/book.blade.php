@@ -53,10 +53,10 @@
             <!-- KOLOM KIRI (5 SPAN): DETAIL AKOMODASI -->
             <!-- ========================================== -->
             <div class="lg:col-span-5 bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden sticky top-28">
-                <!-- Foto Kamar -->
+                <!-- Foto Kamar-->
                 <div class="h-64 sm:h-72 w-full bg-gray-100 overflow-hidden relative">
-                    @if($hotel->image)
-                        <img src="{{ asset('storage/' . $hotel->image) }}" alt="{{ $hotel->room_type }}" class="w-full h-full object-cover">
+                    @if(is_array($hotel->photos) && count($hotel->photos) > 0)
+                        <img src="{{ asset('storage/' . $hotel->photos[0]) }}" alt="{{ $hotel->room_type }}" class="w-full h-full object-cover">
                     @else
                         <div class="w-full h-full flex items-center justify-center text-gray-400 font-bold text-sm">Foto Tidak Tersedia</div>
                     @endif

@@ -4,15 +4,39 @@ namespace Database\Seeders;
 
 use App\Models\HotelRoom;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Schema;
 
 class HotelRoomSeeder extends Seeder
 {
     public function run(): void
     {
+        // 1. Matikan pengecekan relasi (foreign key) sementara
+        Schema::disableForeignKeyConstraints();
+
+        // 2. Kosongkan tabel dengan aman
+        HotelRoom::truncate();
+
+        // 3. Nyalakan kembali pengecekan relasi
+        Schema::enableForeignKeyConstraints();
+
+        // 4. Masukkan data kamar baru
         HotelRoom::insert([
-            ['room_type' => 'Standard Room', 'price_per_night' => 500000, 'quota' => 20, 'created_at' => now(), 'updated_at' => now()],
-            ['room_type' => 'Deluxe Room', 'price_per_night' => 850000, 'quota' => 10, 'created_at' => now(), 'updated_at' => now()],
-            ['room_type' => 'Suite Room', 'price_per_night' => 1200000, 'quota' => 5, 'created_at' => now(), 'updated_at' => now()],
+            [
+                'room_type'       => 'Deluxe King', 
+                'price_per_night' => 1850000, 
+                'quota'           => 10,
+                'is_active'       => 1,
+                'created_at'      => now(), 
+                'updated_at'      => now()
+            ],
+            [
+                'room_type'       => 'Deluxe Twin', 
+                'price_per_night' => 1850000, 
+                'quota'           => 10,
+                'is_active'       => 1,
+                'created_at'      => now(), 
+                'updated_at'      => now()
+            ],
         ]);
     }
 }

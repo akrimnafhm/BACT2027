@@ -8,7 +8,7 @@
                     <img src="{{ asset('images/logo.png') }}" alt="Logo BACT" class="h-10 w-auto">
                     <span class="font-extrabold text-gray-900">BACT 2027</span>
                 </div>
-                <p class="text-sm text-gray-500 mt-3">Simposium Nasional Medis & Kesehatan 2027.<br>Basic Advance Course in Transfusion.</p>
+                <p class="text-sm text-gray-500 mt-3">Basic Advance Course in Transfusion.</p>
             </div>
 
             <!-- Media Sosial & Email -->

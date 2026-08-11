@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Kelola Kuota & Harga - Admin BACT 2026</title>
+    <title>Kelola Kuota & Harga - Admin BACT 2027</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     
     <style>
@@ -14,9 +14,8 @@
 </head>
 <body class="bg-[#F8F9FA] min-h-screen font-sans flex flex-col">
 
-        <!-- 1-2. NAVBAR UTAMA + SUB-NAVBAR -->
+    <!-- 1-2. NAVBAR UTAMA + SUB-NAVBAR -->
     @include('partials.admin-navbar', ['active' => 'tickets'])
-
 
     <!-- 3. KONTEN UTAMA -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12 flex-grow w-full">
@@ -47,9 +46,9 @@
                     Tiket Seminar & Workshop
                 </h2>
                 <!-- Tombol Buka Modal Tambah Tiket -->
-                <button type="button" onclick="openAddTicketModal()" class="bg-[#16347A] hover:bg-blue-900 text-white font-bold px-4 py-2.5 rounded-xl transition shadow-sm text-xs flex items-center gap-1.5">
+                <button type="button" onclick="openAddTicketModal()" class="bg-[#E19404] hover:bg-orange-600 text-white font-extrabold px-5 py-2.5 rounded-xl transition shadow-sm text-xs flex items-center gap-1.5 whitespace-nowrap">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                    + Tambah Tiket
+                    Tambah Tiket
                 </button>
             </div>
 
@@ -114,7 +113,7 @@
 
                                 <td class="px-6 py-4 text-center whitespace-nowrap">
                                     <div class="flex items-center justify-center gap-2">
-                                        <!-- Tombol Edit Pop-up (Menggunakan ID murni agar tidak error syntax) -->
+                                        <!-- Tombol Edit Pop-up -->
                                         <button type="button" onclick="openEditTicketModal({{ $ticket->id }})" 
                                             class="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-[#E19404] text-xs font-bold rounded-lg transition">
                                             Edit
@@ -156,84 +155,88 @@
         <!-- =========================================================
              SECTION 2: KELOLA TIPE & HARGA KAMAR HOTEL
              ========================================================= -->
-        <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mt-8">
-            <div class="p-6 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h3 class="font-extrabold text-gray-900 text-base">Daftar Tipe & Harga Kamar Hotel</h3>
-                    <p class="text-xs text-gray-400 mt-0.5">Atur tipe kamar (Deluxe King / Twin), harga per malam, stok kamar, dan fasilitas.</p>
-                </div>
+        <div class="mt-8">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-extrabold text-gray-900">
+                    Tipe & Harga Kamar Hotel
+                </h2>
                 <!-- Tombol Buka Modal Tambah Kamar -->
-                <button type="button" onclick="openAddHotelModal()" class="bg-[#E19404] hover:bg-orange-600 text-white text-xs font-extrabold px-5 py-2.5 rounded-xl shadow-sm transition whitespace-nowrap">
-                    + Tambah Tipe Kamar
+                <button type="button" onclick="openAddHotelModal()" class="bg-[#E19404] hover:bg-orange-600 text-white font-extrabold px-5 py-2.5 rounded-xl transition shadow-sm text-xs flex items-center gap-1.5 whitespace-nowrap">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    Tambah Tipe Kamar
                 </button>
             </div>
 
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="bg-gray-50 border-b border-gray-200 text-[11px] font-extrabold text-gray-400 uppercase tracking-wider">
-                            <th class="py-3.5 px-6 w-24">Foto</th>
-                            <th class="py-3.5 px-6">Tipe & Spesifikasi Kamar</th>
-                            <th class="py-3.5 px-6">Harga per Malam</th>
-                            <th class="py-3.5 px-6 text-center w-28">Stok Kuota</th>
-                            <th class="py-3.5 px-6 text-center w-32">Status Reservasi</th>
-                            <th class="py-3.5 px-6 text-center w-40">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100 text-sm">
-                        @forelse($hotels as $hotel)
-                            <tr class="hover:bg-gray-50/80 transition">
-                                <td class="py-4 px-6">
-                                    @if($hotel->image)
-                                        <img src="{{ asset('storage/' . $hotel->image) }}" alt="{{ $hotel->room_type }}" class="w-16 h-12 rounded-xl object-cover border border-gray-200 shadow-sm">
-                                    @else
-                                        <div class="w-16 h-12 rounded-xl bg-gray-100 flex items-center justify-center text-[10px] text-gray-400 font-bold border border-gray-200">No Image</div>
-                                    @endif
-                                </td>
-                                <td class="py-4 px-6">
-                                    <div class="font-extrabold text-gray-900 text-base">{{ $hotel->room_type }}</div>
-                                    <div class="text-xs text-gray-500 mt-1 leading-relaxed line-clamp-2">{{ $hotel->description ?: 'Belum ada deskripsi kamar.' }}</div>
-                                </td>
-                                <td class="py-4 px-6 font-extrabold text-[#E19404] whitespace-nowrap">
-                                    Rp {{ number_format($hotel->price_per_night, 0, ',', '.') }}
-                                </td>
-                                <td class="py-4 px-6 text-center font-extrabold text-gray-800">
-                                    {{ $hotel->quota }} Kamar
-                                </td>
-                                <td class="py-4 px-6 text-center">
-                                    <form action="{{ route('admin.hotels.toggle', $hotel->id) }}" method="POST" class="m-0">
-                                        @csrf
-                                        <button type="submit" class="px-3 py-1 rounded-full text-xs font-bold transition {{ $hotel->is_active ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-red-100 text-red-800 hover:bg-red-200' }}">
-                                            {{ $hotel->is_active ? 'Buka Pesanan' : 'Ditutup' }}
-                                        </button>
-                                    </form>
-                                </td>
-                                <td class="py-4 px-6 text-center whitespace-nowrap">
-                                    <div class="flex items-center justify-center gap-2">
-                                        <!-- Tombol Edit Pop-up (Menggunakan ID murni agar tidak error syntax) -->
-                                        <button type="button" onclick="openEditHotelModal({{ $hotel->id }})" 
-                                            class="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-[#E19404] text-xs font-bold rounded-lg transition">
-                                            Edit
-                                        </button>
-                                        <form action="{{ route('admin.hotels.destroy', $hotel->id) }}" method="POST" class="m-0" onsubmit="return confirm('Yakin ingin menghapus tipe kamar ini?')">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-lg transition">
-                                                Hapus
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50 border-b border-gray-200 text-[11px] font-extrabold text-gray-400 uppercase tracking-wider">
+                                <th class="py-3.5 px-6 w-24">Foto</th>
+                                <th class="py-3.5 px-6">Tipe & Spesifikasi Kamar</th>
+                                <th class="py-3.5 px-6">Harga per Malam</th>
+                                <th class="py-3.5 px-6 text-center w-28">Stok Kuota</th>
+                                <th class="py-3.5 px-6 text-center w-32">Status Reservasi</th>
+                                <th class="py-3.5 px-6 text-center w-40">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 text-sm">
+                            @forelse($hotels as $hotel)
+                                <tr class="hover:bg-gray-50/80 transition">
+                                    <td class="py-4 px-6">
+                                        @if(is_array($hotel->photos) && count($hotel->photos) > 0)
+                                            <img src="{{ asset('storage/' . $hotel->photos[0]) }}" alt="{{ $hotel->room_type }}" class="w-16 h-12 rounded-xl object-cover border border-gray-200 shadow-sm">
+                                        @else
+                                            <div class="w-16 h-12 rounded-xl bg-gray-100 flex items-center justify-center text-[10px] text-gray-400 font-bold border border-gray-200">No Image</div>
+                                        @endif
+                                    </td>
+                                    <td class="py-4 px-6">
+                                        <div class="font-extrabold text-gray-900 text-base">{{ $hotel->room_type }}</div>
+                                        <div class="text-xs text-gray-500 mt-1 leading-relaxed line-clamp-2">{{ $hotel->description ?: 'Belum ada deskripsi kamar.' }}</div>
+                                    </td>
+                                    <td class="py-4 px-6 font-extrabold text-[#E19404] whitespace-nowrap">
+                                        Rp {{ number_format($hotel->price_per_night, 0, ',', '.') }}
+                                    </td>
+                                    <td class="py-4 px-6 text-center font-extrabold text-gray-800">
+                                        {{ $hotel->quota }} Kamar
+                                    </td>
+                                    <td class="py-4 px-6 text-center">
+                                        <label class="relative inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" 
+                                                   class="sr-only peer hotel-toggle" 
+                                                   data-id="{{ $hotel->id }}" 
+                                                   data-url="/admin/hotels/{{ $hotel->id }}/toggle-status"
+                                                   {{ $hotel->is_active ? 'checked' : '' }}>
+                                            <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-500"></div>
+                                        </label>
+                                    </td>
+                                    <td class="py-4 px-6 text-center whitespace-nowrap">
+                                        <div class="flex items-center justify-center gap-2">
+                                            <!-- Tombol Edit Pop-up -->
+                                            <button type="button" onclick="openEditHotelModal({{ $hotel->id }})" 
+                                                class="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-[#E19404] text-xs font-bold rounded-lg transition">
+                                                Edit
                                             </button>
-                                        </form>
-                                    </div>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="6" class="py-12 px-6 text-center text-gray-400 text-xs">
-                                    Belum ada data kamar hotel yang ditambahkan.
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
+                                            <form action="{{ route('admin.hotels.destroy', $hotel->id) }}" method="POST" class="m-0" onsubmit="return confirm('Yakin ingin menghapus tipe kamar ini?')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-lg transition">
+                                                    Hapus
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="6" class="py-12 px-6 text-center text-gray-400 text-xs">
+                                        Belum ada data kamar hotel yang ditambahkan.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -376,15 +379,11 @@
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Deskripsi & Spesifikasi Kamar</label>
-                    <textarea name="description" rows="3" placeholder="Contoh: Luas kamar 32m² dengan pemandangan kota..." class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404]></textarea>
+                    <textarea name="description" rows="3" placeholder="Contoh: Luas kamar 32m² dengan pemandangan kota..." class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404]"></textarea>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Fasilitas Kamar (Pisahkan dengan Koma)</label>
-                    <input type="text" name="facilities" placeholder="Contoh: Sarapan 2 Pax, Wi-Fi Cepat, AC, Smart TV" class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404]">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Foto Kamar (JPG/PNG, Maks 2MB)</label>
-                    <input type="file" name="image" required accept="image/*" class="w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-[#FBE39D] file:text-[#E19404] hover:file:bg-orange-100 cursor-pointer border border-gray-300 rounded-xl">
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Foto Kamar (Bisa Pilih Banyak Foto)</label>
+                    <input type="file" name="photos[]" multiple required accept="image/*" class="w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-[#FBE39D] file:text-[#E19404] hover:file:bg-orange-100 cursor-pointer border border-gray-300 rounded-xl">
                 </div>
                 <div class="flex justify-end gap-2 pt-3 border-t border-gray-100">
                     <button type="button" onclick="closeAddHotelModal()" class="px-4 py-2 text-xs font-bold text-gray-600 bg-gray-100 rounded-xl">Batal</button>
@@ -422,15 +421,11 @@
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Deskripsi & Spesifikasi Kamar</label>
-                    <textarea name="description" id="edit_description" rows="3" class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404]></textarea>
+                    <textarea name="description" id="edit_description" rows="3" class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404]"></textarea>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Fasilitas Kamar (Pisahkan dengan Koma)</label>
-                    <input type="text" name="facilities" id="edit_facilities" class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404]">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Ganti Foto Kamar (Opsional)</label>
-                    <input type="file" name="image" accept="image/*" class="w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-[#FBE39D] file:text-[#E19404] hover:file:bg-orange-100 cursor-pointer border border-gray-300 rounded-xl">
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Ganti Foto Kamar (Opsional, Bisa Pilih Banyak)</label>
+                    <input type="file" name="photos[]" multiple accept="image/*" class="w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-[#FBE39D] file:text-[#E19404] hover:file:bg-orange-100 cursor-pointer border border-gray-300 rounded-xl">
                 </div>
                 <div class="flex justify-end gap-2 pt-3 border-t border-gray-100">
                     <button type="button" onclick="closeEditHotelModal()" class="px-4 py-2 text-xs font-bold text-gray-600 bg-gray-100 rounded-xl">Batal</button>
@@ -440,9 +435,8 @@
         </div>
     </div>
 
-        <!-- FOOTER -->
+    <!-- FOOTER -->
     @include('partials.admin-footer')
-
 
     <!-- SCRIPT MODAL, UNHIDE TIKET, & AJAX TOGGLE -->
     <script>
@@ -501,7 +495,6 @@
             document.getElementById('edit_price_per_night').value = item.price_per_night;
             document.getElementById('edit_quota').value = item.quota;
             document.getElementById('edit_description').value = item.description || '';
-            document.getElementById('edit_facilities').value = item.facilities || '';
             
             document.getElementById('editHotelForm').action = `/admin/hotels/${item.id}`;
             document.getElementById('editHotelModal').classList.remove('hidden');
@@ -564,7 +557,15 @@
                 });
             }
 
+            // Script untuk Toggle Status Tiket
             document.querySelectorAll('.ticket-toggle').forEach(toggle => {
+                toggle.addEventListener('change', function() {
+                    handleToggle(this);
+                });
+            });
+
+            // Script untuk Toggle Status Hotel
+            document.querySelectorAll('.hotel-toggle').forEach(toggle => {
                 toggle.addEventListener('change', function() {
                     handleToggle(this);
                 });

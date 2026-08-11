@@ -203,7 +203,7 @@ class AdminController extends Controller
     // ==========================================
 
     /**
-     * Simpan Tipe Kamar Baru dari Halaman Kuota & Harga
+     * Simpan Tipe Kamar Baru (Multiple Photos)
      */
     public function storeHotel(Request $request): \Illuminate\Http\RedirectResponse
     {
@@ -212,19 +212,23 @@ class AdminController extends Controller
             'price_per_night' => 'required|numeric|min:0',
             'quota'           => 'required|integer|min:0',
             'description'     => 'nullable|string',
-            'facilities'      => 'nullable|string',
-            'image'           => 'required|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'photos'          => 'required|array|max:5', // Maksimal 5 foto
+            'photos.*'        => 'image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
 
-        $imagePath = $request->file('image')->store('hotels', 'public');
+        $photoPaths = [];
+        if ($request->hasFile('photos')) {
+            foreach ($request->file('photos') as $photo) {
+                $photoPaths[] = $photo->store('hotels', 'public');
+            }
+        }
 
         HotelRoom::create([
             'room_type'       => $request->input('room_type'),
             'price_per_night' => $request->input('price_per_night'),
             'quota'           => $request->input('quota'),
             'description'     => $request->input('description'),
-            'facilities'      => $request->input('facilities'),
-            'image'           => $imagePath,
+            'photos'          => $photoPaths,
             'is_active'       => true,
         ]);
 
@@ -233,7 +237,7 @@ class AdminController extends Controller
     }
 
     /**
-     * Update Data Kamar Hotel
+     * Update Data Kamar Hotel (Multiple Photos)
      */
     public function updateHotel(Request $request, int $id): \Illuminate\Http\RedirectResponse
     {
@@ -242,8 +246,8 @@ class AdminController extends Controller
             'price_per_night' => 'required|numeric|min:0',
             'quota'           => 'required|integer|min:0',
             'description'     => 'nullable|string',
-            'facilities'      => 'nullable|string',
-            'image'           => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'photos'          => 'nullable|array|max:5',
+            'photos.*'        => 'image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
 
         $hotel = HotelRoom::findOrFail($id);
@@ -253,14 +257,23 @@ class AdminController extends Controller
             'price_per_night' => $request->input('price_per_night'),
             'quota'           => $request->input('quota'),
             'description'     => $request->input('description'),
-            'facilities'      => $request->input('facilities'),
         ];
 
-        if ($request->hasFile('image')) {
-            if ($hotel->image && Storage::disk('public')->exists($hotel->image)) {
-                Storage::disk('public')->delete($hotel->image);
+        // Jika ada upload foto baru, hapus semua foto lama dan simpan yang baru
+        if ($request->hasFile('photos')) {
+            if (is_array($hotel->photos)) {
+                foreach ($hotel->photos as $oldPhoto) {
+                    if (Storage::disk('public')->exists($oldPhoto)) {
+                        Storage::disk('public')->delete($oldPhoto);
+                    }
+                }
             }
-            $data['image'] = $request->file('image')->store('hotels', 'public');
+            
+            $photoPaths = [];
+            foreach ($request->file('photos') as $photo) {
+                $photoPaths[] = $photo->store('hotels', 'public');
+            }
+            $data['photos'] = $photoPaths;
         }
 
         $hotel->update($data);
@@ -270,20 +283,24 @@ class AdminController extends Controller
     }
 
     /**
-     * Hapus Tipe Kamar Hotel
+     * Hapus Tipe Kamar Hotel (Beserta Semua Fotonya)
      */
     public function destroyHotel(int $id): \Illuminate\Http\RedirectResponse
     {
         $hotel = HotelRoom::findOrFail($id);
 
-        if ($hotel->image && Storage::disk('public')->exists($hotel->image)) {
-            Storage::disk('public')->delete($hotel->image);
+        if (is_array($hotel->photos)) {
+            foreach ($hotel->photos as $photo) {
+                if (Storage::disk('public')->exists($photo)) {
+                    Storage::disk('public')->delete($photo);
+                }
+            }
         }
 
         $hotel->delete();
 
         return redirect()->route('admin.tickets.index')
-                         ->with('success', 'Tipe kamar berhasil dihapus!');
+                         ->with('success', 'Tipe kamar dan fotonya berhasil dihapus!');
     }
 
     /**
