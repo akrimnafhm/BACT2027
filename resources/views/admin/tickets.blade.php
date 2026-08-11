@@ -163,7 +163,7 @@
                 <!-- Tombol Buka Modal Tambah Kamar -->
                 <button type="button" onclick="openAddHotelModal()" class="bg-[#E19404] hover:bg-orange-600 text-white font-extrabold px-5 py-2.5 rounded-xl transition shadow-sm text-xs flex items-center gap-1.5 whitespace-nowrap">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                    Tambah Tipe Kamar
+                    Tambah Kamar
                 </button>
             </div>
 
@@ -175,8 +175,8 @@
                                 <th class="py-3.5 px-6 w-24">Foto</th>
                                 <th class="py-3.5 px-6">Tipe & Spesifikasi Kamar</th>
                                 <th class="py-3.5 px-6">Harga per Malam</th>
-                                <th class="py-3.5 px-6 text-center w-28">Stok Kuota</th>
-                                <th class="py-3.5 px-6 text-center w-32">Status Reservasi</th>
+                                <th class="py-3.5 px-6 text-center w-28">Kuota</th>
+                                <th class="py-3.5 px-6 text-center w-32">Status</th>
                                 <th class="py-3.5 px-6 text-center w-40">Aksi</th>
                             </tr>
                         </thead>
@@ -247,19 +247,19 @@
          ========================================================= -->
     <div id="addTicketModal" class="fixed inset-0 z-50 hidden overflow-y-auto bg-gray-900/60 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full border border-gray-200 overflow-hidden">
-            <div class="bg-[#16347A] px-6 py-4 border-b border-blue-900 flex justify-between items-center">
-                <h3 class="font-bold text-white text-base">Tambah Tiket Seminar / Workshop</h3>
-                <button type="button" onclick="closeAddTicketModal()" class="text-white/70 hover:text-white">✕</button>
+            <div class="bg-[#FBE39D] px-6 py-4 border-b border-[#E19404]/20 flex justify-between items-center">
+                <h3 class="font-extrabold text-gray-900 text-base">Tambah Tiket Seminar / Workshop</h3>
+                <button type="button" onclick="closeAddTicketModal()" class="text-gray-500 hover:text-gray-800">✕</button>
             </div>
             <form action="{{ route('admin.tickets.store') }}" method="POST" class="p-6 space-y-4">
                 @csrf
                 <div>
                     <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Nama Gelombang / Tiket</label>
-                    <input type="text" name="ticket_name" required placeholder="Contoh: Early Bird / Regular" class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#16347A]">
+                    <input type="text" name="ticket_name" required placeholder="Contoh: Early Bird / Regular" class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404]">
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Kategori Course / Paket</label>
-                    <select name="ticket_category" required class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#16347A] bg-white">
+                    <select name="ticket_category" required class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] bg-white">
                         <option value="" disabled selected>-- Pilih Kategori --</option>
                         <option value="Basic">Basic</option>
                         <option value="Advance">Advance</option>
@@ -272,26 +272,26 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Harga Satuan (Rp)</label>
-                        <input type="number" name="price" required min="0" placeholder="1000000" class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#16347A]">
+                        <input type="number" name="price" required min="0" placeholder="1000000" class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404]">
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Kuota Tersedia (Slot)</label>
-                        <input type="number" name="quota" required min="1" value="50" class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#16347A]">
+                        <input type="number" name="quota" required min="1" value="50" class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404]">
                     </div>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Mulai Berlaku (Opsional)</label>
-                        <input type="datetime-local" name="start_date" class="w-full px-3.5 py-2 text-xs border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#16347A]">
+                        <input type="datetime-local" name="start_date" class="w-full px-3.5 py-2 text-xs border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404]">
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Berakhir Pada (Opsional)</label>
-                        <input type="datetime-local" name="end_date" class="w-full px-3.5 py-2 text-xs border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#16347A]">
+                        <input type="datetime-local" name="end_date" class="w-full px-3.5 py-2 text-xs border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404]">
                     </div>
                 </div>
                 <div class="flex justify-end gap-2 pt-3 border-t border-gray-100">
                     <button type="button" onclick="closeAddTicketModal()" class="px-4 py-2 text-xs font-bold text-gray-600 bg-gray-100 rounded-xl">Batal</button>
-                    <button type="submit" class="px-6 py-2 text-xs font-bold text-white bg-[#16347A] hover:bg-blue-900 rounded-xl shadow-sm">Simpan Tiket</button>
+                    <button type="submit" class="px-6 py-2 text-xs font-extrabold text-white bg-[#E19404] hover:bg-orange-600 rounded-xl shadow-sm">Simpan Tiket</button>
                 </div>
             </form>
         </div>
@@ -302,20 +302,20 @@
          ========================================================= -->
     <div id="editTicketModal" class="fixed inset-0 z-50 hidden overflow-y-auto bg-gray-900/60 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full border border-gray-200 overflow-hidden">
-            <div class="bg-[#16347A] px-6 py-4 border-b border-blue-900 flex justify-between items-center">
-                <h3 class="font-bold text-white text-base">Edit Tiket Seminar / Workshop</h3>
-                <button type="button" onclick="closeEditTicketModal()" class="text-white/70 hover:text-white">✕</button>
+            <div class="bg-[#FBE39D] px-6 py-4 border-b border-[#E19404]/20 flex justify-between items-center">
+                <h3 class="font-extrabold text-gray-900 text-base">Edit Tiket Seminar / Workshop</h3>
+                <button type="button" onclick="closeEditTicketModal()" class="text-gray-500 hover:text-gray-800">✕</button>
             </div>
             <form id="editTicketForm" method="POST" class="p-6 space-y-4">
                 @csrf
                 @method('PUT')
                 <div>
                     <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Nama Gelombang / Tiket</label>
-                    <input type="text" name="ticket_name" id="edit_ticket_name" required class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#16347A]">
+                    <input type="text" name="ticket_name" id="edit_ticket_name" required class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404]">
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Kategori Course / Paket</label>
-                    <select name="ticket_category" id="edit_ticket_category" required class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#16347A] bg-white">
+                    <select name="ticket_category" id="edit_ticket_category" required class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] bg-white">
                         <option value="Basic">Basic</option>
                         <option value="Advance">Advance</option>
                         <option value="Basic-Advance">Basic-Advance</option>
@@ -327,26 +327,26 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Harga Satuan (Rp)</label>
-                        <input type="number" name="price" id="edit_ticket_price" required min="0" class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#16347A]">
+                        <input type="number" name="price" id="edit_ticket_price" required min="0" class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404]">
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Kuota Tersedia (Slot)</label>
-                        <input type="number" name="quota" id="edit_ticket_quota" required min="0" class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#16347A]">
+                        <input type="number" name="quota" id="edit_ticket_quota" required min="0" class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404]">
                     </div>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Mulai Berlaku (Opsional)</label>
-                        <input type="datetime-local" name="start_date" id="edit_ticket_start_date" class="w-full px-3.5 py-2 text-xs border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#16347A]">
+                        <input type="datetime-local" name="start_date" id="edit_ticket_start_date" class="w-full px-3.5 py-2 text-xs border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404]">
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Berakhir Pada (Opsional)</label>
-                        <input type="datetime-local" name="end_date" id="edit_ticket_end_date" class="w-full px-3.5 py-2 text-xs border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#16347A]">
+                        <input type="datetime-local" name="end_date" id="edit_ticket_end_date" class="w-full px-3.5 py-2 text-xs border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404]">
                     </div>
                 </div>
                 <div class="flex justify-end gap-2 pt-3 border-t border-gray-100">
                     <button type="button" onclick="closeEditTicketModal()" class="px-4 py-2 text-xs font-bold text-gray-600 bg-gray-100 rounded-xl">Batal</button>
-                    <button type="submit" class="px-6 py-2 text-xs font-bold text-white bg-[#16347A] hover:bg-blue-900 rounded-xl shadow-sm">Simpan Perubahan</button>
+                    <button type="submit" class="px-6 py-2 text-xs font-extrabold text-white bg-[#E19404] hover:bg-orange-600 rounded-xl shadow-sm">Simpan Perubahan</button>
                 </div>
             </form>
         </div>
@@ -496,7 +496,7 @@
             document.getElementById('edit_quota').value = item.quota;
             document.getElementById('edit_description').value = item.description || '';
             
-            document.getElementById('editHotelForm').action = `/admin/hotels/${item.id}`;
+            document.getElementById('editHotelForm').action = `/admin/tickets/hotels/${item.id}`;
             document.getElementById('editHotelModal').classList.remove('hidden');
         }
         function closeEditHotelModal() {
