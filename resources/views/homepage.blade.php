@@ -463,37 +463,89 @@
     </section>
 
     <!-- =========================================================
-         7. SEKSI GALERI FOTO (#galeri)
+         7. SEKSI GALERI FOTO (#galeri) 
          ========================================================= -->
     <section id="galeri" class="py-20 bg-gray-900 text-white">
-        <div class="max-w-7xl mx-auto px-6">
-            <div class="text-center max-w-2xl mx-auto mb-12">
+        <div class="max-w-4xl mx-auto px-6"> <!-- max-w diperkecil agar gambar tidak terlalu raksasa -->
+            <div class="text-center max-w-2xl mx-auto mb-10">
                 <span class="text-xs font-extrabold text-[#FBE39D] uppercase tracking-widest">Arsip Acara</span>
                 <h2 class="text-3xl sm:text-4xl font-extrabold mt-1">Galeri BACT Sebelumnya</h2>
-                <p class="text-sm text-gray-400 mt-2">Momen antusiasme peserta medis pada perhelatan BACT tahun-tahun
-                    sebelumnya.</p>
+                <p class="text-sm text-gray-400 mt-2">Momen antusiasme peserta medis pada perhelatan BACT tahun-tahun sebelumnya.</p>
             </div>
 
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                @forelse($galleries as $gal)
-                    <div class="aspect-square rounded-xl overflow-hidden bg-gray-800 shadow-sm">
-                        <img src="{{ asset('storage/' . $gal->image) }}" alt="Galeri BACT"
-                            class="w-full h-full object-cover hover:scale-110 transition duration-500">
-                    </div>
-                @empty
-                    <div
-                        class="aspect-square rounded-2xl overflow-hidden bg-gray-800 flex items-center justify-center text-xs font-bold text-gray-500">
-                        Galeri 1</div>
-                    <div
-                        class="aspect-square rounded-2xl overflow-hidden bg-gray-800 flex items-center justify-center text-xs font-bold text-gray-500">
-                        Galeri 2</div>
-                    <div
-                        class="aspect-square rounded-2xl overflow-hidden bg-gray-800 flex items-center justify-center text-xs font-bold text-gray-500">
-                        Galeri 3</div>
-                    <div
-                        class="aspect-square rounded-2xl overflow-hidden bg-gray-800 flex items-center justify-center text-xs font-bold text-gray-500">
-                        Galeri 4</div>
-                @endforelse
+            <!-- x-data untuk mengontrol Slideshow -->
+            <div class="relative w-full rounded-2xl overflow-hidden bg-gray-800 shadow-xl group aspect-video sm:aspect-[16/9]"
+                x-data="{
+                    active: 0,
+                    timer: null,
+                    images: [
+                        @forelse($galleries as $gal)
+                            '{{ asset('storage/' . $gal->image) }}',
+                        @empty
+                            // Jika kosong, masukkan gambar dummy
+                            'https://placehold.co/1200x800/374151/white?text=Galeri+1',
+                            'https://placehold.co/1200x800/1f2937/white?text=Galeri+2',
+                            'https://placehold.co/1200x800/111827/white?text=Galeri+3'
+                        @endforelse
+                    ],
+                    startTimer() {
+                        if(this.images.length > 1) {
+                            this.timer = setInterval(() => { 
+                                this.next(); 
+                            }, 5000); // Ganti gambar tiap 5 detik
+                        }
+                    },
+                    resetTimer() {
+                        clearInterval(this.timer);
+                        this.startTimer();
+                    },
+                    next() {
+                        this.active = (this.active === this.images.length - 1) ? 0 : this.active + 1;
+                    },
+                    prev() {
+                        this.active = (this.active === 0) ? this.images.length - 1 : this.active - 1;
+                    }
+                }" x-init="startTimer()">
+                
+                <!-- Tampilan Gambar -->
+                <div class="relative w-full h-full">
+                    <template x-for="(img, index) in images" :key="index">
+                        <div x-show="active === index"
+                             x-transition:enter="transition opacity duration-700 ease-out"
+                             x-transition:enter-start="opacity-0"
+                             x-transition:enter-end="opacity-100"
+                             x-transition:leave="transition opacity duration-500 ease-in"
+                             x-transition:leave-start="opacity-100"
+                             x-transition:leave-end="opacity-0"
+                             class="absolute inset-0 w-full h-full flex items-center justify-center">
+                            <img :src="img" alt="Galeri BACT" class="w-full h-full object-cover">
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Tombol Navigasi Kiri (<) -->
+                <button type="button" @click="prev(); resetTimer();"
+                    class="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 md:w-12 md:h-12 rounded-full bg-black/40 hover:bg-[#E19404] text-white flex items-center justify-center transition opacity-0 group-hover:opacity-100 focus:outline-none z-10">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"></path></svg>
+                </button>
+
+                <!-- Tombol Navigasi Kanan (>) -->
+                <button type="button" @click="next(); resetTimer();"
+                    class="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 md:w-12 md:h-12 rounded-full bg-black/40 hover:bg-[#E19404] text-white flex items-center justify-center transition opacity-0 group-hover:opacity-100 focus:outline-none z-10">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"></path></svg>
+                </button>
+
+                <!-- Titik Navigasi Bawah (Dots) -->
+                <div class="absolute bottom-4 left-0 right-0 flex justify-center space-x-2 z-10">
+                    <template x-for="(img, index) in images" :key="index">
+                        <button type="button" @click="active = index; resetTimer();"
+                            class="h-2.5 rounded-full transition-all duration-300 focus:outline-none cursor-pointer"
+                            :class="active === index ? 'w-8 bg-[#E19404]' : 'w-2.5 bg-white/50 hover:bg-white'"
+                            :aria-label="`Go to gallery ${index + 1}`">
+                        </button>
+                    </template>
+                </div>
+
             </div>
         </div>
     </section>
