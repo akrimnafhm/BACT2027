@@ -22,3 +22,14 @@
         }
     }
 }
+
+/* 4. Perbaiki input tanggal (iOS Safari) agar bisa menyusut
+   dan tidak meluap keluar dari card di layar hp sempit. */
+input[type='date'],
+input[type='time'] {
+    -webkit-appearance: none;
+    appearance: none;
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
+}
