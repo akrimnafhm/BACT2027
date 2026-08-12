@@ -83,7 +83,7 @@
         <!-- 2. KONTEN HERO (TEKS & COUNTDOWN) -->
         <div class="relative z-20 max-w-4xl mx-auto flex flex-col items-center">
 
-            <h1 class="text-3xl md:text-5xl font-black mb-6 leading-tight text-[#E19404]">
+            <h1 class="text-3xl md:text-5xl font-extrabold mb-6 leading-tight text-[#E19404]">
                 17th Basic Advanced Course in Transfusion
             </h1>
 
@@ -100,7 +100,7 @@
                         x-transition:leave-end="opacity-0 -translate-x-12" class="w-full">
 
                         <!-- 1 Paragraf Utuh -->
-                        <p class="text-sm sm:text-base md:text-lg font-semibold text-gray-800 leading-relaxed max-w-3xl mx-auto"
+                        <p class="text-sm sm:text-base md:text-lg font-regular text-gray-800 leading-relaxed max-w-3xl mx-auto"
                             x-text="slide.text">
                         </p>
                     </div>
@@ -122,25 +122,25 @@
             <div class="flex justify-center flex-wrap gap-3 md:gap-8" x-data="countdownTimer()" x-init="start()">
                 <div
                     class="flex flex-col items-center justify-center w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 rounded-full border-4 border-[#E19404] bg-[#FBE39D] text-[#E19404] shadow-lg">
-                    <span x-text="days" class="text-2xl sm:text-3xl md:text-5xl font-black">00</span>
+                    <span x-text="days" class="text-2xl sm:text-3xl md:text-4xl font-bold">00</span>
                     <span class="text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-widest mt-1">Days</span>
                 </div>
 
                 <div
                     class="flex flex-col items-center justify-center w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 rounded-full border-4 border-[#E19404] bg-[#FBE39D] text-[#E19404] shadow-lg">
-                    <span x-text="hours" class="text-2xl sm:text-3xl md:text-5xl font-black">00</span>
+                    <span x-text="hours" class="text-2xl sm:text-3xl md:text-4xl font-bold">00</span>
                     <span class="text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-widest mt-1">Hours</span>
                 </div>
 
                 <div
                     class="flex flex-col items-center justify-center w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 rounded-full border-4 border-[#E19404] bg-[#FBE39D] text-[#E19404] shadow-lg">
-                    <span x-text="minutes" class="text-2xl sm:text-3xl md:text-5xl font-black">00</span>
+                    <span x-text="minutes" class="text-2xl sm:text-3xl md:text-4xl font-bold">00</span>
                     <span class="text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-widest mt-1">Mins</span>
                 </div>
 
                 <div
                     class="flex flex-col items-center justify-center w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 rounded-full border-4 border-[#E19404] bg-[#FBE39D] text-[#E19404] shadow-lg">
-                    <span x-text="seconds" class="text-2xl sm:text-3xl md:text-5xl font-black">00</span>
+                    <span x-text="seconds" class="text-2xl sm:text-3xl md:text-4xl font-bold">00</span>
                     <span class="text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-widest mt-1">Secs</span>
                 </div>
             </div>
@@ -166,8 +166,8 @@
             <!-- Header Section & Tombol Panah Navigasi (< >) -->
             <div class="flex items-center justify-between mb-6">
                 <div>
-                    <span class="text-xs font-extrabold text-[#E19404] uppercase tracking-widest">Pengumuman</span>
-                    <h2 class="text-xl md:text-2xl font-black text-gray-900">Info & Update Terkini</h2>
+                    <span class="text-xs font-semibold text-[#E19404] uppercase tracking-widest">Pengumuman</span>
+                    <h2 class="text-xl md:text-2xl font-extrabold text-gray-900">Info & Update Terkini</h2>
                 </div>
 
                 <!-- Tombol Geser Kiri (<) dan Kanan (>) -->
@@ -202,7 +202,7 @@
                                 - PC/Laptop (lg:w-[calc(33.333%-16px)]): tepat 3 kartu per layar
                             -->
                     <div
-                        class="w-full md:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)] shrink-0 snap-start bg-white rounded-3xl p-6 sm:p-7 border border-gray-200/80 shadow-lg flex flex-col justify-between gap-4 hover:border-[#E19404] transition">
+                        class="w-full md:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)] shrink-0 snap-start bg-white rounded-xl p-6 sm:p-7 border border-gray-200/80 shadow-sm flex flex-col justify-between gap-4 hover:border-[#E19404] transition">
                         <div class="space-y-2">
                             <div
                                 class="inline-flex items-center gap-1.5 px-3 py-1 bg-[#FBE39D] text-[#E19404] text-[11px] font-black rounded-lg uppercase tracking-wider">
@@ -238,8 +238,8 @@
         <div class="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4">
             <div>
                 <span class="text-xs font-extrabold text-[#E19404] uppercase tracking-widest">Narasumber Ahli</span>
-                <h2 class="text-3xl sm:text-4xl font-black text-gray-900 mt-1">Pembicara BACT 2027</h2>
-                <p class="text-sm text-gray-500 mt-1">
+                <h2 class="text-3xl sm:text-4xl font-extrabold text-gray-900 mt-2">Pembicara BACT 2027</h2>
+                <p class="text-sm text-gray-500 mt-2">
                     Daftar dokter spesialis dan instruktur terkemuka yang akan mengisi simposium.
                 </p>
             </div>
@@ -276,7 +276,7 @@
                         - PC/Laptop (lg:w-[calc(20%-16px)]): pas 5 kartu per layar
                     -->
                 <div
-                    class="w-[calc(50%-10px)] md:w-[calc(33.333%-14px)] lg:w-[calc(20%-16px)] shrink-0 snap-start bg-white rounded-3xl border border-gray-200/80 shadow-sm overflow-hidden group hover:border-[#E19404] transition duration-300 flex flex-col justify-between">
+                    class="w-[calc(50%-10px)] md:w-[calc(33.333%-14px)] lg:w-[calc(20%-16px)] shrink-0 snap-start bg-white rounded-2xl border border-gray-200/80 shadow-sm overflow-hidden group hover:border-[#E19404] transition duration-300 flex flex-col justify-between">
 
                     <!-- Foto Pembicara (h-52 agar proporsional dengan kartu kompak) -->
                     <div class="h-52 overflow-hidden flex items-center justify-center relative bg-white">
@@ -308,7 +308,7 @@
             <!-- Placeholder: lengkapi hingga 5 kartu jika pembicara belum penuh -->
             @for($i = $speakers->count(); $i < 5; $i++)
                 <div
-                    class="w-[calc(50%-10px)] md:w-[calc(33.333%-14px)] lg:w-[calc(20%-16px)] shrink-0 bg-white rounded-3xl border border-gray-200/80 shadow-sm overflow-hidden">
+                    class="w-[calc(50%-10px)] md:w-[calc(33.333%-14px)] lg:w-[calc(20%-16px)] shrink-0 bg-white rounded-2xl border border-gray-200/80 shadow-sm overflow-hidden">
                     <div class="h-52 flex items-center justify-center bg-white">
                         <div class="w-40 h-40 rounded-full border border-gray-200 bg-gray-100 flex items-center justify-center text-gray-300">
                             <svg class="w-20 h-20" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -343,7 +343,7 @@
 
             <div class="text-center max-w-2xl mx-auto mb-10">
                 <span class="text-xs font-extrabold text-[#E19404] uppercase tracking-widest">Rangkaian Acara</span>
-                <h2 class="text-3xl sm:text-4xl font-black text-gray-900 mt-1">Jadwal & Agenda Kegiatan</h2>
+                <h2 class="text-3xl sm:text-4xl font-extrabold text-gray-900 mt-1">Jadwal & Agenda Kegiatan</h2>
                 <p class="text-sm text-gray-500 mt-2">Pilih hari pelaksanaan untuk melihat urutan sesi dan pemateri
                     secara lengkap.</p>
             </div>
@@ -354,7 +354,7 @@
                     @foreach($groupedSchedules->keys() as $dayNumber)
                         <button type="button" @click="activeDay = {{ $dayNumber }}"
                             :class="activeDay === {{ $dayNumber }} ? 'bg-[#E19404] text-white shadow-md scale-105' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'"
-                            class="px-6 py-3 rounded-2xl font-black text-sm transition-all duration-300 cursor-pointer whitespace-nowrap flex items-center gap-2">
+                            class="px-6 py-3 rounded-lg font-black text-sm transition-all duration-300 cursor-pointer whitespace-nowrap flex items-center gap-2">
                             <span>Day {{ $dayNumber }}</span>
                         </button>
                     @endforeach
@@ -369,7 +369,7 @@
 
                             @foreach($daySchedules as $index => $item)
                                 <div
-                                    class="bg-white rounded-2xl p-6 border border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm hover:border-[#E19404] transition">
+                                    class="bg-white rounded-xl p-6 border border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm hover:border-[#E19404] transition">
                                     <div class="flex items-start gap-4">
                                         <!-- Nomor Urut Sesi di Hari Tersebut -->
                                         <div
@@ -423,7 +423,7 @@
                 <div>
                     <span class="text-xs font-extrabold text-[#E19404] uppercase tracking-widest">Tempat
                         Pelaksanaan</span>
-                    <h2 class="text-3xl sm:text-4xl font-black text-gray-900 mt-1">Lokasi</h2>
+                    <h2 class="text-3xl sm:text-4xl font-extrabold text-gray-900 mt-1">Lokasi</h2>
                 </div>
                 <p class="text-sm text-gray-600 leading-relaxed">
                     BACT 2027 diselenggarakan di venue berfasilitas standar internasional yang terletak di jantung kota
@@ -469,14 +469,14 @@
         <div class="max-w-7xl mx-auto px-6">
             <div class="text-center max-w-2xl mx-auto mb-12">
                 <span class="text-xs font-extrabold text-[#FBE39D] uppercase tracking-widest">Arsip Acara</span>
-                <h2 class="text-3xl sm:text-4xl font-black mt-1">Galeri BACT Sebelumnya</h2>
+                <h2 class="text-3xl sm:text-4xl font-extrabold mt-1">Galeri BACT Sebelumnya</h2>
                 <p class="text-sm text-gray-400 mt-2">Momen antusiasme peserta medis pada perhelatan BACT tahun-tahun
                     sebelumnya.</p>
             </div>
 
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                 @forelse($galleries as $gal)
-                    <div class="aspect-square rounded-2xl overflow-hidden bg-gray-800 shadow-sm">
+                    <div class="aspect-square rounded-xl overflow-hidden bg-gray-800 shadow-sm">
                         <img src="{{ asset('storage/' . $gal->image) }}" alt="Galeri BACT"
                             class="w-full h-full object-cover hover:scale-110 transition duration-500">
                     </div>

@@ -165,6 +165,7 @@
                                        value="{{ old('check_in') }}"
                                        class="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm font-bold text-gray-800 outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] transition bg-white cursor-pointer">
                                 <span class="block text-[11px] text-gray-400 mt-1">Min: 18 Jan 2027 | Max: 20 Jan 2027</span>
+                                 <span id="check_in_note" class="hidden block text-[11px] font-bold text-red-500 mt-1"></span>
                             </div>
 
                             <!-- Check-Out -->
@@ -181,6 +182,7 @@
                                        value="{{ old('check_out') }}"
                                        class="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm font-bold text-gray-800 outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] transition bg-white cursor-pointer">
                                 <span class="block text-[11px] text-gray-400 mt-1">Min: 19 Jan 2027 | Max: 21 Jan 2027</span>
+                                 <span id="check_out_note" class="hidden block text-[11px] font-bold text-red-500 mt-1"></span>
                             </div>
                         </div>
                     </div>
@@ -234,7 +236,63 @@
             // Ambil harga dari database hotel
             const pricePerNight = Number({{ $hotel->price_per_night }});
 
+            // Batas Tanggal (dikunci)
+            const MIN_IN  = '2027-01-18';
+            const MAX_IN  = '2027-01-20';
+            const MAX_OUT = '2027-01-21';
+
+            // Beri pesan peringatan bila ada pilihan di luar rentang
+            const checkInNote  = document.getElementById('check_in_note');
+            const checkOutNote = document.getElementById('check_out_note');
+
+            function toDate(v) { return v ? new Date(v + 'T00:00:00') : null; }
+
+            function enforceRange() {
+                let ci = checkInInput.value;
+                let co = checkOutInput.value;
+
+                // Normalisasi check-in ke 18-20 Jan 2027
+                if (ci) {
+                    if (ci < MIN_IN) ci = MIN_IN;
+                    if (ci > MAX_IN) ci = MAX_IN;
+                    if (ci !== checkInInput.value) {
+                        checkInInput.value = ci;
+                        if (checkInNote) { checkInNote.textContent = 'Check-in dibatasi 18 - 20 Januari 2027.'; checkInNote.classList.remove('hidden'); }
+                        else if (checkOutNote) {
+                            checkInInput.classList.add('border-red-400');
+                            setTimeout(() => { checkInInput.classList.remove('border-red-400'); }, 2000);
+                        }
+                    } else if (checkInNote) {
+                        checkInNote.classList.add('hidden');
+                    }
+                }
+
+                // Normalisasi check-out: selalu minimal 1 hari setelah check-in, maksimal 21 Jan 2027
+                if (co) {
+                    let nextDay = '';
+                    if (ci) {
+                        const d = toDate(ci);
+                        d.setDate(d.getDate() + 1);
+                        nextDay = d.toISOString().slice(0, 10);
+                    }
+                    if (ci && co <= ci) co = nextDay;      // minimal 1 malam setelah check-in
+                    if (co > MAX_OUT) co = MAX_OUT;         // paling lambat 21 Jan 2027
+                    if (co !== checkOutInput.value) {
+                        checkOutInput.value = co;
+                        if (checkOutNote) { checkOutNote.textContent = 'Check-out dibatasi maksimal 21 Januari 2027 dan minimal 1 malam.'; checkOutNote.classList.remove('hidden'); }
+                        else if (checkInNote) {
+                            checkOutInput.classList.add('border-red-400');
+                            setTimeout(() => { checkOutInput.classList.remove('border-red-400'); }, 2000);
+                        }
+                    } else if (checkOutNote) {
+                        checkOutNote.classList.add('hidden');
+                    }
+                }
+            }
+
             function calculateCost() {
+                enforceRange();
+
                 const checkInVal  = checkInInput.value;
                 const checkOutVal = checkOutInput.value;
 
@@ -279,7 +337,9 @@
                 checkOutInput.addEventListener('change', calculateCost);
                 checkInInput.addEventListener('input', calculateCost);
                 checkOutInput.addEventListener('input', calculateCost);
-                
+                checkInInput.addEventListener('blur', calculateCost);
+                checkOutInput.addEventListener('blur', calculateCost);
+
                 // Panggil sekali di awal untuk antisipasi browser autofill/old value
                 calculateCost();
             }
