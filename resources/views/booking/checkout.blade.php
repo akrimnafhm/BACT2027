@@ -18,7 +18,7 @@
         <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
             <!-- Header Card -->
             <div class="bg-[#FBE39D] px-8 py-6 border-b border-[#E19404]/20">
-                <h2 class="text-xl font-extrabold text-gray-900 flex items-center gap-2">
+                <h2 class="text-xl font-extrabold text-[#234661] flex items-center gap-2">
                     <svg class="w-6 h-6 text-[#E19404]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                     Verifikasi Pesanan
                 </h2>

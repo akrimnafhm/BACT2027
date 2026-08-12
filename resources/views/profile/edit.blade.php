@@ -55,7 +55,7 @@
             <!-- BOX 1: INFORMASI AKUN -->
             <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-8">
                 <!-- Judul tanpa garis bawah dan warna profesional -->
-                <h2 class="text-lg font-extrabold text-gray-900 mb-6">Informasi Akun</h2>
+                <h2 class="text-lg font-extrabold text-[#234661] mb-6">Informasi Akun</h2>
                 
                 <div class="space-y-6">
                     <!-- Email -->
@@ -115,7 +115,7 @@
             <!-- BOX 2: DATA PRIBADI (Gelar Sudah Dihilangkan) -->
             <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-8">
                 <!-- Judul tanpa garis bawah dan warna profesional -->
-                <h2 class="text-lg font-extrabold text-gray-900 mb-6">Data Pribadi</h2>
+                <h2 class="text-lg font-extrabold text-[#234661] mb-6">Data Pribadi</h2>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <!-- Nama Lengkap -->
@@ -145,7 +145,7 @@
             <!-- BOX 3: KEAMANAN AKUN (GANTI PASSWORD) -->
             <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-8">
                 <div class="mb-6">
-                    <h2 class="text-lg font-extrabold text-gray-900">Keamanan Akun</h2>
+                    <h2 class="text-lg font-extrabold text-[#234661]">Keamanan Akun</h2>
                     <p class="text-xs text-gray-500 mt-0.5">Kosongkan seluruh kolom kata sandi di bawah jika Anda tidak ingin merubah password saat ini.</p>
                 </div>
                 

@@ -69,7 +69,7 @@
                 <div class="p-6 space-y-5">
                     <div>
                         <span class="text-[11px] font-bold text-[#E19404] uppercase tracking-widest">Detail Akomodasi</span>
-                        <h2 class="text-2xl font-black text-gray-900 mt-1">{{ $hotel->room_type }}</h2>
+                        <h2 class="text-2xl font-black text-[#234661] mt-1">{{ $hotel->room_type }}</h2>
                     </div>
 
                     <div class="flex items-baseline justify-between py-3 border-y border-gray-100">
@@ -107,7 +107,7 @@
             <div class="lg:col-span-7 min-w-0 bg-white rounded-3xl border border-gray-200 shadow-sm p-6 sm:p-8 space-y-8">
                 
                 <div>
-                    <h1 class="text-2xl font-black text-gray-900">Form Reservasi Kamar</h1>
+                    <h1 class="text-2xl font-black text-[#234661]">Form Reservasi Kamar</h1>
                     <p class="text-xs text-gray-500 mt-1">
                         Pemesanan kamar hotel terbuka untuk umum selama periode acara simposium berlangsung.
                     </p>

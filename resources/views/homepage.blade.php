@@ -34,7 +34,7 @@
      2. HERO SECTION (#beranda) + SLIDER TEKS & GAMBAR INTERAKTIF
      ========================================================= -->
     <header id="beranda"
-        class="relative min-h-screen flex flex-col justify-center items-center text-center pt-28 pb-16 px-4 overflow-hidden bg-gray-900"
+        class="relative min-h-screen flex flex-col justify-center items-center text-center pt-28 pb-16 px-4 overflow-hidden bg-[#234661]"
         x-data="{
             active: 0,
             timer: null,
@@ -75,7 +75,7 @@
                     :style="`background-image: url('${slide.image}')`">
                 </div>
             </template>
-            <!-- Overlay agar teks kontras dan terbaca jelas -->
+            <!-- Overlay navy agar teks kontras dan terbaca jelas -->
             <div class="absolute inset-0 bg-white/50"></div>
             <div class="absolute inset-0 bg-gradient-to-b from-white/40 via-white/20 to-white/95"></div>
         </div>
@@ -112,7 +112,7 @@
                 <template x-for="(slide, index) in slides" :key="index">
                     <button type="button" @click="active = index; resetTimer();"
                         class="h-2.5 rounded-full transition-all duration-500 focus:outline-none cursor-pointer"
-                        :class="active === index ? 'w-8 bg-[#E19404]' : 'w-2.5 bg-gray-300 hover:bg-gray-400'"
+                        :class="active === index ? 'w-8 bg-[#E19404]' : 'w-2.5 bg-white/40 hover:bg-white/60'"
                         :aria-label="`Go to slide ${index + 1}`">
                     </button>
                 </template>
@@ -167,7 +167,7 @@
             <div class="flex items-center justify-between mb-6">
                 <div>
                     <span class="text-xs font-semibold text-[#E19404] uppercase tracking-widest">Pengumuman</span>
-                    <h2 class="text-xl md:text-2xl font-extrabold text-gray-900">Info & Update Terkini</h2>
+                    <h2 class="text-xl md:text-2xl font-extrabold text-[#234661]">Info & Update Terkini</h2>
                 </div>
 
                 <!-- Tombol Geser Kiri (<) dan Kanan (>) -->
@@ -238,7 +238,7 @@
         <div class="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4">
             <div>
                 <span class="text-xs font-extrabold text-[#E19404] uppercase tracking-widest">Narasumber Ahli</span>
-                <h2 class="text-3xl sm:text-4xl font-extrabold text-gray-900 mt-2">Pembicara BACT 2027</h2>
+                <h2 class="text-3xl sm:text-4xl font-extrabold text-[#234661] mt-2">Pembicara BACT 2027</h2>
                 <p class="text-sm text-gray-500 mt-2">
                     Daftar dokter spesialis dan instruktur terkemuka yang akan mengisi simposium.
                 </p>
@@ -343,7 +343,7 @@
 
             <div class="text-center max-w-2xl mx-auto mb-10">
                 <span class="text-xs font-extrabold text-[#E19404] uppercase tracking-widest">Rangkaian Acara</span>
-                <h2 class="text-3xl sm:text-4xl font-extrabold text-gray-900 mt-1">Jadwal & Agenda Kegiatan</h2>
+                <h2 class="text-3xl sm:text-4xl font-extrabold text-[#234661] mt-1">Jadwal & Agenda Kegiatan</h2>
                 <p class="text-sm text-gray-500 mt-2">Pilih hari pelaksanaan untuk melihat urutan sesi dan pemateri
                     secara lengkap.</p>
             </div>
@@ -423,7 +423,7 @@
                 <div>
                     <span class="text-xs font-extrabold text-[#E19404] uppercase tracking-widest">Tempat
                         Pelaksanaan</span>
-                    <h2 class="text-3xl sm:text-4xl font-extrabold text-gray-900 mt-1">Lokasi</h2>
+                    <h2 class="text-3xl sm:text-4xl font-extrabold text-[#234661] mt-1">Lokasi</h2>
                 </div>
                 <p class="text-sm text-gray-600 leading-relaxed">
                     BACT 2027 diselenggarakan di venue berfasilitas standar internasional yang terletak di jantung kota

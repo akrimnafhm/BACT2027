@@ -13,7 +13,7 @@
     <div class="w-full max-w-md p-8 border border-gray-100 rounded-2xl shadow-xl bg-white">
         <div class="text-center mb-8">
             <img src="{{ asset('images/logo.png') }}" alt="Logo BACT" class="h-14 mx-auto mb-4">
-            <h2 class="text-xl font-bold text-gray-800">Create an account</h2>
+            <h2 class="text-xl font-bold text-[#234661]">Create an account</h2>
         </div>
 
         <form action="/register" method="POST" class="space-y-4">

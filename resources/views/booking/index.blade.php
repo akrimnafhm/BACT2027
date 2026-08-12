@@ -40,7 +40,7 @@
             @if($status === 'post_purchase')
                 <div class="bg-white rounded-2xl shadow-sm p-8 border border-gray-200 relative overflow-hidden">
                     <div class="absolute top-0 right-0 bg-green-500 text-white text-xs font-bold px-4 py-2 rounded-bl-xl">Tiket Dimiliki</div>
-                    <h2 class="text-xl font-extrabold text-gray-900 mb-2">E-Ticket Anda</h2>
+                    <h2 class="text-xl font-extrabold text-[#234661] mb-2">E-Ticket Anda</h2>
                     <p class="text-sm text-gray-500 mb-6">Tunjukkan halaman ini atau QR Code di bawah saat kedatangan di meja registrasi.</p>
                     
                     <div class="flex flex-col md:flex-row gap-6 items-center bg-gray-50 p-6 rounded-xl border border-dashed border-gray-300">
@@ -62,7 +62,7 @@
             <!-- 3. TAMPILAN GUEST & INCOMPLETE -->
             @if($status === 'guest')
                 <div class="bg-white rounded-2xl shadow-sm p-8 border border-gray-200 text-center">
-                    <h3 class="text-lg font-bold text-gray-800 mb-4">Pilih Tiket Anda</h3>
+                    <h3 class="text-lg font-bold text-[#234661] mb-4">Pilih Tiket Anda</h3>
                     <p class="text-gray-500 mb-6 text-sm">Anda harus login terlebih dahulu untuk melihat dan membeli tiket.</p>
                     <a href="{{ route('login') }}" class="inline-block bg-[#E19404] hover:bg-orange-600 text-white font-bold py-3 px-8 rounded-xl transition shadow-md">
                         Login untuk Membeli Tiket
@@ -140,7 +140,7 @@
                         
                         <!-- Judul Box -->
                         <div>
-                            <h3 class="text-xl font-extrabold text-gray-900 border-b pb-4">Data Diri & Informasi Instansi <span class="text-red-500">*</span></h3>
+                            <h3 class="text-xl font-extrabold text-[#234661] border-b pb-4">Data Diri & Informasi Instansi <span class="text-red-500">*</span></h3>
                             <p class="text-xs text-gray-400 mt-2">Data identitas di bawah diambil secara otomatis dari profil akun Anda untuk menjaga keamanan data.</p>
                         </div>
 

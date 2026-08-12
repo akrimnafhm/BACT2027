@@ -21,7 +21,7 @@
         <!-- Header Seksi -->
         <div class="text-center max-w-3xl mx-auto space-y-3">
             <span class="text-xs font-extrabold text-[#E19404] uppercase tracking-widest">Akomodasi Resmi Simposium</span>
-            <h1 class="text-3xl md:text-4xl font-black text-gray-900">Pilihan Kamar Hotel Mitra BACT 2027</h1>
+            <h1 class="text-3xl md:text-4xl font-black text-[#234661]">Pilihan Kamar Hotel Mitra BACT 2027</h1>
             <p class="text-sm md:text-base text-gray-600 leading-relaxed">
                 Nikmati kenyamanan menginap di venue utama simposium dengan harga khusus peserta. Pilih tipe kamar yang sesuai dengan preferensimu.
             </p>
@@ -106,7 +106,7 @@
                         <div class="p-7 flex flex-col flex-grow justify-between space-y-6">
                             <div class="space-y-4">
                                 <div class="flex justify-between items-start gap-2">
-                                    <h2 class="text-2xl font-black text-gray-900">{{ $hotel->room_type }}</h2>
+                                    <h2 class="text-2xl font-black text-[#234661]">{{ $hotel->room_type }}</h2>
                                     <div class="text-right">
                                         <span class="text-xl font-black text-[#E19404]">Rp {{ number_format($hotel->price_per_night, 0, ',', '.') }}</span>
                                         <span class="block text-[11px] font-bold text-gray-400 uppercase">per malam</span>

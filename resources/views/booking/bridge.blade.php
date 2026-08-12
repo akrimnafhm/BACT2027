@@ -12,7 +12,7 @@
 
     <div class="text-center max-w-3xl mx-auto space-y-3 pt-4">
         <span class="text-xs font-extrabold text-[#E19404] uppercase tracking-widest">Pemesanan Tiket</span>
-        <h1 class="text-3xl md:text-4xl font-black text-gray-900">Pemesanan Tiket Acara</h1>
+        <h1 class="text-3xl md:text-4xl font-black text-[#234661]">Pemesanan Tiket Acara</h1>
         <p class="text-sm md:text-base text-gray-600 leading-relaxed">
            Pesan tiket acara sekarang agar terdaftar di acara yang dipilih.
         </p>
@@ -34,7 +34,7 @@
         @if($status === 'post_purchase')
             <div class="bg-white rounded-2xl shadow-sm p-8 border border-gray-200 relative overflow-hidden">
                 <div class="absolute top-0 right-0 bg-green-500 text-white text-xs font-bold px-4 py-2 rounded-bl-xl">Tiket Dimiliki</div>
-                <h1 class="text-2xl font-extrabold text-gray-900 mb-2">Pesanan Tiket Anda</h1>
+                <h1 class="text-2xl font-extrabold text-[#234661] mb-2">Pesanan Tiket Anda</h1>
                 <p class="text-sm text-gray-500 mb-6">Halaman ini menampilkan QR pesanan tiket Anda. Simpan halaman ini untuk registrasi.</p>
 
                 <div class="flex flex-col md:flex-row gap-6 items-center bg-gray-50 p-6 rounded-xl border border-dashed border-gray-300">
