@@ -104,7 +104,7 @@
             <!-- ========================================== -->
             <!-- KOLOM KANAN (7 SPAN): FORM RESERVASI -->
             <!-- ========================================== -->
-            <div class="lg:col-span-7 bg-white rounded-3xl border border-gray-200 shadow-sm p-6 sm:p-8 space-y-8">
+            <div class="lg:col-span-7 min-w-0 bg-white rounded-3xl border border-gray-200 shadow-sm p-6 sm:p-8 space-y-8">
                 
                 <div>
                     <h1 class="text-2xl font-black text-gray-900">Form Reservasi Kamar</h1>
@@ -163,7 +163,7 @@
                                        min="2027-01-18" 
                                        max="2027-01-20"
                                        value="{{ old('check_in') }}"
-                                       class="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm font-bold text-gray-800 outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] transition bg-white cursor-pointer">
+                                       class="w-full min-w-0 max-w-full px-4 py-3 border border-gray-300 rounded-xl text-sm font-bold text-gray-800 outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] transition bg-white cursor-pointer">
                                 <span class="block text-[11px] text-gray-400 mt-1">Min: 18 Jan 2027 | Max: 20 Jan 2027</span>
                                  <span id="check_in_note" class="hidden block text-[11px] font-bold text-red-500 mt-1"></span>
                             </div>
@@ -180,7 +180,7 @@
                                        min="2027-01-19" 
                                        max="2027-01-21"
                                        value="{{ old('check_out') }}"
-                                       class="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm font-bold text-gray-800 outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] transition bg-white cursor-pointer">
+                                       class="w-full min-w-0 max-w-full px-4 py-3 border border-gray-300 rounded-xl text-sm font-bold text-gray-800 outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] transition bg-white cursor-pointer">
                                 <span class="block text-[11px] text-gray-400 mt-1">Min: 19 Jan 2027 | Max: 21 Jan 2027</span>
                                  <span id="check_out_note" class="hidden block text-[11px] font-bold text-red-500 mt-1"></span>
                             </div>
