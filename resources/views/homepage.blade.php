@@ -119,29 +119,29 @@
             </div>
 
             <!-- 3. COUNTDOWN TIMER BULAT (TIDAK DIUBAH SAMA SEKALI) -->
-            <div class="flex justify-center space-x-4 md:space-x-8" x-data="countdownTimer()" x-init="start()">
+            <div class="flex justify-center flex-wrap gap-3 md:gap-8" x-data="countdownTimer()" x-init="start()">
                 <div
-                    class="flex flex-col items-center justify-center w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-[#E19404] bg-[#FBE39D] text-[#E19404] shadow-lg">
-                    <span x-text="days" class="text-3xl md:text-5xl font-black">00</span>
-                    <span class="text-xs md:text-sm font-bold uppercase tracking-widest mt-1">Days</span>
+                    class="flex flex-col items-center justify-center w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 rounded-full border-4 border-[#E19404] bg-[#FBE39D] text-[#E19404] shadow-lg">
+                    <span x-text="days" class="text-2xl sm:text-3xl md:text-5xl font-black">00</span>
+                    <span class="text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-widest mt-1">Days</span>
                 </div>
 
                 <div
-                    class="flex flex-col items-center justify-center w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-[#E19404] bg-[#FBE39D] text-[#E19404] shadow-lg">
-                    <span x-text="hours" class="text-3xl md:text-5xl font-black">00</span>
-                    <span class="text-xs md:text-sm font-bold uppercase tracking-widest mt-1">Hours</span>
+                    class="flex flex-col items-center justify-center w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 rounded-full border-4 border-[#E19404] bg-[#FBE39D] text-[#E19404] shadow-lg">
+                    <span x-text="hours" class="text-2xl sm:text-3xl md:text-5xl font-black">00</span>
+                    <span class="text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-widest mt-1">Hours</span>
                 </div>
 
                 <div
-                    class="flex flex-col items-center justify-center w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-[#E19404] bg-[#FBE39D] text-[#E19404] shadow-lg">
-                    <span x-text="minutes" class="text-3xl md:text-5xl font-black">00</span>
-                    <span class="text-xs md:text-sm font-bold uppercase tracking-widest mt-1">Mins</span>
+                    class="flex flex-col items-center justify-center w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 rounded-full border-4 border-[#E19404] bg-[#FBE39D] text-[#E19404] shadow-lg">
+                    <span x-text="minutes" class="text-2xl sm:text-3xl md:text-5xl font-black">00</span>
+                    <span class="text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-widest mt-1">Mins</span>
                 </div>
 
                 <div
-                    class="flex flex-col items-center justify-center w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-[#E19404] bg-[#FBE39D] text-[#E19404] shadow-lg">
-                    <span x-text="seconds" class="text-3xl md:text-5xl font-black">00</span>
-                    <span class="text-xs md:text-sm font-bold uppercase tracking-widest mt-1">Secs</span>
+                    class="flex flex-col items-center justify-center w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 rounded-full border-4 border-[#E19404] bg-[#FBE39D] text-[#E19404] shadow-lg">
+                    <span x-text="seconds" class="text-2xl sm:text-3xl md:text-5xl font-black">00</span>
+                    <span class="text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-widest mt-1">Secs</span>
                 </div>
             </div>
 
@@ -268,23 +268,26 @@
         <!-- Container Slider Pembicara -->
         <div x-ref="speakerSlider"
             class="flex gap-5 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory pb-4 pt-1">
-            @forelse($speakers as $speaker)
+            @foreach($speakers as $speaker)
                 <!-- 
                         RUMUS LEBAR AGAR TIDAK KEPOTONG:
                         - HP (w-[calc(50%-10px)]): pas 2 kartu per layar
                         - Tablet (md:w-[calc(33.333%-14px)]): pas 3 kartu per layar
-                        - PC/Laptop (lg:w-[calc(25%-15px)]): pas 4 kartu per layar
+                        - PC/Laptop (lg:w-[calc(20%-16px)]): pas 5 kartu per layar
                     -->
                 <div
-                    class="w-[calc(50%-10px)] md:w-[calc(33.333%-14px)] lg:w-[calc(25%-15px)] shrink-0 snap-start bg-white rounded-3xl border border-gray-200/80 shadow-sm overflow-hidden group hover:border-[#E19404] transition duration-300 flex flex-col justify-between">
+                    class="w-[calc(50%-10px)] md:w-[calc(33.333%-14px)] lg:w-[calc(20%-16px)] shrink-0 snap-start bg-white rounded-3xl border border-gray-200/80 shadow-sm overflow-hidden group hover:border-[#E19404] transition duration-300 flex flex-col justify-between">
 
                     <!-- Foto Pembicara (h-52 agar proporsional dengan kartu kompak) -->
-                    <div class="h-52 overflow-hidden relative bg-gray-100">
+                    <div class="h-52 overflow-hidden flex items-center justify-center relative bg-white">
                         @if($speaker->image)
                             <img src="{{ asset('storage/' . $speaker->image) }}" alt="{{ $speaker->name }}"
-                                class="w-full h-full object-cover object-top group-hover:scale-105 transition duration-500">
+                                class="w-32 h-32 sm:w-40 sm:h-40 rounded-full border border-gray-200 object-cover object-top group-hover:scale-105 transition duration-500">
                         @else
-                            <div class="w-full h-full flex items-center justify-center text-gray-400 font-bold text-xs">No Photo
+                            <div class="w-32 h-32 sm:w-40 sm:h-40 rounded-full flex flex-col items-center justify-center gap-2 text-gray-300">
+                                <svg class="w-16 h-16 sm:w-20 sm:h-20" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                                </svg>
                             </div>
                         @endif
                     </div>
@@ -300,21 +303,25 @@
                     </div>
 
                 </div>
-            @empty
-                <!-- Placeholder jika pembicara belum diisi -->
-                @for($i = 1; $i <= 4; $i++)
-                    <div
-                        class="w-[calc(50%-10px)] md:w-[calc(33.333%-14px)] lg:w-[calc(25%-15px)] shrink-0 bg-white rounded-3xl border border-gray-200/80 shadow-sm overflow-hidden">
-                        <div class="h-52 bg-gray-100 flex items-center justify-center text-gray-400 font-bold text-xs">
-                            Foto Pembicara {{ $i }}
-                        </div>
-                        <div class="p-5 text-center">
-                            <h3 class="text-base font-black text-gray-900">Dr. dr. Contoh, Sp.PK</h3>
-                            <p class="text-xs text-gray-500 mt-1.5 font-semibold">RSUP / FK Terkemuka</p>
+            @endforeach
+
+            <!-- Placeholder: lengkapi hingga 5 kartu jika pembicara belum penuh -->
+            @for($i = $speakers->count(); $i < 5; $i++)
+                <div
+                    class="w-[calc(50%-10px)] md:w-[calc(33.333%-14px)] lg:w-[calc(20%-16px)] shrink-0 bg-white rounded-3xl border border-gray-200/80 shadow-sm overflow-hidden">
+                    <div class="h-52 flex items-center justify-center bg-white">
+                        <div class="w-40 h-40 rounded-full border border-gray-200 bg-gray-100 flex items-center justify-center text-gray-300">
+                            <svg class="w-20 h-20" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                            </svg>
                         </div>
                     </div>
-                @endfor
-            @endforelse
+                    <div class="p-5 text-center">
+                        <h3 class="text-base font-black text-gray-900">Pembicara</h3>
+                        <p class="text-xs text-gray-500 mt-1.5 font-semibold">Instansi</p>
+                    </div>
+                </div>
+            @endfor
         </div>
     </section>
 
@@ -416,7 +423,7 @@
                 <div>
                     <span class="text-xs font-extrabold text-[#E19404] uppercase tracking-widest">Tempat
                         Pelaksanaan</span>
-                    <h2 class="text-3xl sm:text-4xl font-black text-gray-900 mt-1">Lokasi & Akomodasi</h2>
+                    <h2 class="text-3xl sm:text-4xl font-black text-gray-900 mt-1">Lokasi</h2>
                 </div>
                 <p class="text-sm text-gray-600 leading-relaxed">
                     BACT 2027 diselenggarakan di venue berfasilitas standar internasional yang terletak di jantung kota
@@ -445,7 +452,7 @@
             </div>
 
             <!-- Embed Google Maps sesuai link presisi terbaru -->
-            <div class="h-80 sm:h-96 rounded-3xl overflow-hidden border border-gray-200 shadow-md bg-gray-100">
+            <div class="h-80 sm:h-96 rounded-xl overflow-hidden border border-gray-200 shadow-md bg-gray-100">
                 <iframe
                     src="https://maps.google.com/maps?q=Grand+Hotel+De+Djokja+Yogyakarta&t=&z=17&ie=UTF8&iwloc=&output=embed"
                     width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy"
@@ -496,7 +503,7 @@
          ========================================================= -->
     <section class="py-14 bg-white border-b border-gray-100">
         <div class="max-w-7xl mx-auto px-6 text-center">
-            <p class="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-8">Didukung & Diakreditasi Oleh
+            <p class="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-8">Sponsored by
             </p>
             <div class="flex flex-wrap items-center justify-center gap-8 sm:gap-14 opacity-80">
                 @forelse($sponsors as $sponsor)
