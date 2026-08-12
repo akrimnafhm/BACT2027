@@ -115,11 +115,18 @@ class DokuWebhookController extends Controller
      */
     private function composePaymentMethod(array $payload): ?string
     {
-        $channelName = $payload['payment']['channel_name']
-                       ?? $payload['payment']['channel']
-                       ?? $payload['channel_name']
-                       ?? $payload['channel']
-                       ?? null;
+        $channelName = null;
+            if (isset($payload['payment']['channel_name'])) {
+                $channelName = $payload['payment']['channel_name'];
+            } elseif (isset($payload['payment']['channel'])) {
+                $channelName = $payload['payment']['channel'];
+            } elseif (isset($payload['channel']['id'])) {
+                $channelName = $payload['channel']['id'];
+            } elseif (isset($payload['channel']) && is_string($payload['channel'])) {
+                $channelName = $payload['channel'];
+            } elseif (isset($payload['acquirer']['id'])) {
+                $channelName = $payload['acquirer']['id'];
+            }
 
         $method = strtoupper(trim((string) (
             $payload['payment']['method']
