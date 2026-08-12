@@ -199,6 +199,56 @@ class AdminController extends Controller
     }
 
     // ==========================================
+    // 1B. GURUP WHATSAPP PESERTA (LINK PER JENIS TIKET)
+    // ==========================================
+
+    /**
+     * Halaman pengaturan link grup WA per kategori tiket.
+     */
+    public function groupLinks(): View
+    {
+        $categories = \App\Models\Ticket::select('ticket_category')->distinct()->pluck('ticket_category');
+        $links = \App\Models\WaGroupLink::pluck('wa_group_link', 'ticket_category');
+
+        $groups = [];
+        foreach ($categories as $category) {
+            $normalized = \App\Models\WaGroupLink::normalizeCategory($category);
+            $groups[$normalized] = [
+                'category' => $normalized,
+                'name'     => $normalized,
+                'link'     => $links[$normalized] ?? null,
+            ];
+        }
+
+        return view('admin.groups', ['groups' => collect($groups)->values()]);
+    }
+
+    /**
+     * Simpan link grup WA untuk semua kategori sekaligus.
+     */
+    public function updateGroupLinks(Request $request): \Illuminate\Http\RedirectResponse
+    {
+        $request->validate([
+            'links'   => 'required|array',
+            'links.*' => 'nullable|string|max:500',
+        ]);
+
+        $updated = 0;
+        foreach ($request->input('links', []) as $category => $link) {
+            $category = \App\Models\WaGroupLink::normalizeCategory($category);
+            $link = trim($link) ?: null;
+
+            \App\Models\WaGroupLink::updateOrCreate(
+                ['ticket_category' => $category],
+                ['wa_group_link' => $link]
+            );
+            $updated++;
+        }
+
+        return back()->with('success', "Link grup WhatsApp untuk {$updated} kategori tiket berhasil disimpan!");
+    }
+
+    // ==========================================
     // 2. CRUD KAMAR HOTEL (DI DALAM KUOTA & HARGA)
     // ==========================================
 
