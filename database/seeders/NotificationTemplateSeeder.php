@@ -30,6 +30,8 @@ Berikut detail pemesanan Anda:
 
 {qr}
 
+Link Grup WhatsApp Peserta: {link_grup}
+
 Simpan QR tiket ini untuk proses check-in pada hari-H.
 
 Salam hangat,

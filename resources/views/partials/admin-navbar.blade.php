@@ -4,6 +4,7 @@
     $subNavItems = [
         ['route' => '/admin/dashboard', 'key' => 'dashboard', 'label' => 'Dashboard'],
         ['route' => '/admin/tickets', 'key' => 'tickets', 'label' => 'Kuota & Harga'],
+        ['route' => '/admin/group-links', 'key' => 'groups', 'label' => 'Grup WhatsApp'],
         ['route' => '/admin/participants', 'key' => 'participants', 'label' => 'Tiket Peserta'],
         ['route' => '/admin/hotels', 'key' => 'hotels', 'label' => 'Tiket Hotel'],
         ['route' => '/admin/content', 'key' => 'content', 'label' => 'Kelola Konten'],

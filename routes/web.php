@@ -124,6 +124,10 @@ Route::middleware(['auth', IsAdmin::class])->prefix('admin')->group(function () 
     Route::delete('/tickets/hotels/{id}', [AdminController::class, 'destroyHotel'])->name('admin.hotels.destroy');
     Route::post('/tickets/hotels/{id}/toggle-status', [AdminController::class, 'toggleHotelStatus'])->name('admin.hotels.toggle');
 
+    // Grup WhatsApp Peserta (link per jenis tiket)
+    Route::get('/group-links', [AdminController::class, 'groupLinks'])->name('admin.groups.index');
+    Route::post('/group-links', [AdminController::class, 'updateGroupLinks'])->name('admin.groups.update');
+
     // =========================================================
     // 3. TIKET PESERTA SIMPOSIUM
     // =========================================================

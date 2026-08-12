@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Mail\TicketPaidMail;
 use App\Models\NotificationTemplate;
 use App\Models\TicketBooking;
+use App\Models\WaGroupLink;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -80,10 +81,13 @@ class TicketNotificationService
     }
 
     /**
-     * Ganti placeholder {nama}, {tiket}, {id_pesanan}, {invoice}, {harga}, {email}, {kode_tiket}.
+     * Ganti placeholder {nama}, {tiket}, {id_pesanan}, {invoice}, {harga}, {email}, {kode_tiket}, {link_grup}.
      */
     protected function renderPlaceholders(string $template, TicketBooking $booking): string
     {
+        // Link grup hanya dibedakan oleh kategori tiket (bukan gelombang Early Bird/Regular)
+        $groupLink = WaGroupLink::linkFor($booking->ticket_category);
+
         $replacers = [
             '{nama}'        => $booking->name_with_title ?: $booking->full_name,
             '{tiket}'       => ($booking->ticket_name ? $booking->ticket_name . ' - ' : '') . $booking->ticket_category,
@@ -94,7 +98,17 @@ class TicketNotificationService
             '{kode_tiket}'  => $booking->checkin_token ?: '-',
         ];
 
-        return str_replace(array_keys($replacers), array_values($replacers), $template);
+        $body = str_replace(array_keys($replacers), array_values($replacers), $template);
+
+        // {link_grup} hanya diisi jika admin sudah menetapkan link grup untuk tiket ini
+        if ($groupLink) {
+            $body = str_replace('{link_grup}', $groupLink, $body);
+        } else {
+            // Jika kosong, hapus seluruh baris yang memuat {link_grup}
+            $body = preg_replace('/^.*\{link_grup\}.*$/mi', '', $body);
+        }
+
+        return $body;
     }
 
     /**
