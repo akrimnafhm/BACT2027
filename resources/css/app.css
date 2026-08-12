@@ -11,3 +11,14 @@
     --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
+
+/* 3. Perbaiki "sticky hover" di layar sentuh (hp/tablet):
+   efek :hover (scale, shadow, dst) hanya dijalankan pada perangkat
+   yang benar-benar mendukung hover, supaya tidak "menempel" setelah tap. */
+@custom-variant hover {
+    @media (hover: hover) {
+        &:hover {
+            @slot;
+        }
+    }
+}
