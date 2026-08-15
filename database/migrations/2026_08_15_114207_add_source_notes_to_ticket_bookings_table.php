@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -18,6 +19,15 @@ return new class extends Migration
             // Waktu pemesanan dibatalkan
             $table->timestamp('cancelled_at')->nullable()->after('notes_updated_at');
         });
+
+        // Tandai peserta manual yang sudah LUNAS sebagai terkonfirmasi (data lama dari
+        // sebelum fitur konfirmasi manual). Kolom `confirmed_at` sudah dibuat oleh migration
+        // 2026_08_15_045205 yang dijalankan lebih dulu.
+        DB::table('ticket_bookings')
+            ->where('source', 'manual')
+            ->where('status', 'paid')
+            ->whereNull('confirmed_at')
+            ->update(['confirmed_at' => DB::raw('COALESCE(updated_at, created_at)')]);
     }
 
     public function down()
