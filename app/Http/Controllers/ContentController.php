@@ -7,6 +7,7 @@ use App\Models\Speaker;
 use App\Models\Schedule;
 use App\Models\Gallery;
 use App\Models\Sponsor;
+use App\Models\SiteSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -24,13 +25,15 @@ class ContentController extends Controller
                              ->get();
         $galleries     = Gallery::latest()->get();
         $sponsors      = Sponsor::oldest()->get();
+        $scheduleVisible = SiteSetting::value('schedule_visible', '1') === '1';
 
         return view('admin.content', compact(
             'announcements',
             'speakers',
             'schedules',
             'galleries',
-            'sponsors'
+            'sponsors',
+            'scheduleVisible'
         ));
     }
 
@@ -332,6 +335,24 @@ class ContentController extends Controller
         $schedule->delete();
 
         return back()->with('success', 'Agenda jadwal berhasil dihapus!');
+    }
+
+    /**
+     * Tampilkan/Sembunyikan Seluruh Seksi Jadwal Acara di Beranda
+     */
+    public function toggleScheduleSectionVisibility()
+    {
+        $setting = SiteSetting::firstOrCreate(
+            ['key' => 'schedule_visible'],
+            ['value' => '1']
+        );
+
+        $newValue  = $setting->value === '1' ? '0' : '1';
+        $setting->update(['value' => $newValue]);
+
+        return back()->with('success', $newValue === '1'
+            ? 'Seksi Jadwal Acara kini TAMPIL di halaman utama.'
+            : 'Seksi Jadwal Acara kini DISEMBUNYIKAN dari halaman utama.');
     }
 
     // ==========================================

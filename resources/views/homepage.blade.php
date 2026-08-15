@@ -294,7 +294,7 @@
 
                     <!-- Nama & Instansi -->
                     <div class="p-5 text-center flex flex-col justify-center flex-grow">
-                        <h3 class="text-base font-black text-gray-900 leading-snug group-hover:text-[#E19404] transition">
+                        <h3 class="text-sm font-semibold text-gray-900 leading-snug group-hover:text-[#E19404] transition">
                             {{ $speaker->name }}
                         </h3>
                         <p class="text-xs text-gray-500 mt-1.5 font-semibold line-clamp-2">
@@ -348,7 +348,7 @@
                     secara lengkap.</p>
             </div>
 
-            @if($groupedSchedules->isNotEmpty())
+            @if($scheduleVisible && $groupedSchedules->isNotEmpty())
                 <!-- TOMBOL NAVIGASI SLIDE/TAB HARI (Day 1, Day 2, dst.) -->
                 <div class="flex items-center justify-center gap-2 overflow-x-auto no-scrollbar mb-10 pb-2">
                     @foreach($groupedSchedules->keys() as $dayNumber)
@@ -404,10 +404,12 @@
                 </div>
 
             @else
-                <!-- Fallback jika belum ada data jadwal -->
+                <!-- Fallback jika seksi jadwal disembunyikan atau belum ada data -->
                 <div
                     class="text-center py-12 bg-white rounded-3xl border border-gray-200 text-gray-400 text-sm font-medium">
-                    Jadwal kegiatan simposium belum diterbitkan.
+                    {{ $scheduleVisible
+                        ? 'Jadwal kegiatan simposium belum diterbitkan.'
+                        : 'Jadwal kegiatan masih dalam penyusunan — akan segera diumumkan.' }}
                 </div>
             @endif
 

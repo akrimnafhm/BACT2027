@@ -175,6 +175,7 @@ Route::middleware(['auth', IsAdmin::class])->prefix('admin')->group(function () 
 
     // --- RUTE CRUD TAB 3: JADWAL ACARA ---
     Route::post('/content/schedules', [ContentController::class, 'storeSchedule'])->name('admin.schedules.store');
+    Route::post('/content/schedules/section-visibility', [ContentController::class, 'toggleScheduleSectionVisibility'])->name('admin.schedules.toggle-section');
     Route::put('/content/schedules/{id}', [ContentController::class, 'updateSchedule'])->name('admin.schedules.update');
     Route::delete('/content/schedules/{id}', [ContentController::class, 'destroySchedule'])->name('admin.schedules.destroy');
 

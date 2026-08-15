@@ -7,6 +7,7 @@ use App\Models\Speaker;
 use App\Models\Schedule;
 use App\Models\Gallery;
 use App\Models\Sponsor;
+use App\Models\SiteSetting;
 use Illuminate\Http\Request;
 
 class HomeController extends Controller
@@ -20,13 +21,17 @@ class HomeController extends Controller
         $galleries = Gallery::latest()->take(8)->get();
         $sponsors  = Sponsor::oldest()->get();
 
+        // Apakah seksi Jadwal Acara boleh tampil di beranda?
+        $scheduleVisible = SiteSetting::value('schedule_visible', '1') === '1';
+
         // 2. Kirim variabel $announcements ke view welcome.blade.php
         return view('homepage', compact(
             'announcements',
             'speakers',
             'schedules',
             'galleries',
-            'sponsors'
+            'sponsors',
+            'scheduleVisible'
         ));
     }
 }

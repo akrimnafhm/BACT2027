@@ -386,19 +386,21 @@
                 <h3 class="font-extrabold text-red-700 text-base">Hapus Data Peserta</h3>
                 <button type="button" onclick="closeDeleteModal()" class="text-gray-400 hover:text-gray-700">✕</button>
             </div>
-            <div class="p-6 text-sm text-gray-700 space-y-3">
-                <p>Yakin ingin menghapus data peserta <b id="deleteName"></b>?</p>
-                <p class="text-xs text-red-500">Data tidak dihapus permanen — status akan berubah menjadi <b>Dihapus</b> dan tetap terlihat di tab Data All.</p>
-                <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Alasan Penghapusan <span class="text-red-500">*</span></label>
-                    <textarea name="reason" id="delete_reason" rows="3" required placeholder="cth: Data ganda / salah input / peserta mengundurkan diri" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-100 focus:border-red-300 outline-none"></textarea>
-                    <p class="text-[10px] text-gray-400 mt-1">Alasan akan dicatat pada kolom catatan peserta.</p>
-                </div>
-            </div>
-            <form id="deleteForm" method="POST" class="px-6 py-3 bg-gray-50 border-t border-gray-100 flex justify-end gap-2">
+            <form id="deleteForm" method="POST" class="space-y-6">
                 @csrf
-                <button type="button" onclick="closeDeleteModal()" class="px-4 py-2 text-xs font-bold text-gray-600 bg-white border border-gray-200 rounded-xl">Batal</button>
-                <button type="submit" class="px-5 py-2 text-xs font-extrabold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-sm">Ya, Hapus</button>
+                <div class="p-6 text-sm text-gray-700 space-y-3">
+                    <p>Yakin ingin menghapus data peserta <b id="deleteName"></b>?</p>
+                    <p class="text-xs text-red-500">Data tidak dihapus permanen — status akan berubah menjadi <b>Dihapus</b> dan tetap terlihat di tab Data All.</p>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Alasan Penghapusan <span class="text-red-500">*</span></label>
+                        <textarea name="reason" id="delete_reason" rows="3" required placeholder="cth: Data ganda / salah input / peserta mengundurkan diri" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-100 focus:border-red-300 outline-none"></textarea>
+                        <p class="text-[10px] text-gray-400 mt-1">Alasan akan dicatat pada kolom catatan peserta.</p>
+                    </div>
+                </div>
+                <div class="px-6 py-3 bg-gray-50 border-t border-gray-100 flex justify-end gap-2">
+                    <button type="button" onclick="closeDeleteModal()" class="px-4 py-2 text-xs font-bold text-gray-600 bg-white border border-gray-200 rounded-xl">Batal</button>
+                    <button type="submit" class="px-5 py-2 text-xs font-extrabold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-sm">Ya, Hapus</button>
+                </div>
             </form>
         </div>
     </div>

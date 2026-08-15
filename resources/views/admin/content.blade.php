@@ -303,10 +303,23 @@
                         <p class="text-xs text-gray-400 mt-0.5">Susun urutan kegiatan simposium berdasarkan hari, jam
                             pelaksanaan, dan pembicara.</p>
                     </div>
-                    <button type="button" onclick="openAddScheduleModal()"
-                        class="bg-[#E19404] hover:bg-orange-600 text-white text-xs font-extrabold px-5 py-2.5 rounded-xl shadow-sm transition whitespace-nowrap">
-                        + Tambah Jadwal
-                    </button>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <form action="{{ route('admin.schedules.toggle-section') }}" method="POST" class="m-0 flex items-center gap-2">
+                            @csrf
+                            <span class="text-[11px] font-bold text-gray-400">
+                                Status: <span class="{{ $scheduleVisible ? 'text-green-600' : 'text-gray-600' }}">{{ $scheduleVisible ? 'Tampil di beranda' : 'Disembunyikan' }}</span>
+                            </span>
+                            <button type="submit"
+                                title="Satu tombol toggle untuk seluruh seksi Jadwal Acara"
+                                class="px-4 py-2.5 rounded-xl text-xs font-extrabold shadow-sm transition whitespace-nowrap {{ $scheduleVisible ? 'bg-green-100 hover:bg-green-200 text-green-800' : 'bg-gray-700 hover:bg-gray-800 text-white' }}">
+                                {{ $scheduleVisible ? 'Sembunyikan' : 'Tampilkan' }}
+                            </button>
+                        </form>
+                        <button type="button" onclick="openAddScheduleModal()"
+                            class="bg-[#E19404] hover:bg-orange-600 text-white text-xs font-extrabold px-5 py-2.5 rounded-xl shadow-sm transition whitespace-nowrap">
+                            + Tambah Jadwal
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Tabel Data Jadwal -->
@@ -340,7 +353,27 @@
                                     <td class="py-4 px-6 text-gray-600 font-medium">
                                         {{ $item->speaker ?: '-' }}
                                     </td>
-                                    <!-- ... tombol aksi Edit & Hapus ... -->
+                                    <td class="py-4 px-6 text-center whitespace-nowrap">
+                                        <div class="flex items-center justify-center gap-2">
+                                            <!-- Tombol Edit -->
+                                            <button type="button"
+                                                onclick="openEditScheduleModal({{ json_encode($item) }})"
+                                                class="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-[#E19404] text-xs font-bold rounded-lg transition">
+                                                Edit
+                                            </button>
+                                            <!-- Tombol Hapus -->
+                                            <form action="{{ route('admin.schedules.destroy', $item->id) }}"
+                                                method="POST" class="m-0"
+                                                onsubmit="return confirm('Yakin ingin menghapus jadwal ini?')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit"
+                                                    class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-lg transition">
+                                                    Hapus
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
                                 </tr>
                             @empty
                                 <!-- ... -->
