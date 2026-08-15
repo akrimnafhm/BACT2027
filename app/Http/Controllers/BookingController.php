@@ -386,7 +386,10 @@ class BookingController extends Controller
         $shouldAutoFinalize = !$isProduction && ((int) $request->query('simulated_paid', 0) === 1 || $booking->status === 'pending');
 
         if ($shouldAutoFinalize && $booking->status !== 'paid') {
-            $booking->update(['status' => 'paid']);
+            $booking->update([
+                'status'  => 'paid',
+                'paid_at' => $booking->paid_at ?? now(),
+            ]);
             app(TicketNotificationService::class)->sendTicketPaid($booking);
         }
 
@@ -457,7 +460,10 @@ class BookingController extends Controller
         }
 
         if ($targetBooking && $isPaidCallback && $targetBooking->status !== 'paid') {
-            $targetBooking->update(['status' => 'paid']);
+            $targetBooking->update([
+                'status'  => 'paid',
+                'paid_at' => $targetBooking->paid_at ?? now(),
+            ]);
             app(TicketNotificationService::class)->sendTicketPaid($targetBooking);
         }
 

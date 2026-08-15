@@ -297,7 +297,7 @@
                         <h3 class="text-sm font-semibold text-gray-900 leading-snug group-hover:text-[#E19404] transition">
                             {{ $speaker->name }}
                         </h3>
-                        <p class="text-xs text-gray-500 mt-1.5 font-semibold line-clamp-2">
+                        <p class="text-xs text-gray-500 mt-4 font-medium line-clamp-2">
                             {{ $speaker->institution }}
                         </p>
                     </div>
@@ -467,7 +467,7 @@
     <!-- =========================================================
          7. SEKSI GALERI FOTO (#galeri) 
          ========================================================= -->
-    <section id="galeri" class="py-20 bg-gray-900 text-white">
+    <section id="galeri" class="py-20 bg-gradient-to-b from-[#234661] via-[#1d394d] to-[#142531] text-white">
         <div class="max-w-4xl mx-auto px-6"> <!-- max-w diperkecil agar gambar tidak terlalu raksasa -->
             <div class="text-center max-w-2xl mx-auto mb-10">
                 <span class="text-xs font-extrabold text-[#FBE39D] uppercase tracking-widest">Arsip Acara</span>
@@ -572,9 +572,9 @@
                             class="h-10 sm:h-12 w-auto object-contain grayscale hover:grayscale-0 transition">
                     @endif
                 @empty
-                    <div class="text-xs font-bold text-gray-300 uppercase">Sponsor Resmi</div>
-                    <div class="text-xs font-bold text-gray-300 uppercase">Mitra Hotel</div>
-                    <div class="text-xs font-bold text-gray-300 uppercase">Kementerian Kesehatan</div>
+                    <div class="text-xs font-medium text-gray-300">Sponsor Resmi</div>
+                    <div class="text-xs font-medium text-gray-300">Sponsor Resmi</div>
+                    <div class="text-xs font-medium text-gray-300">Sponsor Resmi</div>
                 @endforelse
             </div>
         </div>

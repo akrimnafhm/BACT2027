@@ -19,6 +19,7 @@ class TicketBooking extends Model
         'cancelled_at',
         'confirmed_at',
         'deleted_at',
+        'paid_at',
         'ticket_name',
         'ticket_category',
         'amount',
@@ -46,6 +47,7 @@ class TicketBooking extends Model
         'cancelled_at'     => 'datetime',
         'confirmed_at'     => 'datetime',
         'deleted_at'       => 'datetime',
+        'paid_at'          => 'datetime',
     ];
 
     public function user()

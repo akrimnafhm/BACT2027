@@ -526,7 +526,8 @@ class AdminController extends Controller
                 'Profesi Medis',
                 'Email Plataran Sehat',
                 'Catatan',
-                'Tanggal Daftar',
+                'Tanggal Dibeli',
+                'Tanggal Dibayar',
             ], ',');
 
             foreach ($bookings as $row) {
@@ -556,7 +557,8 @@ class AdminController extends Controller
                     $row->profession,
                     $row->plataran_sehat_email,
                     str_replace(["\r", "\n"], ' ', $row->notes ?? ''),
-                    $row->created_at ? $row->created_at->format('Y-m-d H:i:s') : '-'
+                    $row->created_at ? $row->created_at->format('Y-m-d H:i:s') : '-',
+                    $row->paid_at ? $row->paid_at->format('Y-m-d H:i:s') : ''
                 ], ',');
             }
             fclose($file);
@@ -630,6 +632,11 @@ class AdminController extends Controller
             $booking->update(['confirmed_at' => now()]);
         }
 
+        // Catat waktu pembayaran bila status diubah menjadi LUNAS (data lama dikosongkan).
+        if ($booking->status === 'paid' && !$booking->paid_at) {
+            $booking->update(['paid_at' => now()]);
+        }
+
         // Kirim notifikasi WA & Email jika status diubah menjadi LUNAS
         if ($booking->status === 'paid') {
             app(TicketNotificationService::class)->sendTicketPaid($booking);
@@ -697,6 +704,7 @@ class AdminController extends Controller
         $oldStatus = $booking->status;
         $booking->status = 'paid';
         $booking->confirmed_at = now();
+        $booking->paid_at = now();
 
         // Bila sebelumnya dibatalkan, tarik kembali pengembalian kuota tiket
         if ($oldStatus === 'cancelled' && $booking->ticket_id) {

@@ -28,18 +28,18 @@
 
         <!-- Menu Navigasi (Desktop; di mobile dipindah ke drawer) -->
         <div class="hidden md:flex space-x-6 items-center">
-            <a href="/#beranda" class="nav-scroll hover:text-[#E19404] transition {{ request()->is('/') ? 'text-[#E19404]' : 'text-gray-700' }}">Beranda</a>
-            <a href="/#pembicara" class="nav-scroll hover:text-[#E19404] transition text-gray-700">Pembicara</a>
-            <a href="/#jadwal" class="nav-scroll hover:text-[#E19404] transition text-gray-700">Jadwal</a>
-            <a href="/#lokasi" class="nav-scroll hover:text-[#E19404] transition text-gray-700">Lokasi</a>
+            <a href="/#beranda" class="font-semibold nav-scroll hover:text-[#E19404] transition {{ request()->is('/') ? 'text-[#E19404]' : 'text-gray-700' }}">Beranda</a>
+            <a href="/#pembicara" class="font-semibold nav-scroll hover:text-[#E19404] transition text-gray-700">Pembicara</a>
+            <a href="/#jadwal" class="nav-scroll font-semibold hover:text-[#E19404] transition text-gray-700">Jadwal</a>
+            <a href="/#lokasi" class="nav-scroll font-semibold hover:text-[#E19404] transition text-gray-700">Lokasi</a>
             @if($navbarMenuBerita)
-                <a href="/#berita" class="hover:text-[#E19404] transition text-gray-700">Berita</a>
+                <a href="/#berita" class="font-semibold hover:text-[#E19404] transition text-gray-700">Berita</a>
             @elseif($navbarShowGaleri)
-                <a href="/#galeri" class="nav-scroll hover:text-[#E19404] transition text-gray-700">Galeri</a>
+                <a href="/#galeri" class="font-semibold nav-scroll hover:text-[#E19404] transition text-gray-700">Galeri</a>
             @endif
             <!-- <a href="/program-ilmiah" class="hover:text-[#E19404] transition {{ request()->is('program-ilmiah*') ? 'text-[#E19404]' : 'text-gray-700' }}">Program Ilmiah</a> -->
-            <a href="{{ route('booking.index') }}" class="hover:text-[#E19404] transition {{ request()->routeIs('booking.*') || request()->is('booking*') || request()->is('checkout*') ? 'text-[#E19404]' : 'text-gray-700' }}">Pesan Tiket</a>
-            <a href="/hotel" class="hover:text-[#E19404] transition {{ request()->is('hotel*') ? 'text-[#E19404] font-bold' : 'text-gray-700' }}">Pesan Hotel</a>
+            <a href="{{ route('booking.index') }}" class="font-semibold hover:text-[#E19404] transition {{ request()->routeIs('booking.*') || request()->is('booking*') || request()->is('checkout*') ? 'text-[#E19404]' : 'text-gray-700' }}">Pesan Tiket</a>
+            <a href="/hotel" class="font-semibold hover:text-[#E19404] transition {{ request()->is('hotel*') ? 'text-[#E19404] font-bold' : 'text-gray-700' }}">Pesan Hotel</a>
 
             @auth
                 @if($navbarShowAdmin && Auth::user()->role === 'admin')

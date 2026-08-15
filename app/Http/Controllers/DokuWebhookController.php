@@ -7,6 +7,7 @@ use App\Models\HotelReservation;
 use App\Services\HotelNotificationService;
 use App\Services\TicketNotificationService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 
 class DokuWebhookController extends Controller
@@ -68,8 +69,11 @@ class DokuWebhookController extends Controller
             }
 
             if ($booking) {
+                $paidAt = $this->extractTransactionDate($payload) ?? now();
+
                 $booking->update([
                     'status' => 'paid',
+                    'paid_at' => $paidAt,
                 ]);
 
                 Log::info("SUKSES: Booking ID {$booking->id} (Invoice: {$invoiceNumber}) berhasil diubah menjadi PAID.");
@@ -107,6 +111,46 @@ class DokuWebhookController extends Controller
             'status' => 'IGNORED',
             'message' => 'Notification processed'
         ], 200);
+    }
+
+    /**
+     * Ekstrak tanggal/waktu transaksi yang DILAKUKAN pelanggan dari payload DOKU
+     * (berbeda dengan waktu webhook diterima). Mengembalikan Carbon dalam zona
+     * waktu aplikasi, atau null jika payload tidak memuat informasi tanggal.
+     */
+    private function extractTransactionDate(array $payload): ?Carbon
+    {
+        $raw = $payload['transaction']['date']
+            ?? $payload['transaction']['transaction_time']
+            ?? $payload['transaction']['time']
+            ?? $payload['transaction_time']
+            ?? $payload['payment']['transaction_date']
+            ?? $payload['payment']['date']
+            ?? $payload['date']
+            ?? null;
+
+        if ($raw === null || $raw === '') {
+            return null;
+        }
+
+        try {
+            if (is_numeric($raw)) {
+                // Epoch dalam milidetik (13 digit) atau detik (10 digit)
+                if (strlen((string) $raw) >= 13) {
+                    $date = Carbon::createFromTimestampMs((int) $raw);
+                } else {
+                    $date = Carbon::createFromTimestamp((int) $raw);
+                }
+            } else {
+                $date = Carbon::parse($raw);
+            }
+
+            // Simpan dalam zona waktu aplikasi (UTC) agar konsisten dengan created_at
+            return $date->setTimezone(config('app.timezone'));
+        } catch (\Throwable $e) {
+            Log::warning("DOKU Tanggal transaksi gagal diparse: {$raw}");
+            return null;
+        }
     }
 
     /**
