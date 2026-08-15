@@ -27,50 +27,98 @@ class BookingController extends Controller
 
         $user = Auth::user();
 
-        $existingBooking = TicketBooking::where('user_id', $user->id)
+        $latestBooking = TicketBooking::where('user_id', $user->id)
                             ->latest()
                             ->first();
 
-        $existingBooking = $this->syncBookingFromCallback($request, $user, $existingBooking);
+        $latestBooking = $this->syncBookingFromCallback($request, $user, $latestBooking);
 
         if (!$this->isProfileComplete($user)) {
             return view('booking.bridge', [
                 'status'          => 'incomplete',
                 'user'            => $user,
-                'existingBooking' => $existingBooking,
+                'existingBooking' => $latestBooking,
             ]);
         }
 
-        if ($existingBooking && $existingBooking->status === 'paid') {
-            $bookedTicket = Ticket::find($existingBooking->ticket_id);
+        $bookings = TicketBooking::where('user_id', $user->id)
+                    ->latest()
+                    ->get();
 
-            if ($bookedTicket) {
-                $bookedTicket->display_name = $bookedTicket->ticket_name . ' - ' . $bookedTicket->ticket_category;
-            }
+        // Semua tiket yang sudah LUNAS — tampilkan semuanya (user boleh punya >1 tiket).
+        $paidBookings = $bookings->where('status', 'paid')->values();
+        foreach ($paidBookings as $booking) {
+            $this->ensureCheckinToken($booking);
+        }
 
-            $this->ensureCheckinToken($existingBooking);
+        // Pesanan yang masih menunggu pembayaran (paling banyak satu).
+        $pendingBooking = $bookings->firstWhere('status', 'pending');
 
+        // Tampilkan e-ticket + (jika ada) kartu lanjut pembayaran.
+        if ($paidBookings->isNotEmpty() || $pendingBooking) {
             return view('booking.bridge', [
-                'status'       => 'post_purchase',
-                'user'         => $user,
-                'booking'      => $existingBooking,
-                'bookedTicket' => $bookedTicket,
+                'status'         => 'tickets',
+                'user'           => $user,
+                'paidBookings'   => $paidBookings,
+                'pendingBooking' => $pendingBooking,
             ]);
         }
 
-        if ($existingBooking && $existingBooking->status === 'pending') {
+        $latestCancelled = $bookings->firstWhere('status', 'cancelled');
+        if ($latestCancelled) {
             return view('booking.bridge', [
-                'status'          => 'pending',
+                'status'          => 'cancelled',
                 'user'            => $user,
-                'existingBooking' => $existingBooking,
+                'existingBooking' => $latestCancelled,
+            ]);
+        }
+
+        $latestDeleted = $bookings->firstWhere('status', 'deleted');
+        if ($latestDeleted) {
+            return view('booking.bridge', [
+                'status'          => 'deleted',
+                'user'            => $user,
+                'existingBooking' => $latestDeleted,
             ]);
         }
 
         return view('booking.bridge', [
             'status'          => 'bridge',
             'user'            => $user,
-            'existingBooking' => $existingBooking ?? null
+            'existingBooking' => null,
         ]);
+    }
+
+    /**
+     * Membatalkan pemesanan tiket oleh USER.
+     * Hanya berlaku jika status masih 'pending' (belum dibayar).
+     * Kuota tiket otomatis dikembalikan.
+     */
+    public function cancel(Request $request, $id)
+    {
+        $user = Auth::user();
+
+        $booking = TicketBooking::where('id', $id)
+                    ->where('user_id', $user->id)
+                    ->firstOrFail();
+
+        if ($booking->status !== 'pending') {
+            return back()->with('error', 'Pemesanan hanya dapat dibatalkan sebelum pembayaran. Untuk tiket yang sudah lunas, silakan hubungi panitia untuk proses refund.');
+        }
+
+        // Kembalikan kuota tiket
+        if ($booking->ticket_id) {
+            \App\Models\Ticket::where('id', $booking->ticket_id)->increment('quota');
+        }
+
+        $noteLine = now()->format('d M Y H:i') . ' — Dibatalkan oleh user';
+        $booking->notes = trim(($booking->notes ? $booking->notes . "\n" : '') . $noteLine);
+        $booking->notes_updated_at = now();
+        $booking->cancelled_at = now();
+        $booking->status = 'cancelled';
+        $booking->save();
+
+        return back()->with('success', 'Pemesanan berhasil dibatalkan. Kuota tiket telah dikembalikan.');
     }
 
     /**
@@ -93,13 +141,22 @@ class BookingController extends Controller
                             ->latest()
                             ->first();
 
-        if ($existingBooking && $existingBooking->status === 'paid') {
-            return redirect()->route('booking.index');
+        // Beli tiket berikutnya hanya diperbolehkan jika tidak ada pesanan yang BELUM LUNAS (pending).
+        $hasPendingBooking = TicketBooking::where('user_id', $user->id)
+                            ->where('status', 'pending')
+                            ->exists();
+
+        if ($hasPendingBooking) {
+            return redirect()->route('booking.index')
+                ->with('error', 'Anda masih memiliki pesanan tiket yang belum lunas. Silakan selesaikan atau batalkan pembayaran tersebut terlebih dahulu sebelum membeli tiket lain.');
         }
 
-        if ($existingBooking && $existingBooking->status === 'pending') {
-            return redirect()->route('booking.index');
-        }
+        // Kategori tiket yang sudah dimiliki (tidak dihitung jika sudah dibatalkan).
+        // Aturan: 1 kategori hanya boleh dimiliki 1 tiket.
+        $ownedCategories = TicketBooking::where('user_id', $user->id)
+                            ->where('status', '!=', 'cancelled')
+                            ->pluck('ticket_category')
+                            ->all();
 
         $hotels = HotelRoom::where('is_active', true)->get();
         $now = Carbon::now();
@@ -124,6 +181,7 @@ class BookingController extends Controller
             'user'            => $user,
             'tickets'         => $activeTickets,
             'existingBooking' => $existingBooking ?? null,
+            'ownedCategories' => $ownedCategories,
             'hotels'          => $hotels,
         ]);
     }
@@ -164,6 +222,24 @@ class BookingController extends Controller
         }
         if ($ticket->quota <= 0) {
             return back()->with('error', 'Maaf, kuota tiket ini sudah habis.');
+        }
+
+        // ATURAN MULTI-TIKET:
+        // 1) Beli tiket berikutnya hanya jika tidak ada pesanan PENDING (wajib lunas/batalkan dulu).
+        $hasPendingBooking = TicketBooking::where('user_id', $user->id)
+                            ->where('status', 'pending')
+                            ->exists();
+        if ($hasPendingBooking) {
+            return back()->with('error', 'Anda masih memiliki pesanan tiket yang belum lunas. Silakan selesaikan atau batalkan pembayaran tersebut terlebih dahulu sebelum membeli tiket lain.');
+        }
+
+        // 2) Satu kategori hanya boleh dimiliki satu tiket (tiket yang dibatalkan tidak dihitung).
+        $ownedCategories = TicketBooking::where('user_id', $user->id)
+                            ->where('status', '!=', 'cancelled')
+                            ->pluck('ticket_category')
+                            ->all();
+        if (in_array($ticket->ticket_category, $ownedCategories)) {
+            return back()->with('error', 'Anda sudah memiliki tiket kategori "' . $ticket->ticket_category . '". Setiap kategori hanya dapat dibeli satu tiket.');
         }
 
         // LOCK DATA: Menyimpan snapshot harga, jenis tiket, dan identitas peserta pada saat transaksi

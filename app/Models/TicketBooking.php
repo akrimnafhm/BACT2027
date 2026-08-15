@@ -13,6 +13,12 @@ class TicketBooking extends Model
         'user_id',
         'ticket_id',
         'status',
+        'source',
+        'notes',
+        'notes_updated_at',
+        'cancelled_at',
+        'confirmed_at',
+        'deleted_at',
         'ticket_name',
         'ticket_category',
         'amount',
@@ -34,8 +40,12 @@ class TicketBooking extends Model
     ];
 
     protected $casts = [
-        'checked_in_at' => 'datetime',
-        'notified_at'   => 'datetime',
+        'checked_in_at'    => 'datetime',
+        'notified_at'      => 'datetime',
+        'notes_updated_at' => 'datetime',
+        'cancelled_at'     => 'datetime',
+        'confirmed_at'     => 'datetime',
+        'deleted_at'       => 'datetime',
     ];
 
     public function user()

@@ -35,6 +35,14 @@
                     {{ session('error') }}
                 </div>
             @endif
+
+            @if($errors->any())
+                <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">
+                    @foreach ($errors->all() as $error)
+                        <p class="text-xs">• {{ $error }}</p>
+                    @endforeach
+                </div>
+            @endif
             
             <!-- 2. TAMPILAN POST-PURCHASE (E-TICKET JIKA SUDAH LUNAS) -->
             @if($status === 'post_purchase')
@@ -94,16 +102,17 @@
                         <div class="py-4 px-6 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
                             <div>
                                 <h3 class="text-base font-extrabold text-gray-900 tracking-wide uppercase">ONLINE SALES</h3>
-                                <p class="text-xs text-gray-500 mt-0.5">Pilih kategori tiket yang sesuai</p>
+                                <p class="text-xs text-gray-500 mt-0.5">Pilih kategori tiket yang sesuai — setiap kategori hanya dapat dibeli satu tiket</p>
                             </div>
                         </div>
                         
                         <div class="flex flex-col">
                             @foreach($tickets as $ticket)
-                            <label class="relative border-b border-dashed border-gray-200 last:border-b-0 cursor-pointer hover:bg-gray-50 transition py-4 px-6 flex flex-col md:flex-row md:items-center justify-between gap-3 {{ $ticket->quota <= 0 ? 'opacity-50 cursor-not-allowed' : '' }}">
+                            @php $owned = in_array($ticket->ticket_category, $ownedCategories ?? []); @endphp
+                            <label class="relative border-b border-dashed border-gray-200 last:border-b-0 cursor-pointer hover:bg-gray-50 transition py-4 px-6 flex flex-col md:flex-row md:items-center justify-between gap-3 {{ $ticket->quota <= 0 || $owned ? 'opacity-50 cursor-not-allowed' : '' }}">
                                 <input type="radio" name="ticket_id" value="{{ $ticket->id }}" required class="peer hidden" 
-                                    {{ (isset($existingBooking) && $existingBooking->ticket_id == $ticket->id) ? 'checked' : '' }}
-                                    {{ $ticket->quota <= 0 ? 'disabled' : '' }}>
+                                    {{ (isset($existingBooking) && $existingBooking->ticket_id == $ticket->id && !$owned) ? 'checked' : '' }}
+                                    {{ $ticket->quota <= 0 || $owned ? 'disabled' : '' }}>
                                 
                                 <div class="absolute inset-0 border-2 border-transparent peer-checked:border-[#E19404] peer-checked:bg-[#FFF8E7] transition pointer-events-none"></div>
 
@@ -121,7 +130,9 @@
                                 </div>
 
                                 <div class="relative z-10 text-right md:w-32 flex justify-end items-center gap-3">
-                                    @if($ticket->quota > 0)
+                                    @if($owned)
+                                        <span class="inline-block bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-bold border border-blue-200">Sudah Dimiliki</span>
+                                    @elseif($ticket->quota > 0)
                                         <span class="inline-block bg-green-50 text-green-700 px-3 py-1 rounded-full text-xs font-bold peer-checked:hidden border border-green-200">Available</span>
                                         <div class="hidden peer-checked:flex items-center justify-center w-6 h-6 bg-[#E19404] rounded-full text-white shadow-sm">
                                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>

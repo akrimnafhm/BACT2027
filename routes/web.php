@@ -79,6 +79,9 @@ Route::middleware('auth')->group(function () {
     // Proses Pengiriman Form Booking (Menyimpan data dengan status pending)
     Route::post('/booking/process', [BookingController::class, 'process'])->name('booking.process');
 
+    // Batalkan pemesanan tiket (hanya berlaku sebelum pembayaran)
+    Route::post('/booking/cancel/{id}', [BookingController::class, 'cancel'])->name('booking.cancel');
+
     // Return URL dari DOKU agar status booking bisa disinkronkan saat user kembali ke site
     Route::get('/booking/return/{booking}', [BookingController::class, 'paymentReturn'])->name('booking.return');
 
@@ -135,6 +138,8 @@ Route::middleware(['auth', IsAdmin::class])->prefix('admin')->group(function () 
     Route::get('/participants/export', [AdminController::class, 'exportParticipants'])->name('admin.participants.export');
     Route::post('/participants/store-manual', [AdminController::class, 'storeParticipantManual'])->name('admin.participants.storeManual');
     Route::post('/participants/{id}/update-status', [AdminController::class, 'updateParticipantStatus'])->name('admin.participants.updateStatus');
+    Route::post('/participants/{id}/destroy', [AdminController::class, 'destroyBooking'])->name('admin.participants.destroy');
+    Route::post('/participants/{id}/confirm', [AdminController::class, 'confirmParticipant'])->name('admin.participants.confirm');
 
     // =========================================================
     // 4. TIKET HOTEL (Data & Status Riwayat Reservasi Peserta)

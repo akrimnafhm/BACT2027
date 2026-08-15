@@ -388,14 +388,16 @@ class AdminController extends Controller
     // ==========================================
 
     /**
-     * HALAMAN TIKET PESERTA (FILTER 1 BARIS & PAGINATION 10 DATA)
+     * HALAMAN TIKET PESERTA (2 TAB: Data Peserta [lunas] & Data All [semua status])
      */
     public function participants(Request $request)
     {
-        $search   = $request->input('search');
-        $category = $request->input('category');
-        $wave     = $request->input('wave');
-        $status   = $request->input('status');
+        $tab = $request->input('tab', 'peserta'); // 'peserta' = hanya lunas/fix, 'all' = semua status
+
+        $search     = $request->input('search');
+        $categories = $request->input('categories', []) ?: [];
+        $wave       = $request->input('wave');
+        $status     = $request->input('status');
 
         $query = \App\Models\TicketBooking::with('ticket')->latest();
 
@@ -410,9 +412,10 @@ class AdminController extends Controller
             });
         }
 
-        if (!empty($category)) {
-            $query->whereHas('ticket', function ($q) use ($category) {
-                $q->where('ticket_category', $category);
+        // Filter kategori MULTIPLE (boleh pilih lebih dari satu)
+        if (!empty($categories)) {
+            $query->whereHas('ticket', function ($q) use ($categories) {
+                $q->whereIn('ticket_category', $categories);
             });
         }
 
@@ -422,27 +425,41 @@ class AdminController extends Controller
             });
         }
 
-        if (!empty($status)) {
+        if ($tab === 'peserta') {
+            // Tab Data Peserta: hanya peserta yang sudah lunas / fix
+            $query->where('status', 'paid');
+        } elseif (!empty($status)) {
+            // Tab Data All: status bisa lunas / tertunda / dibatalkan
             $query->where('status', $status);
         }
 
         $participants = $query->paginate(10)->withQueryString();
 
-        $waves = \App\Models\Ticket::select('ticket_name')->distinct()->pluck('ticket_name');
+        // Hitung badge tiap tab
+        $paidCount = \App\Models\TicketBooking::where('status', 'paid')->count();
+        $allCount  = \App\Models\TicketBooking::count();
+
+        $waves      = \App\Models\Ticket::select('ticket_name')->distinct()->pluck('ticket_name');
         $allTickets = \App\Models\Ticket::all();
 
-        return view('admin.participants', compact('participants', 'waves', 'allTickets', 'search', 'category', 'wave', 'status'));
+        return view('admin.participants', compact(
+            'participants', 'waves', 'allTickets',
+            'search', 'categories', 'wave', 'status', 'tab',
+            'paidCount', 'allCount'
+        ));
     }
 
     /**
      * EXPORT EXCEL (.CSV) KOMA STANDAR & BERSIH DARI SIMBOL ANEH
+     * Mengikuti tab aktif & semua filter yang sedang dipakai.
      */
     public function exportParticipants(Request $request)
     {
-        $search   = $request->input('search');
-        $category = $request->input('category');
-        $wave     = $request->input('wave');
-        $status   = $request->input('status');
+        $tab        = $request->input('tab', 'peserta');
+        $search     = $request->input('search');
+        $categories = $request->input('categories', []) ?: [];
+        $wave       = $request->input('wave');
+        $status     = $request->input('status');
 
         $query = \App\Models\TicketBooking::with('ticket')->oldest();
 
@@ -457,9 +474,9 @@ class AdminController extends Controller
             });
         }
 
-        if (!empty($category)) {
-            $query->whereHas('ticket', function ($q) use ($category) {
-                $q->where('ticket_category', $category);
+        if (!empty($categories)) {
+            $query->whereHas('ticket', function ($q) use ($categories) {
+                $q->whereIn('ticket_category', $categories);
             });
         }
 
@@ -469,12 +486,14 @@ class AdminController extends Controller
             });
         }
 
-        if (!empty($status)) {
+        if ($tab === 'peserta') {
+            $query->where('status', 'paid');
+        } elseif (!empty($status)) {
             $query->where('status', $status);
         }
 
         $bookings = $query->get();
-        $fileName = 'Data-Peserta-BACT2026-' . date('Y-m-d-His') . '.csv';
+        $fileName = ($tab === 'all' ? 'Data-All-Peserta' : 'Data-Peserta-BACT2026') . '-' . date('Y-m-d-His') . '.csv';
 
         $headers = [
             "Content-type"        => "text/csv; charset=UTF-8",
@@ -484,15 +503,16 @@ class AdminController extends Controller
             "Expires"             => "0"
         ];
 
-        $callback = function () use ($bookings) {
+        $callback = function () use ($bookings, $tab) {
             $file = fopen('php://output', 'w');
-            
+
             fwrite($file, "\xEF\xBB\xBF");
 
             fputcsv($file, [
                 'ID Pesanan',
                 'Gelombang Tiket',
                 'Kategori Tiket',
+                'Sumber',
                 'Nama Lengkap (KTP)',
                 'Nama Sertifikat & Gelar',
                 'Email (Gmail)',
@@ -505,26 +525,37 @@ class AdminController extends Controller
                 'Provinsi Instansi',
                 'Profesi Medis',
                 'Email Plataran Sehat',
-                'Tanggal Daftar'
+                'Catatan',
+                'Tanggal Daftar',
             ], ',');
 
             foreach ($bookings as $row) {
+                $statusLabel = match ($row->status) {
+                    'paid'     => 'LUNAS',
+                    'pending'  => 'PENDING',
+                    'cancelled'=> 'DIBATALKAN',
+                    'deleted'  => 'DIHAPUS',
+                    default    => strtoupper($row->status ?? ''),
+                };
+
                 fputcsv($file, [
                     $row->id,
                     $row->ticket->ticket_name ?? 'Tiket BACT',
                     $row->ticket->ticket_category ?? 'Umum',
+                    $row->source === 'manual' ? 'Manual' : 'Website',
                     $row->full_name,
                     $row->name_with_title ?: $row->full_name,
                     $row->gmail_account,
                     "'" . $row->whatsapp_number,
                     "'" . $row->nik,
                     $row->amount,
-                    strtoupper($row->status),
+                    $statusLabel,
                     $row->institution_name,
                     $row->institution_city,
                     $row->institution_province,
                     $row->profession,
                     $row->plataran_sehat_email,
+                    str_replace(["\r", "\n"], ' ', $row->notes ?? ''),
                     $row->created_at ? $row->created_at->format('Y-m-d H:i:s') : '-'
                 ], ',');
             }
@@ -535,23 +566,69 @@ class AdminController extends Controller
     }
 
     /**
-     * UPDATE STATUS & DATA PESERTA (AKSI EDIT)
+     * UPDATE STATUS & DATA PESERTA (AKSI EDIT DI TAB DATA ALL)
      */
     public function updateParticipantStatus(Request $request, $id)
     {
         $request->validate([
-            'status'          => 'required|in:paid,pending',
+            'status'          => 'required|in:paid,pending,cancelled',
             'full_name'       => 'required|string|max:255',
             'name_with_title' => 'required|string|max:255',
             'whatsapp_number' => 'required|string|max:25',
+            'ticket_id'       => 'nullable|exists:tickets,id',
+            'notes'           => 'nullable|string|max:5000',
         ]);
 
         $booking = \App\Models\TicketBooking::findOrFail($id);
+        $oldStatus = $booking->status;
+
         $booking->status          = $request->status;
         $booking->full_name       = $request->full_name;
         $booking->name_with_title = $request->name_with_title;
         $booking->whatsapp_number = $request->whatsapp_number;
+
+        // Ganti tiket (kategori & gelombang) — HANYA untuk peserta manual yang BELUM dikonfirmasi.
+        // Nominal pembayaran ikut menyesuaikan harga tiket baru.
+        if (
+            $booking->source === 'manual'
+            && !$booking->confirmed_at
+            && $request->filled('ticket_id')
+            && (int) $request->ticket_id !== (int) $booking->ticket_id
+        ) {
+            $newTicket = \App\Models\Ticket::find($request->ticket_id);
+            if ($newTicket) {
+                $booking->ticket_id       = $newTicket->id;
+                $booking->ticket_name     = $newTicket->ticket_name;
+                $booking->ticket_category = $newTicket->ticket_category;
+                $booking->amount          = $newTicket->price ?? $booking->amount;
+            }
+        }
+
+        // Catatan & waktu perubahan
+        $booking->notes = trim($request->input('notes') ?? '') ?: null;
+        $booking->notes_updated_at = now();
+
+        // Tangani kuota saat status berpindah ke/ dari 'cancelled'
+        $ticket = \App\Models\Ticket::find($booking->ticket_id);
+        if ($booking->status === 'cancelled' && $oldStatus !== 'cancelled' && $ticket) {
+            // Kembalikan kuota hanya 1x saat pertama kali dibatalkan
+            $ticket->increment('quota');
+            $booking->cancelled_at = now();
+        } elseif ($booking->status !== 'cancelled' && $oldStatus === 'cancelled' && $ticket) {
+            // Batalkan pengembalian kuota bila diaktifkan kembali
+            if ($ticket->quota > 0) {
+                $ticket->decrement('quota');
+            }
+            $booking->cancelled_at = null;
+        }
+
         $booking->save();
+
+        // Invariant: peserta manual hanya boleh LUNAS setelah memiliki tanda konfirmasi.
+        // (Jalur resmi: tombol Konfirmasi; jalur edit ini sekadar menjaga konsistensi.)
+        if ($booking->source === 'manual' && $booking->status === 'paid' && !$booking->confirmed_at) {
+            $booking->update(['confirmed_at' => now()]);
+        }
 
         // Kirim notifikasi WA & Email jika status diubah menjadi LUNAS
         if ($booking->status === 'paid') {
@@ -562,7 +639,89 @@ class AdminController extends Controller
     }
 
     /**
+     * HAPUS (SOFT DELETE) DATA PESERTA — berlaku dari tab Data All maupun Data Peserta.
+     * Record tidak dihapus permanen: status berubah menjadi 'deleted' sehingga tetap
+     * tampil di Data All (badge Dihapus) namun tidak lagi tampil di Data Peserta.
+     * Alasan penghapusan wajib diisi dan dicatat ke kolom catatan.
+     */
+    public function destroyBooking(Request $request, int $id): \Illuminate\Http\RedirectResponse
+    {
+        $request->validate([
+            'reason' => 'required|string|max:1000',
+        ]);
+
+        $booking = TicketBooking::findOrFail($id);
+
+        if ($booking->status === 'deleted') {
+            return back()->with('error', 'Data peserta "' . ($booking->name_with_title ?: $booking->full_name) . '" sudah berstatus dihapus.');
+        }
+
+        $oldStatus = $booking->status;
+
+        // Bila sebelumnya 'cancelled', tarik kembali pengembalian kuota (rebalance 1x).
+        if ($oldStatus === 'cancelled' && $booking->ticket_id) {
+            $ticket = Ticket::find($booking->ticket_id);
+            if ($ticket && $ticket->quota > 0) {
+                $ticket->decrement('quota');
+            }
+        }
+
+        $noteLine = now()->format('d M Y H:i') . ' — Dihapus oleh admin: ' . trim($request->reason);
+        $booking->notes = trim(($booking->notes ? $booking->notes . "\n" : '') . $noteLine);
+        $booking->notes_updated_at = now();
+        $booking->status = 'deleted';
+        $booking->deleted_at = now();
+        $booking->save();
+
+        return back()->with('success', 'Data peserta "' . ($booking->name_with_title ?: $booking->full_name) . '" berhasil dihapus dan ditandai status Dihapus.');
+    }
+
+    /**
+     * KONFIRMASI PESERTA MANUAL.
+     * Hanya berlaku untuk data yang ditambahkan manual (source = 'manual') dan
+     * belum dikonfirmasi. Setelah dikonfirmasi, status menjadi LUNAS sehingga
+     * tercatat di tab Data Peserta — setara dengan mekanisme 'lunas' peserta website.
+     */
+    public function confirmParticipant(int $id): \Illuminate\Http\RedirectResponse
+    {
+        $booking = TicketBooking::findOrFail($id);
+
+        if ($booking->source !== 'manual') {
+            return back()->with('error', 'Konfirmasi hanya berlaku untuk peserta yang ditambahkan secara manual.');
+        }
+
+        if ($booking->confirmed_at) {
+            return back()->with('error', 'Peserta "' . ($booking->name_with_title ?: $booking->full_name) . '" sudah dikonfirmasi sebelumnya.');
+        }
+
+        $oldStatus = $booking->status;
+        $booking->status = 'paid';
+        $booking->confirmed_at = now();
+
+        // Bila sebelumnya dibatalkan, tarik kembali pengembalian kuota tiket
+        if ($oldStatus === 'cancelled' && $booking->ticket_id) {
+            $ticket = Ticket::find($booking->ticket_id);
+            if ($ticket && $ticket->quota > 0) {
+                $ticket->decrement('quota');
+            }
+            $booking->cancelled_at = null;
+        }
+
+        $noteLine = now()->format('d M Y H:i') . ' — Konfirmasi manual oleh admin';
+        $booking->notes = trim(($booking->notes ? $booking->notes . "\n" : '') . $noteLine);
+        $booking->notes_updated_at = now();
+        $booking->save();
+
+        // Kirim notifikasi WA & Email (QR tiket + link grup) seperti peserta lunas
+        app(TicketNotificationService::class)->sendTicketPaid($booking);
+
+        return back()->with('success', 'Peserta "' . ($booking->name_with_title ?: $booking->full_name) . '" berhasil dikonfirmasi dan tercatat sebagai LUNAS.');
+    }
+
+    /**
      * TAMBAH PESERTA MANUAL (PESERTA TITIPAN / ADMIN ENTRY)
+     * Peserta manual selalu berstatus 'pending' sampai dikonfirmasi panitia
+     * melalui tombol Konfirmasi (baru tercatat LUNAS & masuk Data Peserta).
      */
     public function storeParticipantManual(Request $request)
     {
@@ -575,7 +734,7 @@ class AdminController extends Controller
             'nik'             => 'required|string|max:20',
             'institution_name'=> 'required|string|max:255',
             'profession'      => 'required|string|max:100',
-            'status'          => 'required|in:paid,pending'
+            'notes'           => 'nullable|string|max:5000',
         ]);
 
         $ticket = \App\Models\Ticket::findOrFail($request->ticket_id);
@@ -591,29 +750,18 @@ class AdminController extends Controller
             'whatsapp_number'      => $request->whatsapp_number,
             'nik'                  => $request->nik,
             'amount'               => $ticket->price ?? 0,
-            'status'               => $request->status,
+            'status'               => 'pending',
+            'source'               => 'manual',
             'institution_name'     => $request->institution_name,
             'institution_city'     => $request->institution_city ?? 'Kota Instansi',
             'institution_province' => $request->institution_province ?? 'Provinsi Instansi',
             'institution_district' => $request->institution_district ?? 'Kecamatan Instansi',
             'profession'           => $request->profession,
             'plataran_sehat_email' => $request->plataran_sehat_email ?? $request->gmail_account,
-            'payment_method'       => 'MANUAL_ADMIN'
+            'notes'                => isset($request->notes) && trim($request->notes) !== '' ? trim($request->notes) : null,
         ]);
 
-        // Kirim notifikasi jika peserta manual langsung LUNAS
-        if ($request->status === 'paid') {
-            $newBooking = \App\Models\TicketBooking::where('gmail_account', $request->gmail_account)
-                            ->where('status', 'paid')
-                            ->latest()
-                            ->first();
-
-            if ($newBooking) {
-                app(TicketNotificationService::class)->sendTicketPaid($newBooking);
-            }
-        }
-
-        return back()->with('success', 'Peserta manual baru berhasil ditambahkan ke sistem!');
+        return back()->with('success', 'Peserta manual baru berhasil ditambahkan. Status sementara TERTUNDA — gunakan tombol Konfirmasi untuk mencatatnya sebagai peserta LUNAS (menghubungkan dengan data peserta).');
     }
 
     // ==========================================
