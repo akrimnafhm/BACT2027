@@ -398,6 +398,8 @@ class AdminController extends Controller
         $categories = $request->input('categories', []) ?: [];
         $wave       = $request->input('wave');
         $status     = $request->input('status');
+        $dateFrom   = $request->input('date_from');
+        $dateTo     = $request->input('date_to');
 
         $query = \App\Models\TicketBooking::with('ticket')->latest();
 
@@ -425,6 +427,14 @@ class AdminController extends Controller
             });
         }
 
+        // Filter rentang tanggal pembayaran (paid_at)
+        if (!empty($dateFrom)) {
+            $query->whereDate('paid_at', '>=', $dateFrom);
+        }
+        if (!empty($dateTo)) {
+            $query->whereDate('paid_at', '<=', $dateTo);
+        }
+
         if ($tab === 'peserta') {
             // Tab Data Peserta: hanya peserta yang sudah lunas / fix
             $query->where('status', 'paid');
@@ -445,6 +455,7 @@ class AdminController extends Controller
         return view('admin.participants', compact(
             'participants', 'waves', 'allTickets',
             'search', 'categories', 'wave', 'status', 'tab',
+            'dateFrom', 'dateTo',
             'paidCount', 'allCount'
         ));
     }
@@ -460,6 +471,8 @@ class AdminController extends Controller
         $categories = $request->input('categories', []) ?: [];
         $wave       = $request->input('wave');
         $status     = $request->input('status');
+        $dateFrom   = $request->input('date_from');
+        $dateTo     = $request->input('date_to');
 
         $query = \App\Models\TicketBooking::with('ticket')->oldest();
 
@@ -484,6 +497,13 @@ class AdminController extends Controller
             $query->whereHas('ticket', function ($q) use ($wave) {
                 $q->where('ticket_name', 'like', "%{$wave}%");
             });
+        }
+
+        if (!empty($dateFrom)) {
+            $query->whereDate('paid_at', '>=', $dateFrom);
+        }
+        if (!empty($dateTo)) {
+            $query->whereDate('paid_at', '<=', $dateTo);
         }
 
         if ($tab === 'peserta') {

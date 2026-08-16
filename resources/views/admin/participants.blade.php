@@ -98,7 +98,7 @@
                 <input type="hidden" name="tab" value="{{ $tab }}">
 
                 <!-- Search -->
-                <div class="w-full md:w-56 relative flex-shrink-0">
+                <div class="w-full md:w-54 relative flex-shrink-0">
                     <input type="text" name="search" value="{{ $search }}" placeholder="Cari nama, email, NIK..."
                         class="w-full pl-9 pr-3 py-2 text-xs border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] outline-none">
                     <svg class="w-4 h-4 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -144,16 +144,26 @@
                 @if($tab === 'all')
                     <select name="status" class="w-full md:w-40 px-3 py-2 text-xs border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] outline-none cursor-pointer">
                         <option value="">Semua Status</option>
-                        <option value="paid" {{ $status === 'paid' ? 'selected' : '' }}>Lunas (Paid)</option>
-                        <option value="pending" {{ $status === 'pending' ? 'selected' : '' }}>Tertunda (Pending)</option>
+                        <option value="paid" {{ $status === 'paid' ? 'selected' : '' }}>Paid</option>
+                        <option value="pending" {{ $status === 'pending' ? 'selected' : '' }}>Pending</option>
                         <option value="cancelled" {{ $status === 'cancelled' ? 'selected' : '' }}>Dibatalkan</option>
                         <option value="deleted" {{ $status === 'deleted' ? 'selected' : '' }}>Dihapus</option>
                     </select>
                 @endif
 
+                <!-- Filter Tanggal Dibayar (rentang) -->
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <span class="text-[11px] font-extrabold text-gray-400 uppercase">Bayar:</span>
+                    <input type="date" name="date_from" value="{{ $dateFrom }}"
+                        class="px-3 py-2 text-xs border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] outline-none">
+                    <span class="text-xs text-gray-400">s/d</span>
+                    <input type="date" name="date_to" value="{{ $dateTo }}"
+                        class="px-3 py-2 text-xs border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] outline-none">
+                </div>
+
                 <!-- Tombol Action -->
                 <div class="flex items-center gap-2 w-full md:w-auto md:ml-auto justify-end">
-                    @if(!empty($search) || count($categories) > 0 || !empty($wave) || !empty($status))
+                    @if(!empty($search) || count($categories) > 0 || !empty($wave) || !empty($status) || !empty($dateFrom) || !empty($dateTo))
                         <a href="{{ route('admin.participants', ['tab' => $tab]) }}" class="px-3.5 py-2 text-xs font-bold text-gray-500 hover:text-red-600 bg-gray-100 hover:bg-red-50 rounded-xl transition whitespace-nowrap">
                             Reset
                         </a>
@@ -257,29 +267,49 @@
 
                                 <!-- Aksi -->
                                 <td class="py-3.5 px-5 text-center whitespace-nowrap">
-                                    <div class="flex items-center justify-center gap-1.5">
-                                        <button type="button" onclick="openViewModal({{ json_encode($item) }})"
-                                            class="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs font-bold rounded-lg transition">View</button>
+                                    @if($tab === 'all')
+                                        <!-- DATA ALL: 2 baris (atas: View + Konfirmasi, bawah: Edit + Hapus) -->
+                                        <div class="flex flex-col items-center gap-1.5">
+                                            <div class="flex items-center justify-center gap-1.5">
+                                                <button type="button" onclick="openViewModal({{ json_encode($item) }})"
+                                                    class="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs font-bold rounded-lg transition">View</button>
 
-                                        @if($item->status === 'deleted')
-                                            <span class="px-3 py-1.5 bg-gray-100 text-gray-500 text-xs font-bold rounded-lg whitespace-nowrap" title="{{ $item->deleted_at ? 'Dihapus ' . $item->deleted_at->format('d M Y H:i') : '' }}">Dihapus</span>
-                                        @else
-                                            @if($tab === 'all')
-                                                @if($item->source === 'manual' && !$item->confirmed_at)
-                                                    <form method="POST" action="{{ route('admin.participants.confirm', $item->id) }}" onsubmit="return confirm('Konfirmasi {{ addslashes($item->name_with_title ?: $item->full_name) }} agar tercatat sebagai peserta LUNAS?')">
-                                                        @csrf
-                                                        <button type="submit" class="px-3 py-1.5 bg-green-50 hover:bg-green-100 text-green-600 text-xs font-bold rounded-lg transition">Konfirmasi</button>
-                                                    </form>
-                                                @elseif($item->source === 'manual' && $item->confirmed_at)
-                                                    <span class="px-3 py-1.5 bg-green-100 text-green-700 text-xs font-bold rounded-lg transition whitespace-nowrap" title="Dikonfirmasi {{ $item->confirmed_at->format('d M Y H:i') }}">✓ Terkonfirmasi</span>
+                                                @if($item->status === 'deleted')
+                                                    <span class="px-3 py-1.5 bg-gray-100 text-gray-500 text-xs font-bold rounded-lg whitespace-nowrap" title="{{ $item->deleted_at ? 'Dihapus ' . $item->deleted_at->format('d M Y H:i') : '' }}">Dihapus</span>
+                                                @else
+                                                    @if($item->source === 'manual' && !$item->confirmed_at)
+                                                        <form method="POST" action="{{ route('admin.participants.confirm', $item->id) }}" onsubmit="return confirm('Konfirmasi {{ addslashes($item->name_with_title ?: $item->full_name) }} agar tercatat sebagai peserta LUNAS?')">
+                                                            @csrf
+                                                            <button type="submit" class="px-3 py-1.5 bg-green-50 hover:bg-green-100 text-green-600 text-xs font-bold rounded-lg transition">Konfirmasi</button>
+                                                        </form>
+                                                    @elseif($item->source === 'manual' && $item->confirmed_at)
+                                                        <span class="px-3 py-1.5 bg-green-100 text-green-700 text-xs font-bold rounded-lg transition whitespace-nowrap" title="Dikonfirmasi {{ $item->confirmed_at->format('d M Y H:i') }}">✓ Terkonfirmasi</span>
+                                                    @endif
                                                 @endif
-                                                <button type="button" onclick="openEditModal({{ json_encode($item) }})"
-                                                    class="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-[#E19404] text-xs font-bold rounded-lg transition">Edit</button>
+                                            </div>
+                                            @if($item->status !== 'deleted')
+                                                <div class="flex items-center justify-center gap-1.5">
+                                                    <button type="button" onclick="openEditModal({{ json_encode($item) }})"
+                                                        class="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-[#E19404] text-xs font-bold rounded-lg transition">Edit</button>
+                                                    <button type="button" onclick="openDeleteModal({{ $item->id }}, '{{ addslashes($item->name_with_title ?: $item->full_name) }}')"
+                                                        class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-lg transition">Hapus</button>
+                                                </div>
                                             @endif
-                                            <button type="button" onclick="openDeleteModal({{ $item->id }}, '{{ addslashes($item->name_with_title ?: $item->full_name) }}')"
-                                                class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-lg transition">Hapus</button>
-                                        @endif
-                                    </div>
+                                        </div>
+                                    @else
+                                        <!-- DATA PESERTA: 1 baris (View + Hapus) -->
+                                        <div class="flex items-center justify-center gap-1.5">
+                                            <button type="button" onclick="openViewModal({{ json_encode($item) }})"
+                                                class="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs font-bold rounded-lg transition">View</button>
+
+                                            @if($item->status === 'deleted')
+                                                <span class="px-3 py-1.5 bg-gray-100 text-gray-500 text-xs font-bold rounded-lg whitespace-nowrap" title="{{ $item->deleted_at ? 'Dihapus ' . $item->deleted_at->format('d M Y H:i') : '' }}">Dihapus</span>
+                                            @else
+                                                <button type="button" onclick="openDeleteModal({{ $item->id }}, '{{ addslashes($item->name_with_title ?: $item->full_name) }}')"
+                                                    class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-lg transition">Hapus</button>
+                                            @endif
+                                        </div>
+                                    @endif
                                 </td>
 
                             </tr>
