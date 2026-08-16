@@ -53,7 +53,7 @@
                         </a>
                     </li>
                 </ul>
-                <h4 class="font-extrabold text-white text-sm mb-3 mt-6 uppercase tracking-wider">Contact Person Hotel</h4>
+                <h4 class="font-extrabold text-white text-sm mb-3 mt-6 uppercase tracking-wider">CP for booking Grand Hotel De Djokja</h4>
                 <ul class="space-y-2.5 text-sm text-gray-200">
                     <li>
                         <a href="https://wa.me/6282147267027" target="_blank" rel="noopener" class="inline-flex items-center gap-2 hover:text-[#E19404] transition">
