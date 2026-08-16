@@ -98,7 +98,7 @@
                 <input type="hidden" name="tab" value="{{ $tab }}">
 
                 <!-- Search -->
-                <div class="w-full md:w-54 relative flex-shrink-0">
+                <div class="w-54 md:w-54 relative flex-shrink-0">
                     <input type="text" name="search" value="{{ $search }}" placeholder="Cari nama, email, NIK..."
                         class="w-full pl-9 pr-3 py-2 text-xs border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] outline-none">
                     <svg class="w-4 h-4 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
