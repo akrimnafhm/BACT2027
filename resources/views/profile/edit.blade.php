@@ -69,10 +69,19 @@
                                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Terverifikasi
                                 </span>
                             @else
-                                @if(session('email_otp_sent'))
-                                    <div class="flex items-center gap-2">
-                                        <input type="text" name="email_otp_code" form="form-verify-email-otp" placeholder="6 Digit" required maxlength="6" class="w-24 px-3 py-2 border border-gray-300 rounded-lg text-center tracking-widest text-sm focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] outline-none">
-                                        <button type="submit" form="form-verify-email-otp" class="text-xs font-bold px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg transition shadow-sm">Cek</button>
+                                @if(!empty($user->email_otp_code) || session('email_otp_sent'))
+                                    <div class="flex flex-col items-end gap-2">
+                                        <div class="flex items-center gap-2">
+                                            <input type="text" name="email_otp_code" form="form-verify-email-otp" placeholder="6 Digit" required maxlength="6" class="w-24 px-3 py-2 border border-gray-300 rounded-lg text-center tracking-widest text-sm focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] outline-none">
+                                            <button type="submit" form="form-verify-email-otp" class="text-xs font-bold px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg transition shadow-sm">Cek</button>
+                                        </div>
+                                        <div class="text-xs">
+                                            @if($emailOtpRemaining > 0)
+                                                <span class="text-gray-400 font-semibold" data-countdown="{{ $emailOtpRemaining }}" data-target="email">Kirim ulang dalam <b class="text-gray-600" data-countdown-display>00:00</b></span>
+                                            @else
+                                                <button type="submit" form="form-send-email-otp" class="font-bold text-[#E19404] hover:text-orange-600 transition cursor-pointer">Kirim Ulang OTP</button>
+                                            @endif
+                                        </div>
                                     </div>
                                 @else
                                     <button type="submit" form="form-send-email-otp" class="text-xs font-bold px-4 py-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-full transition whitespace-nowrap shadow-sm">
@@ -95,10 +104,19 @@
                                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Terverifikasi
                                     </span>
                                 @else
-                                    @if(session('otp_sent'))
-                                        <div class="flex items-center gap-2">
-                                            <input type="text" name="otp_code" form="form-verify-otp" placeholder="6 Digit" required maxlength="6" class="w-24 px-3 py-2 border border-gray-300 rounded-lg text-center tracking-widest text-sm focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] outline-none">
-                                            <button type="submit" form="form-verify-otp" class="text-xs font-bold px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg transition shadow-sm">Cek</button>
+                                    @if(!empty($user->otp_code) || session('otp_sent'))
+                                        <div class="flex flex-col items-end gap-2">
+                                            <div class="flex items-center gap-2">
+                                                <input type="text" name="otp_code" form="form-verify-otp" placeholder="6 Digit" required maxlength="6" class="w-24 px-3 py-2 border border-gray-300 rounded-lg text-center tracking-widest text-sm focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] outline-none">
+                                                <button type="submit" form="form-verify-otp" class="text-xs font-bold px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg transition shadow-sm">Cek</button>
+                                            </div>
+                                            <div class="text-xs">
+                                                @if($phoneOtpRemaining > 0)
+                                                    <span class="text-gray-400 font-semibold" data-countdown="{{ $phoneOtpRemaining }}" data-target="phone">Kirim ulang dalam <b class="text-gray-600" data-countdown-display>00:00</b></span>
+                                                @else
+                                                    <button type="button" onclick="submitOtpRequest()" class="font-bold text-[#E19404] hover:text-orange-600 transition cursor-pointer">Kirim Ulang OTP</button>
+                                                @endif
+                                            </div>
                                         </div>
                                     @else
                                         <button type="button" onclick="submitOtpRequest()" class="text-xs font-bold px-5 py-2.5 bg-[#FFC32D] hover:bg-[#E19404] text-white rounded-lg transition whitespace-nowrap shadow-sm">
@@ -190,6 +208,48 @@
             document.getElementById('hidden_phone_number').value = phoneValue;
             document.getElementById('form-send-otp').submit();
         }
+
+        // COUNTDOWN KIRIM ULANG OTP (bertahan saat halaman di-refresh karena sisa waktu dari server)
+        function formatCountdown(seconds) {
+            const m = Math.floor(seconds / 60);
+            const s = seconds % 60;
+            return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+        }
+
+        function initOtpCountdowns() {
+            document.querySelectorAll('[data-countdown]').forEach(el => {
+                let remaining = parseInt(el.dataset.countdown, 10);
+                const target = el.dataset.target;
+                const display = el.querySelector('[data-countdown-display]');
+                if (display) display.textContent = formatCountdown(remaining);
+
+                const timer = setInterval(() => {
+                    remaining -= 1;
+                    if (display) display.textContent = formatCountdown(Math.max(0, remaining));
+
+                    if (remaining <= 0) {
+                        clearInterval(timer);
+                        const parent = el.parentElement;
+                        let button;
+                        if (target === 'email') {
+                            button = document.createElement('button');
+                            button.type = 'submit';
+                            button.setAttribute('form', 'form-send-email-otp');
+                            button.textContent = 'Kirim Ulang OTP';
+                        } else {
+                            button = document.createElement('button');
+                            button.type = 'button';
+                            button.setAttribute('onclick', 'submitOtpRequest()');
+                            button.textContent = 'Kirim Ulang OTP';
+                        }
+                        button.className = 'font-bold text-[#E19404] hover:text-orange-600 transition cursor-pointer';
+                        el.replaceWith(button);
+                    }
+                }, 1000);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', initOtpCountdowns);
     </script>
 </body>
 </html>

@@ -24,6 +24,8 @@ class TicketBooking extends Model
         'ticket_category',
         'amount',
         'invoice_number',
+        'payment_url',
+        'payment_expired_at',
         'full_name',
         'name_with_title',
         'nik',
@@ -48,6 +50,7 @@ class TicketBooking extends Model
         'confirmed_at'     => 'datetime',
         'deleted_at'       => 'datetime',
         'paid_at'          => 'datetime',
+        'payment_expired_at' => 'datetime',
     ];
 
     public function user()

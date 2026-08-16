@@ -187,9 +187,6 @@
                             <th class="py-3.5 px-5">Nama Peserta & Gelar</th>
                             <th class="py-3.5 px-5">Instansi</th>
                             <th class="py-3.5 px-5 text-center">Status</th>
-                            @if($tab === 'all')
-                                <th class="py-3.5 px-5">Catatan</th>
-                            @endif
                             <th class="py-3.5 px-5 text-center">Aksi</th>
                         </tr>
                     </thead>
@@ -226,7 +223,15 @@
 
                                 <!-- Nama -->
                                 <td class="py-3.5 px-5">
-                                    <div class="font-extrabold text-gray-900">{{ $item->name_with_title ?: $item->full_name }}</div>
+                                    <div class="flex items-center gap-1.5">
+                                        <div class="font-extrabold text-gray-900">{{ $item->name_with_title ?: $item->full_name }}</div>
+                                        @if($tab === 'all' && $item->notes)
+                                            <button type="button" onclick="openViewModal({{ json_encode($item) }})"
+                                                title="Lihat catatan" class="flex-shrink-0 p-1 text-[#E19404] hover:bg-[#FBE39D] rounded-md transition cursor-pointer">
+                                                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"/></svg>
+                                            </button>
+                                        @endif
+                                    </div>
                                     <div class="text-xs text-gray-500">{{ $item->gmail_account }}</div>
                                 </td>
 
@@ -250,20 +255,6 @@
                                         <span class="inline-block px-3 py-1 bg-gray-100 text-gray-600 text-xs font-bold rounded-full">{{ strtoupper($item->status) }}</span>
                                     @endif
                                 </td>
-
-                                <!-- Catatan (hanya Data All) -->
-                                @if($tab === 'all')
-                                    <td class="py-3.5 px-5 max-w-[160px]">
-                                        @if($item->notes)
-                                            <p class="text-xs text-gray-600 truncate" title="{{ $item->notes }}">{{ \Illuminate\Support\Str::limit($item->notes, 60) }}</p>
-                                            @if($item->notes_updated_at)
-                                                <p class="text-[10px] text-gray-400 mt-0.5">diubah {{ $item->notes_updated_at->format('d M Y H:i') }}</p>
-                                            @endif
-                                        @else
-                                            <span class="text-xs text-gray-400">—</span>
-                                        @endif
-                                    </td>
-                                @endif
 
                                 <!-- Aksi -->
                                 <td class="py-3.5 px-5 text-center whitespace-nowrap">
@@ -315,7 +306,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="{{ $tab === 'all' ? 8 : 7 }}" class="py-12 px-6 text-center text-gray-500">
+                                <td colspan="7" class="py-12 px-6 text-center text-gray-500">
                                     Belum ada data peserta yang ditemukan.
                                 </td>
                             </tr>

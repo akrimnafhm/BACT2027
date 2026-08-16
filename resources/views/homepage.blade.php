@@ -227,13 +227,39 @@
          4. SEKSI PEMBICARA (#pembicara) - Kompak, Rapi, & Tombol < >
          ========================================================= -->
     <section id="pembicara" class="py-20 max-w-7xl mx-auto px-6" x-data="{
+                 autoScrollTimer: null,
                  scrollPrev() {
                      $refs.speakerSlider.scrollBy({ left: -$refs.speakerSlider.clientWidth, behavior: 'smooth' });
+                     this.resetAutoScroll();
                  },
                  scrollNext() {
-                     $refs.speakerSlider.scrollBy({ left: $refs.speakerSlider.clientWidth, behavior: 'smooth' });
+                     const el = $refs.speakerSlider;
+                     const maxScroll = el.scrollWidth - el.clientWidth;
+                     if (el.scrollLeft >= maxScroll - 1) {
+                         el.scrollTo({ left: 0, behavior: 'smooth' });
+                     } else {
+                         el.scrollBy({ left: el.clientWidth, behavior: 'smooth' });
+                     }
+                     this.resetAutoScroll();
+                 },
+                 autoScroll() {
+                     const el = $refs.speakerSlider;
+                     const maxScroll = el.scrollWidth - el.clientWidth;
+                     if (maxScroll <= 1) return;
+                     if (el.scrollLeft >= maxScroll - 1) {
+                         el.scrollTo({ left: 0, behavior: 'smooth' });
+                     } else {
+                         el.scrollBy({ left: el.clientWidth, behavior: 'smooth' });
+                     }
+                 },
+                 startAutoScroll() {
+                     this.autoScrollTimer = setInterval(() => { this.autoScroll(); }, 3000);
+                 },
+                 resetAutoScroll() {
+                     clearInterval(this.autoScrollTimer);
+                     this.startAutoScroll();
                  }
-             }">
+             }" x-init="startAutoScroll()" @mouseenter="clearInterval(autoScrollTimer)" @mouseleave="resetAutoScroll()">
 
         <div class="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4">
             <div>

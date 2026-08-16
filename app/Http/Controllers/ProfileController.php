@@ -12,11 +12,26 @@ use Illuminate\Support\Facades\Mail;
 
 class ProfileController extends Controller
 {
+    const OTP_RESEND_COOLDOWN_SECONDS = 120; // 2 menit
+
     public function edit()
     {
         // Mengambil data user yang sedang login
         $user = Auth::user();
-        return view('profile.edit', compact('user'));
+
+        // Sisa waktu cooldown kirim ulang OTP (agar countdown bertahan saat halaman di-refresh)
+        $phoneOtpRemaining = $user->otp_sent_at
+            ? max(0, self::OTP_RESEND_COOLDOWN_SECONDS - $user->otp_sent_at->diffInSeconds(now()))
+            : 0;
+
+        $emailOtpRemaining = $user->email_otp_sent_at
+            ? max(0, self::OTP_RESEND_COOLDOWN_SECONDS - $user->email_otp_sent_at->diffInSeconds(now()))
+            : 0;
+
+        return view('profile.edit', compact('user') + [
+            'phoneOtpRemaining' => $phoneOtpRemaining,
+            'emailOtpRemaining' => $emailOtpRemaining,
+        ]);
     }
 
     public function update(Request $request)
@@ -79,37 +94,54 @@ class ProfileController extends Controller
         ]);
 
         $user = Auth::user();
-        
+
+        // Cooldown kirim ulang: tolak jika belum lewat 2 menit sejak kiriman terakhir berhasil.
+        if ($user->otp_sent_at && $user->otp_sent_at->gt(now()->subSeconds(self::OTP_RESEND_COOLDOWN_SECONDS))) {
+            $remaining = max(1, $user->otp_sent_at->addSeconds(self::OTP_RESEND_COOLDOWN_SECONDS)->diffInSeconds(now()));
+            return back()->with('otp_sent', true)->withErrors([
+                'otp_code' => "Mohon tunggu {$remaining} detik lagi sebelum mengirim ulang kode OTP."
+            ]);
+        }
+
         // 2. Langsung perbarui nomor HP user dengan yang baru diketik
         $user->phone_number = $request->phone_number;
         $user->phone_verified_at = null; // Pastikan statusnya reset
-        
-        // 3. Buat dan simpan OTP
+
+        // 3. Buat kode OTP baru (belum disimpan — baru disimpan jika pengiriman sukses)
         $otp = rand(100000, 999999);
-        $user->otp_code = $otp;
-        $user->otp_expires_at = now()->addMinutes(10);
-        $user->save();
 
-        // Simulasi pengiriman WhatsApp (fallback: tercatat di log)
-        Log::info("SIMULASI WHATSAPP BACT: Kode OTP untuk {$user->phone_number} adalah [ {$otp} ]");
-
-        // Kirim OTP via Fonnte (WhatsApp sungguhan)
         $message = "Halo {$user->name},\n\n"
             . "Kode verifikasi WhatsApp Anda untuk BACT 2027 adalah:\n\n"
             . "{$otp}\n\n"
             . "Kode berlaku selama 10 menit. Mohon jangan bagikan kode ini kepada siapa pun.\n\n"
             . "Terima kasih,\nPanitia BACT 2027";
 
+        // 4. Kirim OTP via Fonnte (WhatsApp sungguhan)
+        $sent = false;
         try {
             $result = app(FonnteService::class)->sendMessage($user->phone_number, $message);
             Log::info("Notifikasi WA OTP dikirim ke {$user->phone_number}", [
                 'response' => $result,
             ]);
+            $sent = is_array($result) && ($result['status'] ?? false) === true;
         } catch (\Throwable $e) {
             Log::error('Gagal kirim OTP via Fonnte: ' . $e->getMessage());
         }
 
-        return back()->with('otp_sent', true)->with('success', "Kode OTP telah dikirim ke nomor {$user->phone_number}!");
+        // 5. Hanya simpan kode jika pesan benar-benar terkirim. Jika gagal,
+        //    kode lama tetap berlaku dan user bisa mencoba lagi (tanpa cooldown).
+        if ($sent) {
+            $user->otp_code = $otp;
+            $user->otp_expires_at = now()->addMinutes(10);
+            $user->otp_sent_at = now();
+            $user->save();
+
+            Log::info("OTP WA untuk {$user->phone_number} berhasil tersimpan (kode {$otp}).");
+
+            return back()->with('otp_sent', true)->with('success', "Kode OTP telah dikirim ke nomor {$user->phone_number}!");
+        }
+
+        return back()->withErrors(['otp_code' => 'Gagal mengirim kode OTP via WhatsApp. Silakan coba beberapa saat lagi.']);
     }
 
     public function verifyOtp(Request $request)
@@ -138,11 +170,20 @@ class ProfileController extends Controller
     {
         $user = Auth::user();
 
+        // Cooldown kirim ulang: tolak jika belum lewat 2 menit sejak kiriman terakhir.
+        if ($user->email_otp_sent_at && $user->email_otp_sent_at->gt(now()->subSeconds(self::OTP_RESEND_COOLDOWN_SECONDS))) {
+            $remaining = max(1, $user->email_otp_sent_at->addSeconds(self::OTP_RESEND_COOLDOWN_SECONDS)->diffInSeconds(now()));
+            return back()->with('email_otp_sent', true)->withErrors([
+                'email_otp_code' => "Mohon tunggu {$remaining} detik lagi sebelum mengirim ulang kode verifikasi."
+            ]);
+        }
+
         // 1. Buat & simpan OTP email (berlaku 10 menit)
         $otp = rand(100000, 999999);
         $user->email_otp_code = $otp;
         $user->email_otp_expires_at = now()->addMinutes(10);
         $user->email_verified_at = null; // Pastikan statusnya reset
+        $user->email_otp_sent_at = now();
         $user->save();
 
         Log::info("SIMULASI EMAIL BACT: Kode OTP verifikasi email untuk {$user->email} adalah [ {$otp} ]");

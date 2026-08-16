@@ -186,7 +186,7 @@ class HotelBookingController extends Controller
                 'notification_url' => env('DOKU_NOTIFICATION_URL', url('/api/doku/notification')),
             ],
             'payment' => [
-                'payment_due_date' => 60 // Expired VA/Link dalam menit (1 jam)
+                'payment_due_date' => 1440 // Expired VA/Link dalam menit (24 jam)
             ],
             'customer' => [
                 'id' => (string) $user->id,

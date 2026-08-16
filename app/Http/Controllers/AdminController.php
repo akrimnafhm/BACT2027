@@ -685,12 +685,10 @@ class AdminController extends Controller
 
         $oldStatus = $booking->status;
 
-        // Bila sebelumnya 'cancelled', tarik kembali pengembalian kuota (rebalance 1x).
-        if ($oldStatus === 'cancelled' && $booking->ticket_id) {
-            $ticket = Ticket::find($booking->ticket_id);
-            if ($ticket && $ticket->quota > 0) {
-                $ticket->decrement('quota');
-            }
+        // Peserta yang sedang mengunci kuota (pending / paid) dibatalkan → kuota dikembalikan.
+        // Booking yang sudah 'cancelled' sudah mengembalikan kuotanya lebih dulu → tidak diubah lagi.
+        if (in_array($oldStatus, ['pending', 'paid'], true) && $booking->ticket_id) {
+            Ticket::where('id', $booking->ticket_id)->increment('quota');
         }
 
         $noteLine = now()->format('d M Y H:i') . ' — Dihapus oleh admin: ' . trim($request->reason);
@@ -767,27 +765,45 @@ class AdminController extends Controller
 
         $ticket = \App\Models\Ticket::findOrFail($request->ticket_id);
 
-        \App\Models\TicketBooking::create([
-            'user_id'              => auth()->id(),
-            'ticket_id'            => $ticket->id,
-            'ticket_name'          => $ticket->ticket_name,
-            'ticket_category'      => $ticket->ticket_category,
-            'full_name'            => $request->full_name,
-            'name_with_title'      => $request->name_with_title,
-            'gmail_account'        => $request->gmail_account,
-            'whatsapp_number'      => $request->whatsapp_number,
-            'nik'                  => $request->nik,
-            'amount'               => $ticket->price ?? 0,
-            'status'               => 'pending',
-            'source'               => 'manual',
-            'institution_name'     => $request->institution_name,
-            'institution_city'     => $request->institution_city ?? 'Kota Instansi',
-            'institution_province' => $request->institution_province ?? 'Provinsi Instansi',
-            'institution_district' => $request->institution_district ?? 'Kecamatan Instansi',
-            'profession'           => $request->profession,
-            'plataran_sehat_email' => $request->plataran_sehat_email ?? $request->gmail_account,
-            'notes'                => isset($request->notes) && trim($request->notes) !== '' ? trim($request->notes) : null,
-        ]);
+        // Kunci kuota secara atomik — peserta manual juga mengonsumsi kuota seperti booking website.
+        try {
+            $booking = \Illuminate\Support\Facades\DB::transaction(function () use ($ticket, $request) {
+                $reserved = \App\Models\Ticket::where('id', $ticket->id)
+                            ->where('quota', '>', 0)
+                            ->decrement('quota');
+
+                if ($reserved === 0) {
+                    throw new \RuntimeException('kuota_habis');
+                }
+
+                return \App\Models\TicketBooking::create([
+                    'user_id'              => auth()->id(),
+                    'ticket_id'            => $ticket->id,
+                    'ticket_name'          => $ticket->ticket_name,
+                    'ticket_category'      => $ticket->ticket_category,
+                    'full_name'            => $request->full_name,
+                    'name_with_title'      => $request->name_with_title,
+                    'gmail_account'        => $request->gmail_account,
+                    'whatsapp_number'      => $request->whatsapp_number,
+                    'nik'                  => $request->nik,
+                    'amount'               => $ticket->price ?? 0,
+                    'status'               => 'pending',
+                    'source'               => 'manual',
+                    'institution_name'     => $request->institution_name,
+                    'institution_city'     => $request->institution_city ?? 'Kota Instansi',
+                    'institution_province' => $request->institution_province ?? 'Provinsi Instansi',
+                    'institution_district' => $request->institution_district ?? 'Kecamatan Instansi',
+                    'profession'           => $request->profession,
+                    'plataran_sehat_email' => $request->plataran_sehat_email ?? $request->gmail_account,
+                    'notes'                => isset($request->notes) && trim($request->notes) !== '' ? trim($request->notes) : null,
+                ]);
+            });
+        } catch (\RuntimeException $e) {
+            if ($e->getMessage() === 'kuota_habis') {
+                return back()->with('error', 'Gagal menambahkan peserta manual: kuota tiket ini sudah habis.');
+            }
+            throw $e;
+        }
 
         return back()->with('success', 'Peserta manual baru berhasil ditambahkan. Status sementara TERTUNDA — gunakan tombol Konfirmasi untuk mencatatnya sebagai peserta LUNAS (menghubungkan dengan data peserta).');
     }

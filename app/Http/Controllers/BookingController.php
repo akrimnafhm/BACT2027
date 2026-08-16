@@ -54,6 +54,13 @@ class BookingController extends Controller
         // Pesanan yang masih menunggu pembayaran (paling banyak satu).
         $pendingBooking = $bookings->firstWhere('status', 'pending');
 
+        // Jaga konsistensi: batalkan otomatis bila sudah melewati 24 jam / tiket kedaluwarsa
+        // (defense-in-depth, cron rutin menjalankan hal yang sama).
+        if ($pendingBooking && $this->isBookingExpired($pendingBooking)) {
+            $this->cancelExpiredBooking($pendingBooking);
+            $pendingBooking = null;
+        }
+
         // Tampilkan e-ticket + (jika ada) kartu lanjut pembayaran.
         if ($paidBookings->isNotEmpty() || $pendingBooking) {
             return view('booking.bridge', [
@@ -146,6 +153,18 @@ class BookingController extends Controller
                             ->where('status', 'pending')
                             ->exists();
 
+        // Jika pending sudah kedaluwarsa, batalkan otomatis agar user bisa langsung booking ulang.
+        if ($hasPendingBooking) {
+            $stalePending = TicketBooking::where('user_id', $user->id)
+                            ->where('status', 'pending')
+                            ->latest()
+                            ->first();
+            if ($stalePending && $this->isBookingExpired($stalePending)) {
+                $this->cancelExpiredBooking($stalePending);
+                $hasPendingBooking = false;
+            }
+        }
+
         if ($hasPendingBooking) {
             return redirect()->route('booking.index')
                 ->with('error', 'Anda masih memiliki pesanan tiket yang belum lunas. Silakan selesaikan atau batalkan pembayaran tersebut terlebih dahulu sebelum membeli tiket lain.');
@@ -220,9 +239,6 @@ class BookingController extends Controller
         if ($ticket->end_date && $ticket->end_date->lt($now)) {
             return back()->with('error', 'Maaf, masa berlaku tiket promo ini sudah berakhir.');
         }
-        if ($ticket->quota <= 0) {
-            return back()->with('error', 'Maaf, kuota tiket ini sudah habis.');
-        }
 
         // ATURAN MULTI-TIKET:
         // 1) Beli tiket berikutnya hanya jika tidak ada pesanan PENDING (wajib lunas/batalkan dulu).
@@ -242,27 +258,48 @@ class BookingController extends Controller
             return back()->with('error', 'Anda sudah memiliki tiket kategori "' . $ticket->ticket_category . '". Setiap kategori hanya dapat dibeli satu tiket.');
         }
 
-        // LOCK DATA: Menyimpan snapshot harga, jenis tiket, dan identitas peserta pada saat transaksi
-        $booking = TicketBooking::updateOrCreate(
-            ['user_id' => $user->id, 'status' => 'pending'],
-            [
-                'ticket_id'            => $ticket->id,
-                'ticket_name'          => $ticket->ticket_name,       // Lock Nama Tiket
-                'ticket_category'      => $ticket->ticket_category,   // Lock Kategori
-                'amount'               => $ticket->price,             // Lock Harga Beli
-                'full_name'            => $request->full_name,
-                'name_with_title'      => $request->name_with_title,
-                'nik'                  => $request->nik,
-                'profession'           => $request->profession,
-                'whatsapp_number'      => $request->whatsapp_number,
-                'gmail_account'        => $request->gmail_account,
-                'plataran_sehat_email' => $request->plataran_sehat_email,
-                'institution_name'     => $request->institution_name,
-                'institution_district' => $request->institution_district,
-                'institution_city'     => $request->institution_city,
-                'institution_province' => $request->institution_province,
-            ]
-        );
+        // LOCK KUOTA + LOCK DATA DALAM SATU TRANSAKSI ATOMIK.
+        // Pengurangan kuota dilakukan bersyarat (WHERE quota > 0) agar aman dari race
+        // condition saat kuota menipis & banyak user memesan bersamaan. Jika gagal,
+        // seluruh transaksi di-rollback sehingga kuota tidak berkurang tanpa booking.
+        try {
+            $booking = \Illuminate\Support\Facades\DB::transaction(function () use ($ticket, $request, $user) {
+                $reserved = Ticket::where('id', $ticket->id)
+                            ->where('quota', '>', 0)
+                            ->decrement('quota');
+
+                if ($reserved === 0) {
+                    throw new \RuntimeException('kuota_habis');
+                }
+
+                // LOCK DATA: Menyimpan snapshot harga, jenis tiket, dan identitas peserta
+                return TicketBooking::updateOrCreate(
+                    ['user_id' => $user->id, 'status' => 'pending'],
+                    [
+                        'ticket_id'            => $ticket->id,
+                        'ticket_name'          => $ticket->ticket_name,       // Lock Nama Tiket
+                        'ticket_category'      => $ticket->ticket_category,   // Lock Kategori
+                        'amount'               => $ticket->price,             // Lock Harga Beli
+                        'full_name'            => $request->full_name,
+                        'name_with_title'      => $request->name_with_title,
+                        'nik'                  => $request->nik,
+                        'profession'           => $request->profession,
+                        'whatsapp_number'      => $request->whatsapp_number,
+                        'gmail_account'        => $request->gmail_account,
+                        'plataran_sehat_email' => $request->plataran_sehat_email,
+                        'institution_name'     => $request->institution_name,
+                        'institution_district' => $request->institution_district,
+                        'institution_city'     => $request->institution_city,
+                        'institution_province' => $request->institution_province,
+                    ]
+                );
+            });
+        } catch (\RuntimeException $e) {
+            if ($e->getMessage() === 'kuota_habis') {
+                return back()->with('error', 'Maaf, kuota tiket ini baru saja habis.');
+            }
+            throw $e;
+        }
 
         return redirect()->route('checkout', $booking->id);
     }
@@ -273,7 +310,7 @@ class BookingController extends Controller
     public function checkout($id)
     {
         $user = Auth::user();
-        
+
         $booking = TicketBooking::where('id', $id)
                     ->where('user_id', $user->id)
                     ->firstOrFail();
@@ -283,9 +320,28 @@ class BookingController extends Controller
                              ->with('success', 'Tiket ini sudah lunas.');
         }
 
+        if ($booking->status !== 'pending') {
+            return redirect()->route('booking.index')
+                             ->with('error', 'Pemesanan ini sudah tidak aktif. Silakan lakukan pemesanan ulang.');
+        }
+
+        // Batalkan otomatis bila melewati batas waktu pembayaran (24 jam) atau tiket sudah tidak berlaku.
+        if ($this->isBookingExpired($booking)) {
+            $this->cancelExpiredBooking($booking);
+            return redirect()->route('booking.index')
+                             ->with('error', 'Pemesanan otomatis dibatalkan karena melewati batas waktu pembayaran (24 jam) atau tiket sudah tidak berlaku. Silakan lakukan pemesanan ulang.');
+        }
+
+        // REUSE: Jika link pembayaran DOKU sebelumnya masih valid, jangan buat pembayaran baru.
+        if ($booking->payment_url && $booking->payment_expired_at && $booking->payment_expired_at->gt(now())) {
+            $ticket = Ticket::find($booking->ticket_id);
+            $displayName = $booking->ticket_name . ' - ' . $booking->ticket_category;
+            return view('booking.checkout', compact('booking', 'ticket', 'displayName') + ['paymentUrl' => $booking->payment_url]);
+        }
+
         $ticket = Ticket::find($booking->ticket_id);
         $displayName = $booking->ticket_name . ' - ' . $booking->ticket_category;
-        
+
         // Buat Nomor Invoice unik (Contoh: INV-BACT-1-1785...)
         $invoiceNumber = 'INV-BACT-' . $booking->id . '-' . time();
 
@@ -295,9 +351,9 @@ class BookingController extends Controller
         $clientId = env('DOKU_CLIENT_ID');
         $secretKey = env('DOKU_SECRET_KEY');
         $isProduction = env('DOKU_IS_PRODUCTION', false);
-        
-        $baseUrl = $isProduction 
-            ? 'https://api.doku.com' 
+
+        $baseUrl = $isProduction
+            ? 'https://api.doku.com'
             : 'https://api-sandbox.doku.com';
 
         // 1. Siapkan Data Pesanan untuk DOKU
@@ -314,7 +370,7 @@ class BookingController extends Controller
                 'notification_url' => env('DOKU_NOTIFICATION_URL', url('/api/doku/notification')),
             ],
             'payment' => [
-                'payment_due_date' => 60 // Expired VA/Link dalam menit (1 jam)
+                'payment_due_date' => 1440 // Expired VA/Link dalam menit (24 jam)
             ],
             'customer' => [
                 'id' => (string) $user->id,
@@ -332,14 +388,14 @@ class BookingController extends Controller
         $requestId = (string) Str::uuid();
         $requestTimestamp = gmdate("Y-m-d\TH:i:s\Z");
         $requestTarget = "/checkout/v1/payment";
-        
+
         $digest = base64_encode(hash('sha256', $jsonBody, true));
         $rawSignature = "Client-Id:" . $clientId . "\n"
                       . "Request-Id:" . $requestId . "\n"
                       . "Request-Timestamp:" . $requestTimestamp . "\n"
                       . "Request-Target:" . $requestTarget . "\n"
                       . "Digest:" . $digest;
-                      
+
         $signature = "HMACSHA256=" . base64_encode(hash_hmac('sha256', $rawSignature, $secretKey, true));
 
         // 3. Tembak API DOKU
@@ -358,9 +414,14 @@ class BookingController extends Controller
         // Cek jika berhasil dapat link pembayaran (payment_url) dari DOKU
         if ($response->successful() && isset($dokuResult['response']['payment']['url'])) {
             $paymentUrl = $dokuResult['response']['payment']['url'];
-            
-            // Simpan invoice_number ke tabel agar bisa dilacak saat lunas
-            $booking->update(['invoice_number' => $invoiceNumber]);
+
+            // Simpan invoice_number, link, dan waktu expired link agar bisa di-reuse saat "Lanjutkan Pembayaran".
+            $paymentExpiredAt = $this->parsePaymentExpiredDate($dokuResult);
+            $booking->update([
+                'invoice_number'      => $invoiceNumber,
+                'payment_url'         => $paymentUrl,
+                'payment_expired_at'  => $paymentExpiredAt,
+            ]);
 
             return view('booking.checkout', compact('booking', 'ticket', 'displayName', 'paymentUrl'));
         }
@@ -410,6 +471,62 @@ class BookingController extends Controller
                !empty($user->name) &&
                !empty($user->nik) &&
                !empty($user->gender);
+    }
+
+    /**
+     * Cek apakah booking pending sudah harus dibatalkan otomatis:
+     * melewati batas waktu pembayaran (24 jam sejak dibuat) atau tiket sudah tidak berlaku.
+     */
+    private function isBookingExpired(TicketBooking $booking): bool
+    {
+        if ($booking->created_at && $booking->created_at->lt(now()->subHours(24))) {
+            return true;
+        }
+
+        $ticket = $booking->ticket;
+        if ($ticket && $ticket->end_date && $ticket->end_date->lt(now())) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Batalkan booking pending secara otomatis dan kembalikan kuota tiket.
+     */
+    private function cancelExpiredBooking(TicketBooking $booking): void
+    {
+        if ($booking->ticket_id) {
+            \App\Models\Ticket::where('id', $booking->ticket_id)->increment('quota');
+        }
+
+        $noteLine = now()->format('d M Y H:i') . ' — Dibatalkan otomatis oleh sistem (melewati batas waktu pembayaran / tiket kedaluwarsa)';
+        $booking->notes = trim(($booking->notes ? $booking->notes . "\n" : '') . $noteLine);
+        $booking->notes_updated_at = now();
+        $booking->cancelled_at = now();
+        $booking->status = 'cancelled';
+        $booking->save();
+    }
+
+    /**
+     * Ambil waktu expired link pembayaran dari respons DOKU. Jika tidak tersedia,
+     * gunakan fallback 24 jam sejak sekarang.
+     */
+    private function parsePaymentExpiredDate(array $dokuResult): Carbon
+    {
+        $raw = $dokuResult['response']['payment']['expired_date']
+            ?? $dokuResult['response']['payment']['expiredDate']
+            ?? null;
+
+        if ($raw) {
+            try {
+                return Carbon::parse($raw);
+            } catch (\Throwable $e) {
+                // ignore, fallback di bawah
+            }
+        }
+
+        return now()->addHours(24);
     }
 
     /**
