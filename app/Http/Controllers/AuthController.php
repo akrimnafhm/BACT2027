@@ -61,13 +61,19 @@ class AuthController extends Controller
         ]);
 
         // 2. Simpan ke database (tanpa phone_number)
-        User::create([
+        $user = User::create([
             'name' => $validatedData['name'],
             'email' => $validatedData['email'],
             'password' => Hash::make($validatedData['password']),
         ]);
 
-        // 3. Arahkan ke login dengan pesan sukses
+        // 3. Hubungkan tiket peserta manual yang emailnya belum terdaftar saat dibuat.
+        //    (Admin menambahkan peserta manual; saat pemilik email mendaftar, tiketnya otomatis muncul.)
+        \App\Models\TicketBooking::whereNull('user_id')
+            ->where('gmail_account', $user->email)
+            ->update(['user_id' => $user->id]);
+
+        // 4. Arahkan ke login dengan pesan sukses
         return redirect('/login')->with('success', 'Registrasi berhasil! Silakan login dengan akun Anda.');
     }
 

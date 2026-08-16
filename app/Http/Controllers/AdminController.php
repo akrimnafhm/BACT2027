@@ -765,9 +765,13 @@ class AdminController extends Controller
 
         $ticket = \App\Models\Ticket::findOrFail($request->ticket_id);
 
+        // Hubungkan ke akun user jika email sudah terdaftar. Jika belum terdaftar,
+        // user_id dibiarkan null — saat pemilik email mendaftar, tiket otomatis terhubung.
+        $linkedUser = \App\Models\User::where('email', $request->gmail_account)->first();
+
         // Kunci kuota secara atomik — peserta manual juga mengonsumsi kuota seperti booking website.
         try {
-            $booking = \Illuminate\Support\Facades\DB::transaction(function () use ($ticket, $request) {
+            $booking = \Illuminate\Support\Facades\DB::transaction(function () use ($ticket, $request, $linkedUser) {
                 $reserved = \App\Models\Ticket::where('id', $ticket->id)
                             ->where('quota', '>', 0)
                             ->decrement('quota');
@@ -777,7 +781,7 @@ class AdminController extends Controller
                 }
 
                 return \App\Models\TicketBooking::create([
-                    'user_id'              => auth()->id(),
+                    'user_id'              => $linkedUser ? $linkedUser->id : null,
                     'ticket_id'            => $ticket->id,
                     'ticket_name'          => $ticket->ticket_name,
                     'ticket_category'      => $ticket->ticket_category,

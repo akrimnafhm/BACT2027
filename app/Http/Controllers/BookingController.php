@@ -109,6 +109,11 @@ class BookingController extends Controller
                     ->where('user_id', $user->id)
                     ->firstOrFail();
 
+        // Peserta manual dikelola panitia — pembatalan lewat panitia, bukan user.
+        if ($booking->source === 'manual') {
+            return back()->with('error', 'Peserta manual dikelola oleh panitia. Silakan hubungi panitia untuk pembatalan.');
+        }
+
         if ($booking->status !== 'pending') {
             return back()->with('error', 'Pemesanan hanya dapat dibatalkan sebelum pembayaran. Untuk tiket yang sudah lunas, silakan hubungi panitia untuk proses refund.');
         }
@@ -323,6 +328,12 @@ class BookingController extends Controller
         if ($booking->status !== 'pending') {
             return redirect()->route('booking.index')
                              ->with('error', 'Pemesanan ini sudah tidak aktif. Silakan lakukan pemesanan ulang.');
+        }
+
+        // Peserta manual tidak membayar online — dikonfirmasi langsung oleh panitia.
+        if ($booking->source === 'manual') {
+            return redirect()->route('booking.index')
+                             ->with('error', 'Tiket peserta manual dikonfirmasi oleh panitia, tidak perlu melakukan pembayaran online.');
         }
 
         // Batalkan otomatis bila melewati batas waktu pembayaran (24 jam) atau tiket sudah tidak berlaku.

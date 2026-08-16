@@ -60,22 +60,32 @@
                 </div>
 
                 @if($pendingBooking)
-                    <div class="mt-6 bg-yellow-50 rounded-xl border border-yellow-200 p-6 text-center">
-                        <h3 class="text-base font-bold text-yellow-800 mb-2">Pesanan Menunggu Pembayaran</h3>
-                        <p class="text-yellow-700 mb-4 text-sm">Selesaikan pembayaran berikut agar tiket tercatat:</p>
-                        <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
-                            <a href="{{ route('checkout', $pendingBooking->id) }}" class="inline-flex justify-center items-center bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-6 rounded-xl transition shadow-md">
-                                Lanjutkan Pembayaran
-                            </a>
-                            <form method="POST" action="{{ route('booking.cancel', $pendingBooking->id) }}" onsubmit="return confirm('Yakin ingin membatalkan pemesanan ini? Kuota tiket akan dikembalikan.')">
-                                @csrf
-                                <button type="submit" class="inline-flex justify-center items-center bg-white border border-red-200 text-red-600 hover:bg-red-50 font-bold py-3 px-6 rounded-xl transition shadow-sm">
-                                    Batalkan Pemesanan
-                                </button>
-                            </form>
+                    @if($pendingBooking->source === 'manual')
+                        <div class="mt-6 bg-yellow-50 rounded-xl border border-yellow-200 p-6 text-center">
+                            <h3 class="text-base font-bold text-yellow-800 mb-2">Pesanan Menunggu Konfirmasi Panitia</h3>
+                            <p class="text-yellow-700 text-sm">
+                                Tiket ini dicatatkan oleh panitia dan sedang menunggu konfirmasi.
+                                Anda tidak perlu melakukan pembayaran online — hubungi panitia jika ada pertanyaan.
+                            </p>
                         </div>
-                        <p class="text-xs text-yellow-700 mt-4">Pembatalan hanya berlaku sebelum pembayaran.</p>
-                    </div>
+                    @else
+                        <div class="mt-6 bg-yellow-50 rounded-xl border border-yellow-200 p-6 text-center">
+                            <h3 class="text-base font-bold text-yellow-800 mb-2">Pesanan Menunggu Pembayaran</h3>
+                            <p class="text-yellow-700 mb-4 text-sm">Selesaikan pembayaran berikut agar tiket tercatat:</p>
+                            <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
+                                <a href="{{ route('checkout', $pendingBooking->id) }}" class="inline-flex justify-center items-center bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-6 rounded-xl transition shadow-md">
+                                    Lanjutkan Pembayaran
+                                </a>
+                                <form method="POST" action="{{ route('booking.cancel', $pendingBooking->id) }}" onsubmit="return confirm('Yakin ingin membatalkan pemesanan ini? Kuota tiket akan dikembalikan.')">
+                                    @csrf
+                                    <button type="submit" class="inline-flex justify-center items-center bg-white border border-red-200 text-red-600 hover:bg-red-50 font-bold py-3 px-6 rounded-xl transition shadow-sm">
+                                        Batalkan Pemesanan
+                                    </button>
+                                </form>
+                            </div>
+                            <p class="text-xs text-yellow-700 mt-4">Pembatalan hanya berlaku sebelum pembayaran.</p>
+                        </div>
+                    @endif
                 @endif
 
                 <div class="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-gray-100 pt-6">
