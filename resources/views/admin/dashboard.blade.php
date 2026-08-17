@@ -26,6 +26,59 @@
             <p class="text-sm text-gray-500 mt-1">Pantau perkembangan pendaftaran peserta dan aliran pendapatan tiket secara real-time.</p>
         </div>
 
+        @if(session('success'))
+            <div class="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-800">
+                {{ session('success') }}
+            </div>
+        @endif
+
+        @if(session('error'))
+            <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">
+                {{ session('error') }}
+            </div>
+        @endif
+
+        <!-- Mode Situs: Normal / Maintenance -->
+        <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+                <div class="p-3 rounded-xl {{ $siteMode === 'maintenance' ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-green-50 text-green-600 border border-green-100' }}">
+                    @if($siteMode === 'maintenance')
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    @else
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                    @endif
+                </div>
+                <div>
+                    <p class="text-sm font-bold text-gray-900">Mode Situs</p>
+                    <p class="text-xs text-gray-500 mt-0.5">
+                        @if($siteMode === 'maintenance')
+                            <span class="font-bold text-red-600">Maintenance AKTIF</span> — website publik diblokir, hanya halaman admin yang bisa diakses.
+                        @else
+                            <span class="font-bold text-green-600">Normal</span> — website berjalan seperti biasa.
+                        @endif
+                    </p>
+                </div>
+            </div>
+
+            <form method="POST" action="{{ route('admin.maintenance.toggle') }}"
+                  onsubmit="return confirm('{{ $siteMode === 'maintenance' ? 'Yakin ingin mematikan mode maintenance dan membuka kembali website publik?' : 'Yakin ingin mengaktifkan mode maintenance? Website publik akan diblokir sementara.' }}')">
+                @csrf
+                <button type="submit" class="inline-flex items-center gap-2 font-bold text-sm py-2.5 px-5 rounded-xl transition shadow-sm
+                    {{ $siteMode === 'maintenance'
+                        ? 'bg-green-600 hover:bg-green-700 text-white'
+                        : 'bg-red-600 hover:bg-red-700 text-white' }}">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                    {{ $siteMode === 'maintenance' ? 'Kembalikan ke Mode Normal' : 'Aktifkan Mode Maintenance' }}
+                </button>
+            </form>
+        </div>
+
         <!-- A. 3 CARD RINGKASAN UTAMA -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             

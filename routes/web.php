@@ -111,6 +111,8 @@ Route::middleware(['auth', IsAdmin::class])->prefix('admin')->group(function () 
     // 1. Dashboard
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
 
+    Route::post('/maintenance/toggle', [AdminController::class, 'toggleMaintenance'])->name('admin.maintenance.toggle');
+
     // =========================================================
     // 2. KUOTA & HARGA (Master Tiket Simposium & Kamar Hotel)
     // =========================================================

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Ticket;
 use App\Models\TicketBooking;
 use App\Models\HotelRoom;
+use App\Models\SiteSetting;
 use App\Services\TicketNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -24,6 +25,9 @@ class AdminController extends Controller
         $totalRevenue = $paidBookings->sum('amount');
         $totalPaidParticipants = $paidBookings->count();
         $totalPendingBookings = TicketBooking::where('status', 'pending')->count();
+
+        // Mode situs (normal / maintenance) untuk switch di dashboard.
+        $siteMode = SiteSetting::value('site_mode', 'normal');
 
         // 2. Siapkan 6 Kategori Tiket persis sesuai UI Dashboard
         $categories = [
@@ -74,8 +78,31 @@ class AdminController extends Controller
             'totalRevenue',
             'totalPaidParticipants',
             'totalPendingBookings',
-            'categories'
+            'categories',
+            'siteMode'
         ));
+    }
+
+    /**
+     * Toggle mode situs: normal <-> maintenance.
+     * Saat maintenance aktif, hanya halaman admin yang bisa diakses;
+     * halaman publik menampilkan informasi maintenance.
+     */
+    public function toggleMaintenance(Request $request): \Illuminate\Http\RedirectResponse
+    {
+        $current = SiteSetting::value('site_mode', 'normal');
+        $next = $current === 'maintenance' ? 'normal' : 'maintenance';
+
+        SiteSetting::updateOrCreate(
+            ['key' => 'site_mode'],
+            ['value' => $next]
+        );
+
+        $message = $next === 'maintenance'
+            ? 'Mode maintenance AKTIF. Website publik kini diblokir, hanya halaman admin yang dapat diakses.'
+            : 'Mode maintenance dimatikan. Website kembali berjalan normal.';
+
+        return back()->with('success', $message);
     }
 
     // ==========================================

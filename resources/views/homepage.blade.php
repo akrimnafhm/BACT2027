@@ -302,13 +302,13 @@
                         - PC/Laptop (lg:w-[calc(20%-16px)]): pas 5 kartu per layar
                     -->
                 <div
-                    class="w-[calc(50%-10px)] md:w-[calc(33.333%-14px)] lg:w-[calc(20%-16px)] shrink-0 snap-start bg-white rounded-2xl border border-gray-200/80 shadow-sm overflow-hidden group hover:border-[#E19404] transition duration-300 flex flex-col justify-between">
+                    class="w-[calc(50%-10px)] md:w-[calc(33.333%-14px)] lg:w-[calc(20%-16px)] shrink-0 snap-start bg-gradient-to-b from-[#234661] via-[#1d394d] to-[#142531] rounded-2xl border border-gray-200/80 shadow-sm overflow-hidden group hover:border-[#E19404] transition duration-300 flex flex-col justify-between">
 
                     <!-- Foto Pembicara (h-52 agar proporsional dengan kartu kompak) -->
-                    <div class="h-52 overflow-hidden flex items-center justify-center relative bg-white">
+                    <div class="h-52 overflow-hidden flex items-center justify-center relative">
                         @if($speaker->image)
                             <img src="{{ asset('storage/' . $speaker->image) }}" alt="{{ $speaker->name }}"
-                                class="w-32 h-32 sm:w-40 sm:h-40 rounded-full border border-gray-200 object-cover object-top group-hover:scale-105 transition duration-500">
+                                class="w-32 h-32 sm:w-40 sm:h-40 rounded-full border object-cover object-top group-hover:scale-105 transition duration-500">
                         @else
                             <div class="w-32 h-32 sm:w-40 sm:h-40 rounded-full flex flex-col items-center justify-center gap-2 text-gray-300">
                                 <svg class="w-16 h-16 sm:w-20 sm:h-20" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -319,11 +319,11 @@
                     </div>
 
                     <!-- Nama & Instansi -->
-                    <div class="p-5 text-center flex flex-col justify-center flex-grow">
-                        <h3 class="text-sm font-semibold text-gray-900 leading-snug group-hover:text-[#E19404] transition">
+                    <div class="p-5 text-center flex flex-col justify-start flex-grow">
+                        <h3 class="text-sm font-semibold text-white/90 leading-snug group-hover:text-[#E19404] transition">
                             {{ $speaker->name }}
                         </h3>
-                        <p class="text-xs text-gray-500 mt-4 font-medium line-clamp-2">
+                        <p class="text-xs text-white/50 mt-4 font-medium line-clamp-2">
                             {{ $speaker->institution }}
                         </p>
                     </div>
@@ -334,17 +334,17 @@
             <!-- Placeholder: lengkapi hingga 5 kartu jika pembicara belum penuh -->
             @for($i = $speakers->count(); $i < 5; $i++)
                 <div
-                    class="w-[calc(50%-10px)] md:w-[calc(33.333%-14px)] lg:w-[calc(20%-16px)] shrink-0 bg-white rounded-2xl border border-gray-200/80 shadow-sm overflow-hidden">
-                    <div class="h-52 flex items-center justify-center bg-white">
+                    class="w-[calc(50%-10px)] md:w-[calc(33.333%-14px)] lg:w-[calc(20%-16px)] shrink-0 bg-gradient-to-b from-[#234661] via-[#1d394d] to-[#142531] rounded-2xl border border-gray-200/80 shadow-sm overflow-hidden">
+                    <div class="h-52 flex items-center justify-center">
                         <div class="w-40 h-40 rounded-full border border-gray-200 bg-gray-100 flex items-center justify-center text-gray-300">
                             <svg class="w-20 h-20" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                 <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
                             </svg>
                         </div>
                     </div>
-                    <div class="p-5 text-center">
-                        <h3 class="text-base font-black text-gray-900">Pembicara</h3>
-                        <p class="text-xs text-gray-500 mt-1.5 font-semibold">Instansi</p>
+                    <div class="p-5 text-center flex flex-col justify-center flex-grow">
+                        <h3 class="text-base font-semibold text-white/90">Pembicara</h3>
+                        <p class="text-xs text-white/50 mt-4 font-medium">Instansi</p>
                     </div>
                 </div>
             @endfor
