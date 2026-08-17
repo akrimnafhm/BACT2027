@@ -6,10 +6,10 @@
     <title>Sedang Maintenance - BACT 2027</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="bg-[#F4F5F7] min-h-screen flex items-center justify-center font-sans px-4">
+<body class="bg-white min-h-screen flex items-center justify-center font-sans px-4">
 
     <div class="w-full max-w-md mx-auto text-center">
-        <div class="bg-white rounded-3xl shadow-sm border border-gray-200 p-10">
+        <div class="bg-white p-10">
             <img src="{{ asset('images/logo.png') }}" alt="BACT 2027" class="h-14 mx-auto mb-8 object-contain">
 
             <div class="w-16 h-16 mx-auto mb-6 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-500">
