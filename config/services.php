@@ -40,4 +40,8 @@ return [
         'url' => env('FONNTE_API_URL', 'https://api.fonnte.com/send'),
     ],
 
+    'whatsapp' => [
+        'webhook_verify_token' => env('WHATSAPP_WEBHOOK_VERIFY_TOKEN'),
+    ],
+
 ];
