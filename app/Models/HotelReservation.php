@@ -26,8 +26,11 @@ class HotelReservation extends Model
         'guest_email',
         'status',
         'invoice_number',
+        'payment_url',
+        'payment_expired_at',
         'payment_method',
         'notified_at',
+        'cancelled_at',
     ];
 
     /**
@@ -39,6 +42,8 @@ class HotelReservation extends Model
         'total_nights' => 'integer',
         'total_price'  => 'decimal:2',
         'notified_at'  => 'datetime',
+        'payment_expired_at' => 'datetime',
+        'cancelled_at'  => 'datetime',
     ];
 
     /**

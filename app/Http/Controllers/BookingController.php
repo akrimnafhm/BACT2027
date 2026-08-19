@@ -337,11 +337,11 @@ class BookingController extends Controller
                              ->with('error', 'Tiket peserta manual dikonfirmasi oleh panitia, tidak perlu melakukan pembayaran online.');
         }
 
-        // Batalkan otomatis bila melewati batas waktu pembayaran (24 jam) atau tiket sudah tidak berlaku.
+        // Batalkan otomatis bila melewati batas waktu pembayaran atau tiket sudah tidak berlaku.
         if ($this->isBookingExpired($booking)) {
             $this->cancelExpiredBooking($booking);
             return redirect()->route('booking.index')
-                             ->with('error', 'Pemesanan otomatis dibatalkan karena melewati batas waktu pembayaran (24 jam) atau tiket sudah tidak berlaku. Silakan lakukan pemesanan ulang.');
+                             ->with('error', 'Pemesanan otomatis dibatalkan karena melewati batas waktu pembayaran atau tiket sudah tidak berlaku. Silakan lakukan pemesanan ulang.');
         }
 
         // REUSE: Jika link pembayaran DOKU sebelumnya masih valid, jangan buat pembayaran baru.
@@ -501,10 +501,15 @@ class BookingController extends Controller
 
     /**
      * Cek apakah booking pending sudah harus dibatalkan otomatis:
-     * melewati batas waktu pembayaran (24 jam sejak dibuat) atau tiket sudah tidak berlaku.
+     * timer pembayaran dari DOKU (payment_expired_at) sudah habis,
+     * atau fallback 24 jam sejak dibuat, atau tiket sudah tidak berlaku.
      */
     private function isBookingExpired(TicketBooking $booking): bool
     {
+        if ($booking->payment_expired_at) {
+            return $booking->payment_expired_at->lte(now());
+        }
+
         if ($booking->created_at && $booking->created_at->lt(now()->subHours(24))) {
             return true;
         }
@@ -540,13 +545,16 @@ class BookingController extends Controller
      */
     private function parsePaymentExpiredDate(array $dokuResult): Carbon
     {
-        $raw = $dokuResult['response']['payment']['expired_date']
+        $raw = $dokuResult['response']['payment']['expired_datetime']
+            ?? $dokuResult['response']['payment']['expired_date']
             ?? $dokuResult['response']['payment']['expiredDate']
             ?? null;
 
         if ($raw) {
             try {
-                return Carbon::parse($raw);
+                // Simpan dalam zona waktu aplikasi agar konsisten dengan created_at
+                // (Eloquent menyimpan wall-clock, bukan UTC).
+                return Carbon::parse($raw)->setTimezone(config('app.timezone'));
             } catch (\Throwable $e) {
                 // ignore, fallback di bawah
             }

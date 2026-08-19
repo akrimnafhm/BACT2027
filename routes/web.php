@@ -93,6 +93,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/hotel/book/{id}', [HotelBookingController::class, 'store'])->name('hotels.store');
     Route::get('/hotel/checkout/{id}', [HotelBookingController::class, 'checkout'])->name('hotels.checkout');
 
+    // Batalkan reservasi hotel oleh user (hanya berlaku sebelum pembayaran)
+    Route::post('/hotel/cancel/{id}', [HotelBookingController::class, 'cancel'])->name('hotels.cancel');
+
     // Return URL dari DOKU agar status reservasi hotel bisa disinkronkan saat user kembali ke site
     Route::get('/hotel/return/{reservation}', [HotelBookingController::class, 'paymentReturn'])->name('hotels.return');
 });

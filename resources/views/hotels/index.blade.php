@@ -34,6 +34,13 @@
             </div>
         @endif
 
+        <!-- Notifikasi Success jika ada -->
+        @if(session('success'))
+            <div class="max-w-3xl mx-auto bg-green-50 border border-green-200 text-green-700 px-4 py-3.5 rounded-xl text-sm font-medium shadow-sm text-center">
+                {{ session('success') }}
+            </div>
+        @endif
+
         <!-- =========================================================
              A. KONDISI TAMU / GUEST (BELUM LOGIN)
              ========================================================= -->
@@ -64,12 +71,21 @@
         @elseif(isset($status) && $status === 'pending')
             <div class="max-w-3xl mx-auto space-y-6">
 
-                <div class="bg-yellow-50 rounded-2xl shadow-sm p-8 border border-yellow-200 text-center">
-                    <h3 class="text-lg font-bold text-yellow-800 mb-2">Pembayaran Belum Selesai</h3>
-                    <p class="text-yellow-700 mb-6 text-sm">Mohon selesaikan pembayaran untuk reservasi hotel Anda. Pesanan akan diproses setelah pembayaran dikonfirmasi.</p>
-                    <a href="{{ route('hotels.checkout', $reservation->id) }}" class="inline-flex justify-center items-center bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-6 rounded-xl transition shadow-md">
-                        Lanjutkan Pembayaran
-                    </a>
+                <div class="mt-6 bg-yellow-50 rounded-xl border border-yellow-200 p-6 text-center">
+                    <h3 class="text-base font-bold text-yellow-800 mb-2">Pembayaran Belum Selesai</h3>
+                    <p class="text-yellow-700 mb-4 text-sm">Mohon selesaikan pembayaran untuk reservasi hotel Anda. Pesanan akan diproses setelah pembayaran dikonfirmasi.</p>
+                    <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
+                        <a href="{{ route('hotels.checkout', $reservation->id) }}" class="inline-flex justify-center items-center bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-6 rounded-xl transition shadow-md">
+                            Lanjutkan Pembayaran
+                        </a>
+                        <form method="POST" action="{{ route('hotels.cancel', $reservation->id) }}" onsubmit="return confirm('Batalkan reservasi ini? Kamu bisa memesan ulang setelahnya.')">
+                            @csrf
+                            <button type="submit" class="inline-flex justify-center items-center bg-white border border-red-200 text-red-600 hover:bg-red-50 font-bold py-3 px-6 rounded-xl transition shadow-sm">
+                                Batalkan Reservasi
+                            </button>
+                        </form>
+                    </div>
+                    <p class="text-xs text-yellow-700 mt-4">Pembatalan hanya berlaku sebelum pembayaran.</p>
                 </div>
 
                 @include('hotels.partials.invoice', ['reservation' => $reservation, 'statusLabel' => 'Pending'])

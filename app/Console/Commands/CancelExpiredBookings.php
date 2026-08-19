@@ -25,7 +25,11 @@ class CancelExpiredBookings extends Command
 
         TicketBooking::where('status', 'pending')
             ->where(function ($query) use ($deadline) {
-                $query->where('created_at', '<=', $deadline)
+                $query->where('payment_expired_at', '<=', now())
+                    ->orWhere(function ($query) use ($deadline) {
+                        $query->whereNull('payment_expired_at')
+                              ->where('created_at', '<=', $deadline);
+                    })
                     ->orWhereHas('ticket', function ($ticket) {
                         $ticket->whereNotNull('end_date')
                               ->where('end_date', '<', now());
