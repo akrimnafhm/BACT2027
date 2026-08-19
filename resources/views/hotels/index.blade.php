@@ -52,7 +52,7 @@
         @elseif(isset($status) && $status === 'incomplete')
             <div class="max-w-3xl mx-auto bg-yellow-50 rounded-2xl shadow-sm p-8 border border-yellow-200 text-center">
                 <h3 class="text-lg font-bold text-yellow-800 mb-2">Profil Belum Lengkap</h3>
-                <p class="text-yellow-700 mb-6 text-sm">Mohon lengkapi NIK dan verifikasi kontak Anda terlebih dahulu pada halaman profil sebelum memesan kamar hotel.</p>
+                <p class="text-yellow-700 mb-6 text-sm">Mohon lengkapi NIK dan verifikasi email Anda terlebih dahulu pada halaman profil sebelum memesan kamar hotel.</p>
                 <a href="{{ route('profile.edit') }}" class="inline-block bg-[#FFC32D] hover:bg-[#E19404] text-white font-bold py-3 px-8 rounded-xl transition shadow-md">
                     Lengapi Profil Sekarang
                 </a>

@@ -8,6 +8,7 @@ use App\Services\HotelNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 
@@ -129,12 +130,11 @@ class HotelBookingController extends Controller
     }
 
     /**
-     * Cek apakah profil user sudah lengkap (email & WA terverifikasi, data pribadi terisi).
+     * Cek apakah profil user sudah lengkap (email terverifikasi, data pribadi terisi).
      */
     private function isProfileComplete($user): bool
     {
         return !empty($user->email_verified_at) &&
-               !empty($user->phone_verified_at) &&
                !empty($user->name) &&
                !empty($user->nik) &&
                !empty($user->gender);
@@ -164,9 +164,9 @@ class HotelBookingController extends Controller
         // -------------------------------------------------------------
         // PEMANGGILAN API DOKU CHECKOUT (DIRECT VIA LARAVEL HTTP CLIENT)
         // -------------------------------------------------------------
-        $clientId = env('DOKU_CLIENT_ID');
-        $secretKey = env('DOKU_SECRET_KEY');
-        $isProduction = env('DOKU_IS_PRODUCTION', false);
+        $clientId = config('services.doku.client_id');
+        $secretKey = config('services.doku.secret_key');
+        $isProduction = filter_var(config('services.doku.is_production', false), FILTER_VALIDATE_BOOL);
 
         $baseUrl = $isProduction
             ? 'https://api.doku.com'
@@ -183,7 +183,7 @@ class HotelBookingController extends Controller
                     'invoice_number' => $invoiceNumber,
                     'simulated_paid' => 1,
                 ]),
-                'notification_url' => env('DOKU_NOTIFICATION_URL', url('/api/doku/notification')),
+                'notification_url' => config('services.doku.notification_url', url('/api/doku/notification')),
             ],
             'payment' => [
                 'payment_due_date' => 1440 // Expired VA/Link dalam menit (24 jam)
@@ -214,15 +214,24 @@ class HotelBookingController extends Controller
         $signature = "HMACSHA256=" . base64_encode(hash_hmac('sha256', $rawSignature, $secretKey, true));
 
         // 3. Tembak API DOKU
-        $response = Http::withHeaders([
-            'Client-Id' => $clientId,
-            'Request-Id' => $requestId,
-            'Request-Timestamp' => $requestTimestamp,
-            'Signature' => $signature,
-            'Content-Type' => 'application/json',
-        ])->send('POST', $baseUrl . $requestTarget, [
-            'body' => $jsonBody
-        ]);
+        try {
+            $response = Http::withHeaders([
+                'Client-Id' => $clientId,
+                'Request-Id' => $requestId,
+                'Request-Timestamp' => $requestTimestamp,
+                'Signature' => $signature,
+                'Content-Type' => 'application/json',
+            ])->send('POST', $baseUrl . $requestTarget, [
+                'body' => $jsonBody
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('DOKU hotel checkout request exception', [
+                'reservation_id' => $reservation->id,
+                'base_url'       => $baseUrl,
+                'error'          => $e->getMessage(),
+            ]);
+            return back()->with('error', 'Gagal memproses ke gerbang pembayaran DOKU. Silakan coba lagi.');
+        }
 
         $dokuResult = $response->json();
 
@@ -237,6 +246,12 @@ class HotelBookingController extends Controller
         }
 
         // Jika gagal konek ke DOKU
+        Log::error('DOKU hotel checkout failed', [
+            'reservation_id' => $reservation->id,
+            'base_url'       => $baseUrl,
+            'http_status'    => $response->status(),
+            'response'       => $dokuResult,
+        ]);
         return back()->with('error', 'Gagal memproses ke gerbang pembayaran DOKU. Silakan coba lagi.');
     }
 
@@ -253,7 +268,7 @@ class HotelBookingController extends Controller
 
         $reservation = $this->syncReservationFromCallback($request, $user, $reservation);
 
-        $isProduction = filter_var(env('DOKU_IS_PRODUCTION', false), FILTER_VALIDATE_BOOLEAN);
+        $isProduction = filter_var(config('services.doku.is_production', false), FILTER_VALIDATE_BOOL);
         $shouldAutoFinalize = !$isProduction && ((int) $request->query('simulated_paid', 0) === 1 || $reservation->status === 'pending');
 
         if ($shouldAutoFinalize && $reservation->status !== 'paid') {

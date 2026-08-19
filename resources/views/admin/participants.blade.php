@@ -267,6 +267,10 @@
 
                                                 @if($item->status === 'deleted')
                                                     <span class="px-3 py-1.5 bg-gray-100 text-gray-500 text-xs font-bold rounded-lg whitespace-nowrap" title="{{ $item->deleted_at ? 'Dihapus ' . $item->deleted_at->format('d M Y H:i') : '' }}">Dihapus</span>
+                                                    <form method="POST" action="{{ route('admin.participants.restore', $item->id) }}" onsubmit="return confirm('Kembalikan peserta {{ addslashes($item->name_with_title ?: $item->full_name) }} ke status TERTUNDA? Kuota tiket akan di-reserve ulang.')">
+                                                        @csrf
+                                                        <button type="submit" class="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 text-xs font-bold rounded-lg transition whitespace-nowrap">Kembalikan</button>
+                                                    </form>
                                                 @else
                                                     @if($item->source === 'manual' && !$item->confirmed_at)
                                                         <form method="POST" action="{{ route('admin.participants.confirm', $item->id) }}" onsubmit="return confirm('Konfirmasi {{ addslashes($item->name_with_title ?: $item->full_name) }} agar tercatat sebagai peserta LUNAS?')">
@@ -295,6 +299,10 @@
 
                                             @if($item->status === 'deleted')
                                                 <span class="px-3 py-1.5 bg-gray-100 text-gray-500 text-xs font-bold rounded-lg whitespace-nowrap" title="{{ $item->deleted_at ? 'Dihapus ' . $item->deleted_at->format('d M Y H:i') : '' }}">Dihapus</span>
+                                                <form method="POST" action="{{ route('admin.participants.restore', $item->id) }}" onsubmit="return confirm('Kembalikan peserta {{ addslashes($item->name_with_title ?: $item->full_name) }} ke status TERTUNDA? Kuota tiket akan di-reserve ulang.')">
+                                                    @csrf
+                                                    <button type="submit" class="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 text-xs font-bold rounded-lg transition whitespace-nowrap">Kembalikan</button>
+                                                </form>
                                             @else
                                                 <button type="button" onclick="openDeleteModal({{ $item->id }}, '{{ addslashes($item->name_with_title ?: $item->full_name) }}')"
                                                     class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-lg transition">Hapus</button>
@@ -490,6 +498,26 @@
                         mencatatnya sebagai peserta <b>LUNAS</b>.</p>
                 </div>
             </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Provinsi Instansi <span class="text-red-500">*</span></label>
+                        <select id="m_provinsi" name="institution_province" required class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl bg-white cursor-pointer">
+                            <option value="">-- Pilih Provinsi --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Kabupaten / Kota Instansi <span class="text-red-500">*</span></label>
+                        <select id="m_kabupaten" name="institution_city" required disabled class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl bg-white cursor-pointer disabled:bg-gray-100 disabled:cursor-not-allowed">
+                            <option value="">-- Pilih Kabupaten --</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Kecamatan Instansi <span class="text-red-500">*</span></label>
+                    <select id="m_kecamatan" name="institution_district" required disabled class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl bg-white cursor-pointer disabled:bg-gray-100 disabled:cursor-not-allowed">
+                        <option value="">-- Pilih Kecamatan --</option>
+                    </select>
+                </div>
                 <div>
                     <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Catatan Awal <span class="text-gray-400 normal-case font-medium">(opsional)</span></label>
                     <textarea name="notes" rows="2" placeholder="cth: Data titipan dari panitia" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl"></textarea>
@@ -654,6 +682,59 @@
         function closeManualModal() {
             document.getElementById('manualModal').classList.add('hidden');
         }
+
+        // ---------- DROPDOWN WILAYAH BERJENJANG (EMSIFA) UNTUK MODAL PESERTA MANUAL ----------
+        // Mirip dengan halaman peserta: Provinsi -> Kabupaten/Kota -> Kecamatan.
+        (function initWilayahManual() {
+            const apiBase = 'https://www.emsifa.com/api-wilayah-indonesia/api';
+            const selProv = document.getElementById('m_provinsi');
+            const selKab  = document.getElementById('m_kabupaten');
+            const selKec  = document.getElementById('m_kecamatan');
+            if (!selProv || !selKab || !selKec) return;
+
+            fetch(apiBase + '/provinces.json')
+                .then(response => response.json())
+                .then(provinces => {
+                    provinces.forEach(prov => {
+                        selProv.innerHTML += `<option value="${prov.name}" data-id="${prov.id}">${prov.name}</option>`;
+                    });
+                })
+                .catch(error => console.error('Error fetching provinces:', error));
+
+            selProv.addEventListener('change', (e) => {
+                const provId = e.target.selectedOptions[0] ? e.target.selectedOptions[0].getAttribute('data-id') : null;
+                selKab.innerHTML = '<option value="">-- Pilih Kabupaten --</option>';
+                selKec.innerHTML = '<option value="">-- Pilih Kecamatan --</option>';
+                selKab.disabled = true;
+                selKec.disabled = true;
+                if (provId) {
+                    fetch(apiBase + '/regencies/' + provId + '.json')
+                        .then(response => response.json())
+                        .then(regencies => {
+                            regencies.forEach(kab => {
+                                selKab.innerHTML += `<option value="${kab.name}" data-id="${kab.id}">${kab.name}</option>`;
+                            });
+                            selKab.disabled = false;
+                        });
+                }
+            });
+
+            selKab.addEventListener('change', (e) => {
+                const kabId = e.target.selectedOptions[0] ? e.target.selectedOptions[0].getAttribute('data-id') : null;
+                selKec.innerHTML = '<option value="">-- Pilih Kecamatan --</option>';
+                selKec.disabled = true;
+                if (kabId) {
+                    fetch(apiBase + '/districts/' + kabId + '.json')
+                        .then(response => response.json())
+                        .then(districts => {
+                            districts.forEach(kec => {
+                                selKec.innerHTML += `<option value="${kec.name}">${kec.name}</option>`;
+                            });
+                            selKec.disabled = false;
+                        });
+                }
+            });
+        })();
     </script>
 
 </body>

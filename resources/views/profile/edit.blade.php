@@ -15,14 +15,9 @@
         'navbarProfileStyle' => true,
     ])
 
-    <!-- FORM TERSEMBUNYI UNTUK VERIFIKASI -->
+    <!-- FORM TERSEMBUNYI UNTUK VERIFIKASI EMAIL -->
     <form id="form-send-email-otp" action="{{ route('email.sendOtp') }}" method="POST" class="hidden">@csrf</form>
     <form id="form-verify-email-otp" action="{{ route('email.verifyOtp') }}" method="POST" class="hidden">@csrf</form>
-    <form id="form-send-otp" action="{{ route('phone.sendOtp') }}" method="POST" class="hidden">
-        @csrf
-        <input type="hidden" name="phone_number" id="hidden_phone_number">
-    </form>
-    <form id="form-verify-otp" action="{{ route('phone.verifyOtp') }}" method="POST" class="hidden">@csrf</form>
 
     <!-- KONTEN UTAMA PROFIL -->
     <div class="max-w-3xl mx-auto px-4 flex-grow w-full mb-16 mt-4">
@@ -92,40 +87,11 @@
                         </div>
                     </div>
 
-                    <!-- Nomor WhatsApp -->
+                    <!-- Nomor WhatsApp (tanpa verifikasi OTP — cukup dicatat untuk kebutuhan panitia) -->
                     <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
                         <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Nomor WhatsApp Aktif</label>
-                        <div class="flex items-start md:items-center flex-col md:flex-row gap-3">
-                            <input type="text" id="phone_input" name="phone_number" value="{{ $user->phone_number }}" placeholder="Contoh: 081234567890" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] outline-none transition text-sm font-semibold text-gray-800">
-                            
-                            <div class="md:w-auto w-full flex justify-end">
-                                @if($user->phone_verified_at)
-                                    <span class="inline-flex items-center text-xs font-bold px-3 py-1 bg-green-100 text-green-700 rounded-full">
-                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Terverifikasi
-                                    </span>
-                                @else
-                                    @if(!empty($user->otp_code) || session('otp_sent'))
-                                        <div class="flex flex-col items-end gap-2">
-                                            <div class="flex items-center gap-2">
-                                                <input type="text" name="otp_code" form="form-verify-otp" placeholder="6 Digit" required maxlength="6" class="w-24 px-3 py-2 border border-gray-300 rounded-lg text-center tracking-widest text-sm focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] outline-none">
-                                                <button type="submit" form="form-verify-otp" class="text-xs font-bold px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg transition shadow-sm">Cek</button>
-                                            </div>
-                                            <div class="text-xs">
-                                                @if($phoneOtpRemaining > 0)
-                                                    <span class="text-gray-400 font-semibold" data-countdown="{{ $phoneOtpRemaining }}" data-target="phone">Kirim ulang dalam <b class="text-gray-600" data-countdown-display>00:00</b></span>
-                                                @else
-                                                    <button type="button" onclick="submitOtpRequest()" class="font-bold text-[#E19404] hover:text-orange-600 transition cursor-pointer">Kirim Ulang OTP</button>
-                                                @endif
-                                            </div>
-                                        </div>
-                                    @else
-                                        <button type="button" onclick="submitOtpRequest()" class="text-xs font-bold px-5 py-2.5 bg-[#FFC32D] hover:bg-[#E19404] text-white rounded-lg transition whitespace-nowrap shadow-sm">
-                                            Kirim OTP
-                                        </button>
-                                    @endif
-                                @endif
-                            </div>
-                        </div>
+                        <input type="text" id="phone_input" name="phone_number" value="{{ $user->phone_number }}" placeholder="Contoh: 081234567890" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] outline-none transition text-sm font-semibold text-gray-800">
+                        <p class="text-xs text-gray-400 mt-2">Nomor ini digunakan panitia untuk menghubungi Anda.</p>
                     </div>
                 </div>
             </div>
@@ -199,17 +165,7 @@
     @include('partials.footer')
 
     <script>
-        function submitOtpRequest() {
-            const phoneValue = document.getElementById('phone_input').value;
-            if (!phoneValue) {
-                alert('Mohon ketik nomor WhatsApp Anda terlebih dahulu!');
-                return;
-            }
-            document.getElementById('hidden_phone_number').value = phoneValue;
-            document.getElementById('form-send-otp').submit();
-        }
-
-        // COUNTDOWN KIRIM ULANG OTP (bertahan saat halaman di-refresh karena sisa waktu dari server)
+        // COUNTDOWN KIRIM ULANG OTP EMAIL (bertahan saat halaman di-refresh karena sisa waktu dari server)
         function formatCountdown(seconds) {
             const m = Math.floor(seconds / 60);
             const s = seconds % 60;
@@ -219,7 +175,6 @@
         function initOtpCountdowns() {
             document.querySelectorAll('[data-countdown]').forEach(el => {
                 let remaining = parseInt(el.dataset.countdown, 10);
-                const target = el.dataset.target;
                 const display = el.querySelector('[data-countdown-display]');
                 if (display) display.textContent = formatCountdown(remaining);
 
@@ -229,19 +184,10 @@
 
                     if (remaining <= 0) {
                         clearInterval(timer);
-                        const parent = el.parentElement;
-                        let button;
-                        if (target === 'email') {
-                            button = document.createElement('button');
-                            button.type = 'submit';
-                            button.setAttribute('form', 'form-send-email-otp');
-                            button.textContent = 'Kirim Ulang OTP';
-                        } else {
-                            button = document.createElement('button');
-                            button.type = 'button';
-                            button.setAttribute('onclick', 'submitOtpRequest()');
-                            button.textContent = 'Kirim Ulang OTP';
-                        }
+                        const button = document.createElement('button');
+                        button.type = 'submit';
+                        button.setAttribute('form', 'form-send-email-otp');
+                        button.textContent = 'Kirim Ulang OTP';
                         button.className = 'font-bold text-[#E19404] hover:text-orange-600 transition cursor-pointer';
                         el.replaceWith(button);
                     }

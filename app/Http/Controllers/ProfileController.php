@@ -19,17 +19,12 @@ class ProfileController extends Controller
         // Mengambil data user yang sedang login
         $user = Auth::user();
 
-        // Sisa waktu cooldown kirim ulang OTP (agar countdown bertahan saat halaman di-refresh)
-        $phoneOtpRemaining = $user->otp_sent_at
-            ? max(0, self::OTP_RESEND_COOLDOWN_SECONDS - $user->otp_sent_at->diffInSeconds(now()))
-            : 0;
-
+        // Sisa waktu cooldown kirim ulang OTP email (agar countdown bertahan saat halaman di-refresh)
         $emailOtpRemaining = $user->email_otp_sent_at
             ? max(0, self::OTP_RESEND_COOLDOWN_SECONDS - $user->email_otp_sent_at->diffInSeconds(now()))
             : 0;
 
         return view('profile.edit', compact('user') + [
-            'phoneOtpRemaining' => $phoneOtpRemaining,
             'emailOtpRemaining' => $emailOtpRemaining,
         ]);
     }

@@ -141,6 +141,7 @@ Route::middleware(['auth', IsAdmin::class])->prefix('admin')->group(function () 
     Route::post('/participants/store-manual', [AdminController::class, 'storeParticipantManual'])->name('admin.participants.storeManual');
     Route::post('/participants/{id}/update-status', [AdminController::class, 'updateParticipantStatus'])->name('admin.participants.updateStatus');
     Route::post('/participants/{id}/destroy', [AdminController::class, 'destroyBooking'])->name('admin.participants.destroy');
+    Route::post('/participants/{id}/restore', [AdminController::class, 'restoreParticipant'])->name('admin.participants.restore');
     Route::post('/participants/{id}/confirm', [AdminController::class, 'confirmParticipant'])->name('admin.participants.confirm');
 
     // =========================================================

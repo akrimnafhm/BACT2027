@@ -10,6 +10,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class BookingController extends Controller
@@ -359,9 +360,9 @@ class BookingController extends Controller
         // -------------------------------------------------------------
         // PEMANGGILAN API DOKU CHECKOUT (DIRECT VIA LARAVEL HTTP CLIENT)
         // -------------------------------------------------------------
-        $clientId = env('DOKU_CLIENT_ID');
-        $secretKey = env('DOKU_SECRET_KEY');
-        $isProduction = env('DOKU_IS_PRODUCTION', false);
+        $clientId = config('services.doku.client_id');
+        $secretKey = config('services.doku.secret_key');
+        $isProduction = filter_var(config('services.doku.is_production', false), FILTER_VALIDATE_BOOL);
 
         $baseUrl = $isProduction
             ? 'https://api.doku.com'
@@ -378,7 +379,7 @@ class BookingController extends Controller
                     'invoice_number' => $invoiceNumber,
                     'simulated_paid' => 1,
                 ]),
-                'notification_url' => env('DOKU_NOTIFICATION_URL', url('/api/doku/notification')),
+                'notification_url' => config('services.doku.notification_url', url('/api/doku/notification')),
             ],
             'payment' => [
                 'payment_due_date' => 1440 // Expired VA/Link dalam menit (24 jam)
@@ -410,15 +411,24 @@ class BookingController extends Controller
         $signature = "HMACSHA256=" . base64_encode(hash_hmac('sha256', $rawSignature, $secretKey, true));
 
         // 3. Tembak API DOKU
-        $response = Http::withHeaders([
-            'Client-Id' => $clientId,
-            'Request-Id' => $requestId,
-            'Request-Timestamp' => $requestTimestamp,
-            'Signature' => $signature,
-            'Content-Type' => 'application/json',
-        ])->send('POST', $baseUrl . $requestTarget, [
-            'body' => $jsonBody
-        ]);
+        try {
+            $response = Http::withHeaders([
+                'Client-Id' => $clientId,
+                'Request-Id' => $requestId,
+                'Request-Timestamp' => $requestTimestamp,
+                'Signature' => $signature,
+                'Content-Type' => 'application/json',
+            ])->send('POST', $baseUrl . $requestTarget, [
+                'body' => $jsonBody
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('DOKU checkout request exception', [
+                'booking_id'   => $booking->id,
+                'base_url'     => $baseUrl,
+                'error'        => $e->getMessage(),
+            ]);
+            return back()->with('error', 'Gagal memproses ke gerbang pembayaran DOKU. Silakan coba lagi.');
+        }
 
         $dokuResult = $response->json();
 
@@ -438,6 +448,12 @@ class BookingController extends Controller
         }
 
         // Jika gagal konek ke DOKU
+        Log::error('DOKU checkout failed', [
+            'booking_id' => $booking->id,
+            'base_url'   => $baseUrl,
+            'http_status' => $response->status(),
+            'response'   => $dokuResult,
+        ]);
         return back()->with('error', 'Gagal memproses ke gerbang pembayaran DOKU. Silakan coba lagi.');
     }
 
@@ -454,7 +470,7 @@ class BookingController extends Controller
 
         $booking = $this->syncBookingFromCallback($request, $user, $booking);
 
-        $isProduction = filter_var(env('DOKU_IS_PRODUCTION', false), FILTER_VALIDATE_BOOLEAN);
+        $isProduction = filter_var(config('services.doku.is_production', false), FILTER_VALIDATE_BOOL);
         $shouldAutoFinalize = !$isProduction && ((int) $request->query('simulated_paid', 0) === 1 || $booking->status === 'pending');
 
         if ($shouldAutoFinalize && $booking->status !== 'paid') {
@@ -478,7 +494,6 @@ class BookingController extends Controller
     private function isProfileComplete($user): bool
     {
         return !empty($user->email_verified_at) &&
-               !empty($user->phone_verified_at) &&
                !empty($user->name) &&
                !empty($user->nik) &&
                !empty($user->gender);

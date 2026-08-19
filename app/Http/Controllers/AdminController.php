@@ -729,6 +729,56 @@ class AdminController extends Controller
     }
 
     /**
+     * KEMBALIKAN PESERTA YANG DIHAPUS.
+     * Mengubah status 'deleted' kembali menjadi 'pending' (TERTUNDA) sehingga
+     * admin dapat melakukan konfirmasi ulang. Kuota tiket di-reserve ulang
+     * secara atomik; jika kuota sudah habis, restore ditolak.
+     */
+    public function restoreParticipant(int $id): \Illuminate\Http\RedirectResponse
+    {
+        $booking = TicketBooking::findOrFail($id);
+
+        if ($booking->status !== 'deleted') {
+            return back()->with('error', 'Data peserta "' . ($booking->name_with_title ?: $booking->full_name) . '" tidak berstatus Dihapus, tidak dapat dikembalikan.');
+        }
+
+        $participantName = $booking->name_with_title ?: $booking->full_name;
+
+        try {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($booking) {
+                $reserved = Ticket::where('id', $booking->ticket_id)
+                            ->where('quota', '>', 0)
+                            ->decrement('quota');
+
+                if ($reserved === 0) {
+                    throw new \RuntimeException('kuota_habis');
+                }
+
+                $booking->status = 'pending';
+                $booking->deleted_at = null;
+                $booking->confirmed_at = null;
+                $booking->paid_at = null;
+                $booking->cancelled_at = null;
+                // Mulai ulang jendela pembayaran 24 jam agar tidak langsung dibatalkan otomatis
+                // oleh cron bookings:cancel-expired karena created_at yang lama.
+                $booking->created_at = now();
+
+                $noteLine = now()->format('d M Y H:i') . ' — Dikembalikan oleh admin (dari status Dihapus).';
+                $booking->notes = trim(($booking->notes ? $booking->notes . "\n" : '') . $noteLine);
+                $booking->notes_updated_at = now();
+                $booking->save();
+            });
+        } catch (\RuntimeException $e) {
+            if ($e->getMessage() === 'kuota_habis') {
+                return back()->with('error', 'Tidak dapat mengembalikan peserta "' . $participantName . '": kuota tiket sudah habis.');
+            }
+            throw $e;
+        }
+
+        return back()->with('success', 'Peserta "' . $participantName . '" berhasil dikembalikan ke status TERTUNDA (pending). Silakan lakukan konfirmasi ulang.');
+    }
+
+    /**
      * KONFIRMASI PESERTA MANUAL.
      * Hanya berlaku untuk data yang ditambahkan manual (source = 'manual') dan
      * belum dikonfirmasi. Setelah dikonfirmasi, status menjadi LUNAS sehingga
@@ -786,6 +836,9 @@ class AdminController extends Controller
             'whatsapp_number' => 'required|string|max:25',
             'nik'             => 'required|string|max:20',
             'institution_name'=> 'required|string|max:255',
+            'institution_province' => 'required|string|max:255',
+            'institution_city'     => 'required|string|max:255',
+            'institution_district' => 'required|string|max:255',
             'profession'      => 'required|string|max:100',
             'notes'           => 'nullable|string|max:5000',
         ]);
@@ -821,9 +874,9 @@ class AdminController extends Controller
                     'status'               => 'pending',
                     'source'               => 'manual',
                     'institution_name'     => $request->institution_name,
-                    'institution_city'     => $request->institution_city ?? 'Kota Instansi',
-                    'institution_province' => $request->institution_province ?? 'Provinsi Instansi',
-                    'institution_district' => $request->institution_district ?? 'Kecamatan Instansi',
+                    'institution_city'     => $request->institution_city,
+                    'institution_province' => $request->institution_province,
+                    'institution_district' => $request->institution_district,
                     'profession'           => $request->profession,
                     'plataran_sehat_email' => $request->plataran_sehat_email ?? $request->gmail_account,
                     'notes'                => isset($request->notes) && trim($request->notes) !== '' ? trim($request->notes) : null,
