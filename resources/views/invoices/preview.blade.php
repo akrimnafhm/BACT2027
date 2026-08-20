@@ -110,7 +110,7 @@
 </head>
 <body>
     <div class="toolbar">
-        <div class="brand">BACT 2027<span>Simposium &amp; Workshop Akbid 2027</span></div>
+        <div class="brand">BACT 2027<span>Basic Advanced Course in Transfusion</span></div>
         <div class="title">{{ $title }}</div>
         <div class="spacer"></div>
         <a class="btn btn-back" href="{{ $backUrl }}">
