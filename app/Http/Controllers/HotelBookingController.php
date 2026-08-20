@@ -256,6 +256,13 @@ class HotelBookingController extends Controller
                     'simulated_paid' => 1,
                 ]),
                 'notification_url' => config('services.doku.notification_url', url('/api/doku/notification')),
+                'line_items' => [
+                    [
+                        'name'     => $room->room_type ?? 'Kamar Hotel',
+                        'quantity' => $reservation->total_nights ?: 1,
+                        'price'    => (int) ($room->price_per_night ?? round($reservation->total_price / max(1, $reservation->total_nights))),
+                    ],
+                ],
             ],
             'payment' => [
                 'payment_due_date' => 1440 // Expired VA/Link dalam menit (24 jam)
@@ -330,6 +337,51 @@ class HotelBookingController extends Controller
             'response'       => $dokuResult,
         ]);
         return back()->with('error', 'Gagal memproses ke gerbang pembayaran DOKU. Silakan coba lagi.');
+    }
+
+    /**
+     * Unduh invoice PDF hotel (format ala DOKU). Hanya untuk reservasi yang sudah lunas.
+     */
+    public function invoice($id)
+    {
+        $user = Auth::user();
+
+        $reservation = HotelReservation::where('id', $id)
+                        ->where('user_id', $user->id)
+                        ->firstOrFail();
+
+        abort_unless($reservation->status === 'paid', 403);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('invoices.hotel-pdf', compact('reservation'));
+
+        $filename = 'invoice-' . ($reservation->invoice_number ?: $reservation->booking_code) . '.pdf';
+
+        if (request()->query('inline')) {
+            return $pdf->stream($filename);
+        }
+
+        return $pdf->download($filename);
+    }
+
+    /**
+     * Menampilkan halaman preview invoice hotel sebelum user mengunduh.
+     */
+    public function invoicePreview($id)
+    {
+        $user = Auth::user();
+
+        $reservation = HotelReservation::where('id', $id)
+                        ->where('user_id', $user->id)
+                        ->firstOrFail();
+
+        abort_unless($reservation->status === 'paid', 403);
+
+        return view('invoices.preview', [
+            'title'       => 'Invoice ' . ($reservation->invoice_number ?: $reservation->booking_code),
+            'pdfUrl'      => route('hotels.invoice', $reservation->id) . '?inline=1',
+            'downloadUrl' => route('hotels.invoice', $reservation->id),
+            'backUrl'     => route('hotels.index'),
+        ]);
     }
 
     /**

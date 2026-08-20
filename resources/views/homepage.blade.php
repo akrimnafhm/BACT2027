@@ -302,7 +302,7 @@
                         - PC/Laptop (lg:w-[calc(20%-16px)]): pas 5 kartu per layar
                     -->
                 <div
-                    class="w-[calc(50%-10px)] md:w-[calc(33.333%-14px)] lg:w-[calc(20%-16px)] shrink-0 snap-start rounded-2xl border border-gray-200/80 shadow-sm overflow-hidden group hover:border-[#E19404] transition duration-300 flex flex-col justify-between"
+                    class="w-[calc(75%-10px)] md:w-[calc(33.333%-14px)] lg:w-[calc(20%-16px)] shrink-0 snap-start rounded-2xl border border-gray-200/80 shadow-sm overflow-hidden group hover:border-[#E19404] transition duration-300 flex flex-col justify-between"
                     style="background-image: url('{{ asset('images/bg-pembicara-1.png') }}'); background-size: cover; background-position: center;">
 
                     <!-- Foto Pembicara (h-52 agar proporsional dengan kartu kompak) -->
@@ -434,10 +434,10 @@
             @else
                 <!-- Fallback jika seksi jadwal disembunyikan atau belum ada data -->
                 <div
-                    class="text-center py-12 bg-white rounded-3xl border border-gray-200 text-gray-400 text-sm font-medium">
+                    class="text-center py-12 px-2 bg-white rounded-3xl border border-gray-200 text-gray-400 text-sm font-medium">
                     {{ $scheduleVisible
                         ? 'Jadwal kegiatan simposium belum diterbitkan.'
-                        : 'Jadwal kegiatan masih dalam penyusunan — akan segera diumumkan.' }}
+                        : 'Jadwal kegiatan masih dalam penyusunan & akan segera diumumkan.' }}
                 </div>
             @endif
 

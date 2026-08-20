@@ -45,8 +45,21 @@ class HotelNotificationService
             $body = $this->renderPlaceholders($emailTemplate->body, $reservation);
             $subject = $this->renderPlaceholders($emailTemplate->subject ?? 'Konfirmasi Reservasi Hotel - BACT 2027', $reservation);
 
+            // Lampiran PDF invoice — [REVISI KLIENT] DINONAKTIFKAN SEMENTARA.
+            // Kode sengaja dipertahankan agar mudah diaktifkan kembali:
+            // cukup hapus komentar pada blok try/catch di bawah, PDF akan otomatis terlampir
+            // karena parameter $invoicePdf/$invoiceFilename sudah diteruskan ke HotelPaidMail.
+            $invoicePdf = null;
+            $invoiceFilename = null;
+            // try {
+            //     $invoicePdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('invoices.hotel-pdf', ['reservation' => $reservation])->output();
+            //     $invoiceFilename = 'invoice-' . ($reservation->invoice_number ?: $reservation->booking_code) . '.pdf';
+            // } catch (\Throwable $e) {
+            //     Log::error('Gagal generate PDF invoice untuk email hotel: ' . $e->getMessage());
+            // }
+
             try {
-                Mail::to($email)->send(new HotelPaidMail($subject, $body));
+                Mail::to($email)->send(new HotelPaidMail($subject, $body, $invoicePdf, $invoiceFilename));
                 Log::info("Notifikasi email hotel dikirim ke {$email} (Reservasi {$reservation->id})");
             } catch (\Throwable $e) {
                 Log::error('Gagal kirim notifikasi email hotel: ' . $e->getMessage());

@@ -38,7 +38,10 @@ class TicketNotificationService
         $qrPath = app(QrService::class)->generatePng($booking->checkin_token, 'ticket-' . $booking->id);
 
         // 1. KIRIM WHATSAPP VIA FONNTE (media dikirim dari file lokal -> cocok untuk localhost/private IP)
-        if ($waTemplate && $waTemplate->is_active && $phone) {
+        // [REVISI KLIENT] Notifikasi WA hanya untuk peserta yang ditambahkan MANUAL oleh admin.
+        // Peserta yang mendaftar via website TIDAK mendapat pesan WA (email tetap semua).
+        $isManualParticipant = $booking->source === 'manual';
+        if ($isManualParticipant && $waTemplate && $waTemplate->is_active && $phone) {
             $body = $this->renderPlaceholders($waTemplate->body, $booking);
 
             if ($waTemplate->include_qr && $qrPath) {
@@ -63,8 +66,21 @@ class TicketNotificationService
             $body = $this->renderPlaceholders($emailTemplate->body, $booking);
             $subject = $this->renderPlaceholders($emailTemplate->subject ?? 'Konfirmasi Pembelian Tiket - BACT 2027', $booking);
 
+            // Lampiran PDF invoice — [REVISI KLIENT] DINONAKTIFKAN SEMENTARA.
+            // Kode sengaja dipertahankan agar mudah diaktifkan kembali:
+            // cukup hapus komentar pada blok try/catch di bawah, PDF akan otomatis terlampir
+            // karena parameter $invoicePdf/$invoiceFilename sudah diteruskan ke TicketPaidMail.
+            $invoicePdf = null;
+            $invoiceFilename = null;
+            // try {
+            //     $invoicePdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('invoices.ticket-pdf', ['booking' => $booking])->output();
+            //     $invoiceFilename = 'invoice-' . ($booking->invoice_number ?: ('ticket-' . $booking->id)) . '.pdf';
+            // } catch (\Throwable $e) {
+            //     Log::error('Gagal generate PDF invoice untuk email tiket: ' . $e->getMessage());
+            // }
+
             try {
-                Mail::to($email)->send(new TicketPaidMail($subject, $body, $qrPath));
+                Mail::to($email)->send(new TicketPaidMail($subject, $body, $qrPath, $invoicePdf, $invoiceFilename));
                 Log::info("Notifikasi email tiket dikirim ke {$email} (Booking {$booking->id})");
             } catch (\Throwable $e) {
                 Log::error('Gagal kirim notifikasi email tiket: ' . $e->getMessage());

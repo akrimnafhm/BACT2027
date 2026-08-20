@@ -87,6 +87,8 @@ Route::middleware('auth')->group(function () {
 
     // Halaman Checkout & Pembayaran Midtrans
     Route::get('/checkout/{id}', [BookingController::class, 'checkout'])->name('checkout');
+    Route::get('/invoice/ticket/{id}', [BookingController::class, 'invoice'])->name('invoice.ticket');
+    Route::get('/invoice/ticket/{id}/preview', [BookingController::class, 'invoicePreview'])->name('invoice.ticket.preview');
 
     // AKOMODASI HOTEL (Katalog & Pemesanan Peserta)
     Route::get('/hotel/book/{id}', [HotelBookingController::class, 'create'])->name('hotels.book');
@@ -98,6 +100,8 @@ Route::middleware('auth')->group(function () {
 
     // Return URL dari DOKU agar status reservasi hotel bisa disinkronkan saat user kembali ke site
     Route::get('/hotel/return/{reservation}', [HotelBookingController::class, 'paymentReturn'])->name('hotels.return');
+    Route::get('/hotel/invoice/{id}', [HotelBookingController::class, 'invoice'])->name('hotels.invoice');
+    Route::get('/hotel/invoice/{id}/preview', [HotelBookingController::class, 'invoicePreview'])->name('hotels.invoice.preview');
 });
 
 
@@ -146,6 +150,8 @@ Route::middleware(['auth', IsAdmin::class])->prefix('admin')->group(function () 
     Route::post('/participants/{id}/destroy', [AdminController::class, 'destroyBooking'])->name('admin.participants.destroy');
     Route::post('/participants/{id}/restore', [AdminController::class, 'restoreParticipant'])->name('admin.participants.restore');
     Route::post('/participants/{id}/confirm', [AdminController::class, 'confirmParticipant'])->name('admin.participants.confirm');
+    Route::get('/participants/{id}/invoice/preview', [AdminController::class, 'participantInvoicePreview'])->name('admin.participants.invoice.preview');
+    Route::get('/participants/{id}/invoice', [AdminController::class, 'participantInvoice'])->name('admin.participants.invoice');
 
     // =========================================================
     // 4. TIKET HOTEL (Data & Status Riwayat Reservasi Peserta)

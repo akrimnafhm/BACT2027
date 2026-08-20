@@ -64,11 +64,29 @@ class BookingController extends Controller
 
         // Tampilkan e-ticket + (jika ada) kartu lanjut pembayaran.
         if ($paidBookings->isNotEmpty() || $pendingBooking) {
+            // Link grup WA per kategori unik dari tiket yang sudah dibeli.
+            // Kategori combo (Basic-Advance, Basic-Advance + Workshop) diperluas
+            // ke grup komponennya -> pembeli Basic-Advance tetap dapat 2 tombol (Basic + Advance).
+            $groupLinks = [];
+            foreach ($paidBookings as $b) {
+                foreach (\App\Models\WaGroupLink::groupCategoriesFor($b->ticket_category) as $cat) {
+                    if (!array_key_exists($cat, $groupLinks)) {
+                        $groupLinks[$cat] = \App\Models\WaGroupLink::where('ticket_category', $cat)->value('wa_group_link');
+                    }
+                }
+            }
+            $groupLinks = array_filter($groupLinks);
+
+            // Urutan tampil konsisten: Basic, Advance, Online, Workshop
+            $linkOrder = ['Basic' => 0, 'Advance' => 1, 'Online' => 2, 'Workshop' => 3];
+            uksort($groupLinks, fn ($a, $b) => ($linkOrder[$a] ?? 9) <=> ($linkOrder[$b] ?? 9));
+
             return view('booking.bridge', [
                 'status'         => 'tickets',
                 'user'           => $user,
                 'paidBookings'   => $paidBookings,
                 'pendingBooking' => $pendingBooking,
+                'groupLinks'     => $groupLinks,
             ]);
         }
 
@@ -380,6 +398,13 @@ class BookingController extends Controller
                     'simulated_paid' => 1,
                 ]),
                 'notification_url' => config('services.doku.notification_url', url('/api/doku/notification')),
+                'line_items' => [
+                    [
+                        'name'     => ($booking->ticket_name ? $booking->ticket_name . ' - ' : '') . $booking->ticket_category,
+                        'quantity' => 1,
+                        'price'    => (int) $booking->amount,
+                    ],
+                ],
             ],
             'payment' => [
                 'payment_due_date' => 1440 // Expired VA/Link dalam menit (24 jam)
@@ -455,6 +480,51 @@ class BookingController extends Controller
             'response'   => $dokuResult,
         ]);
         return back()->with('error', 'Gagal memproses ke gerbang pembayaran DOKU. Silakan coba lagi.');
+    }
+
+    /**
+     * Unduh invoice PDF tiket (format ala DOKU). Hanya untuk tiket yang sudah lunas.
+     */
+    public function invoice($id)
+    {
+        $user = Auth::user();
+
+        $booking = TicketBooking::where('id', $id)
+                    ->where('user_id', $user->id)
+                    ->firstOrFail();
+
+        abort_unless($booking->status === 'paid', 403);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('invoices.ticket-pdf', compact('booking'));
+
+        $filename = 'invoice-' . ($booking->invoice_number ?: ('ticket-' . $booking->id)) . '.pdf';
+
+        if (request()->query('inline')) {
+            return $pdf->stream($filename);
+        }
+
+        return $pdf->download($filename);
+    }
+
+    /**
+     * Menampilkan halaman preview invoice sebelum user mengunduh.
+     */
+    public function invoicePreview($id)
+    {
+        $user = Auth::user();
+
+        $booking = TicketBooking::where('id', $id)
+                    ->where('user_id', $user->id)
+                    ->firstOrFail();
+
+        abort_unless($booking->status === 'paid', 403);
+
+        return view('invoices.preview', [
+            'title'       => 'Invoice ' . ($booking->invoice_number ?: ('Tiket-' . $booking->id)),
+            'pdfUrl'      => route('invoice.ticket', $booking->id) . '?inline=1',
+            'downloadUrl' => route('invoice.ticket', $booking->id),
+            'backUrl'     => route('booking.index'),
+        ]);
     }
 
     /**

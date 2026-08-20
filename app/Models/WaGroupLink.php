@@ -54,4 +54,26 @@ class WaGroupLink extends Model
 
         return $row?->wa_group_link;
     }
+
+    /**
+     * Daftar grup yang relevan untuk sebuah kategori tiket.
+     * Kategori tunggal -> 1 grup; kategori combo (Basic-Advance, + Workshop)
+     * diperluas ke grup komponennya (Basic + Advance / Basic + Advance + Workshop)
+     * sehingga pembeli tetap mendapat tombol join untuk semua grup terkait.
+     */
+    public static function groupCategoriesFor(string $category): array
+    {
+        $map = [
+            'Basic'                    => ['Basic'],
+            'Advance'                  => ['Advance'],
+            'Online'                   => ['Online'],
+            'Workshop'                 => ['Workshop'],
+            'Basic-Advance'            => ['Basic', 'Advance'],
+            'Basic-Advance + Workshop' => ['Basic', 'Advance', 'Workshop'],
+        ];
+
+        $normalized = static::normalizeCategory($category);
+
+        return $map[$normalized] ?? [$normalized];
+    }
 }

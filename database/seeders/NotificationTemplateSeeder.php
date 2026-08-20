@@ -54,6 +54,7 @@ Panitia BACT 2027',
 </ul>
 <p>QR tiket Anda:</p>
 {qr}
+<p>Link Grup WhatsApp Peserta: {link_grup}</p>
 <p>Simpan QR ini untuk proses check-in pada hari-H. Sampai jumpa di simposium BACT 2027!</p>
 <p>Salam hangat,<br>Panitia BACT 2027</p>',
             ],

@@ -234,12 +234,21 @@ class AdminController extends Controller
      */
     public function groupLinks(): View
     {
+        // Hanya 4 grup yang dikelola: Basic, Advance, Online, Workshop.
+        // Kategori combo (Basic-Advance, Basic-Advance + Workshop) tidak punya grup sendiri.
+        $allowedCategories = ['Basic', 'Advance', 'Online', 'Workshop'];
+
         $categories = \App\Models\Ticket::select('ticket_category')->distinct()->pluck('ticket_category');
         $links = \App\Models\WaGroupLink::pluck('wa_group_link', 'ticket_category');
 
         $groups = [];
         foreach ($categories as $category) {
             $normalized = \App\Models\WaGroupLink::normalizeCategory($category);
+
+            if (!in_array($normalized, $allowedCategories, true)) {
+                continue;
+            }
+
             $groups[$normalized] = [
                 'category' => $normalized,
                 'name'     => $normalized,
@@ -819,6 +828,44 @@ class AdminController extends Controller
         app(TicketNotificationService::class)->sendTicketPaid($booking);
 
         return back()->with('success', 'Peserta "' . ($booking->name_with_title ?: $booking->full_name) . '" berhasil dikonfirmasi dan tercatat sebagai LUNAS.');
+    }
+
+    /**
+     * Unduh invoice PDF tiket peserta tertentu (akses admin, semua peserta).
+     * Bisa menampilkan inline (?inline=1) atau langsung mengunduh.
+     */
+    public function participantInvoice(int $id)
+    {
+        $booking = TicketBooking::findOrFail($id);
+
+        abort_unless($booking->status === 'paid', 403);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('invoices.ticket-pdf', ['booking' => $booking]);
+
+        $filename = 'invoice-' . ($booking->invoice_number ?: ('ticket-' . $booking->id)) . '.pdf';
+
+        if (request()->query('inline')) {
+            return $pdf->stream($filename);
+        }
+
+        return $pdf->download($filename);
+    }
+
+    /**
+     * Halaman preview invoice peserta (akses admin), mirip preview milik peserta.
+     */
+    public function participantInvoicePreview(int $id): \Illuminate\View\View
+    {
+        $booking = TicketBooking::findOrFail($id);
+
+        abort_unless($booking->status === 'paid', 403);
+
+        return view('invoices.preview', [
+            'title'       => 'Invoice ' . ($booking->invoice_number ?: ('Tiket-' . $booking->id)),
+            'pdfUrl'      => route('admin.participants.invoice', $booking->id) . '?inline=1',
+            'downloadUrl' => route('admin.participants.invoice', $booking->id),
+            'backUrl'     => route('admin.participants'),
+        ]);
     }
 
     /**

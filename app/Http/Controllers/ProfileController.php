@@ -24,8 +24,32 @@ class ProfileController extends Controller
             ? max(0, self::OTP_RESEND_COOLDOWN_SECONDS - $user->email_otp_sent_at->diffInSeconds(now()))
             : 0;
 
+        // Tiket yang sudah dibeli (lunas) untuk tabel di halaman profil
+        $paidTickets = \App\Models\TicketBooking::where('user_id', $user->id)
+                        ->where('status', 'paid')
+                        ->latest()
+                        ->get();
+
+        // Link grup WA per kategori unik dari tiket yang dibeli.
+        // Kategori combo diperluas ke grup komponennya (Basic-Advance -> Basic + Advance).
+        $groupLinks = [];
+        foreach ($paidTickets as $ticket) {
+            foreach (\App\Models\WaGroupLink::groupCategoriesFor($ticket->ticket_category) as $cat) {
+                if (!array_key_exists($cat, $groupLinks)) {
+                    $groupLinks[$cat] = \App\Models\WaGroupLink::where('ticket_category', $cat)->value('wa_group_link');
+                }
+            }
+        }
+        $groupLinks = array_filter($groupLinks);
+
+        // Urutan tampil konsisten: Basic, Advance, Online, Workshop
+        $linkOrder = ['Basic' => 0, 'Advance' => 1, 'Online' => 2, 'Workshop' => 3];
+        uksort($groupLinks, fn ($a, $b) => ($linkOrder[$a] ?? 9) <=> ($linkOrder[$b] ?? 9));
+
         return view('profile.edit', compact('user') + [
             'emailOtpRemaining' => $emailOtpRemaining,
+            'paidTickets'       => $paidTickets,
+            'groupLinks'        => $groupLinks,
         ]);
     }
 
