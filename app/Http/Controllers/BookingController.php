@@ -65,8 +65,8 @@ class BookingController extends Controller
         // Tampilkan e-ticket + (jika ada) kartu lanjut pembayaran.
         if ($paidBookings->isNotEmpty() || $pendingBooking) {
             // Link grup WA per kategori unik dari tiket yang sudah dibeli.
-            // Kategori combo (Basic-Advance, Basic-Advance + Workshop) diperluas
-            // ke grup komponennya -> pembeli Basic-Advance tetap dapat 2 tombol (Basic + Advance).
+            // Kategori combo (Basic-Advanced, Basic-Advanced + Workshop) diperluas
+            // ke grup komponennya -> pembeli Basic-Advanced tetap dapat 2 tombol (Basic + Advanced).
             $groupLinks = [];
             foreach ($paidBookings as $b) {
                 foreach (\App\Models\WaGroupLink::groupCategoriesFor($b->ticket_category) as $cat) {
@@ -77,8 +77,8 @@ class BookingController extends Controller
             }
             $groupLinks = array_filter($groupLinks);
 
-            // Urutan tampil konsisten: Basic, Advance, Online, Workshop
-            $linkOrder = ['Basic' => 0, 'Advance' => 1, 'Online' => 2, 'Workshop' => 3];
+            // Urutan tampil konsisten: Basic, Advanced, Online, Workshop
+            $linkOrder = ['Basic' => 0, 'Advanced' => 1, 'Online' => 2, 'Workshop' => 3];
             uksort($groupLinks, fn ($a, $b) => ($linkOrder[$a] ?? 9) <=> ($linkOrder[$b] ?? 9));
 
             return view('booking.bridge', [

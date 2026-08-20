@@ -22,21 +22,24 @@ class WaGroupLink extends Model
     {
         return [
             'Basic'                     => 'Basic',
-            'Advance'                   => 'Advance',
-            'Advanced'                  => 'Advance',
-            'Basic-Advance'             => 'Basic-Advance',
-            'Basic-Advanced'            => 'Basic-Advance',
-            'Basic - Advance'           => 'Basic-Advance',
+            'Advance'                   => 'Advanced',
+            'Advanced'                  => 'Advanced',
+            'Basic-Advance'             => 'Basic-Advanced',
+            'Basic-Advanced'            => 'Basic-Advanced',
+            'Basic - Advance'           => 'Basic-Advanced',
+            'Basic - Advanced'          => 'Basic-Advanced',
             'Online'                    => 'Online',
             'Workshop'                  => 'Workshop',
-            'Basic-Advance + Workshop'  => 'Basic-Advance + Workshop',
-            'Basic - Advance + Workshop'=> 'Basic-Advance + Workshop',
+            'Basic-Advance + Workshop'  => 'Basic-Advanced + Workshop',
+            'Basic-Advanced + Workshop' => 'Basic-Advanced + Workshop',
+            'Basic - Advance + Workshop'=> 'Basic-Advanced + Workshop',
+            'Basic - Advanced + Workshop'=> 'Basic-Advanced + Workshop',
         ];
     }
 
     /**
-     * Samakan penulisan kategori agar legacy (Advanced, Basic-Advanced, dsb.)
-     * ikut terpetakan ke grup yang sama.
+     * Samakan penulisan kategori agar legacy (Advance, Basic-Advance, dsb.)
+     * ikut terpetakan ke ejaan benar: Advanced, Basic-Advanced.
      */
     public static function normalizeCategory(string $category): string
     {
@@ -57,19 +60,19 @@ class WaGroupLink extends Model
 
     /**
      * Daftar grup yang relevan untuk sebuah kategori tiket.
-     * Kategori tunggal -> 1 grup; kategori combo (Basic-Advance, + Workshop)
-     * diperluas ke grup komponennya (Basic + Advance / Basic + Advance + Workshop)
+     * Kategori tunggal -> 1 grup; kategori combo (Basic-Advanced, + Workshop)
+     * diperluas ke grup komponennya (Basic + Advanced / Basic + Advanced + Workshop)
      * sehingga pembeli tetap mendapat tombol join untuk semua grup terkait.
      */
     public static function groupCategoriesFor(string $category): array
     {
         $map = [
             'Basic'                    => ['Basic'],
-            'Advance'                  => ['Advance'],
+            'Advanced'                 => ['Advanced'],
             'Online'                   => ['Online'],
             'Workshop'                 => ['Workshop'],
-            'Basic-Advance'            => ['Basic', 'Advance'],
-            'Basic-Advance + Workshop' => ['Basic', 'Advance', 'Workshop'],
+            'Basic-Advanced'           => ['Basic', 'Advanced'],
+            'Basic-Advanced + Workshop'=> ['Basic', 'Advanced', 'Workshop'],
         ];
 
         $normalized = static::normalizeCategory($category);

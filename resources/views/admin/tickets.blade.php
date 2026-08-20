@@ -262,11 +262,11 @@
                     <select name="ticket_category" required class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] bg-white">
                         <option value="" disabled selected>-- Pilih Kategori --</option>
                         <option value="Basic">Basic</option>
-                        <option value="Advance">Advance</option>
-                        <option value="Basic-Advance">Basic-Advance</option>
+                        <option value="Advanced">Advanced</option>
+                        <option value="Basic-Advanced">Basic-Advanced</option>
                         <option value="Online">Online</option>
                         <option value="Workshop">Workshop</option>
-                        <option value="Basic-Advance + Workshop">Basic-Advance + Workshop</option>
+                        <option value="Basic-Advanced + Workshop">Basic-Advanced + Workshop</option>
                     </select>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -317,11 +317,11 @@
                     <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Kategori Course / Paket</label>
                     <select name="ticket_category" id="edit_ticket_category" required class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] bg-white">
                         <option value="Basic">Basic</option>
-                        <option value="Advance">Advance</option>
-                        <option value="Basic-Advance">Basic-Advance</option>
+                        <option value="Advanced">Advanced</option>
+                        <option value="Basic-Advanced">Basic-Advanced</option>
                         <option value="Online">Online</option>
                         <option value="Workshop">Workshop</option>
-                        <option value="Basic-Advance + Workshop">Basic-Advance + Workshop</option>
+                        <option value="Basic-Advanced + Workshop">Basic-Advanced + Workshop</option>
                     </select>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">

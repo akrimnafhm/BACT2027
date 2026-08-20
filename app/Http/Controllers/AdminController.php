@@ -31,12 +31,12 @@ class AdminController extends Controller
 
         // 2. Siapkan 6 Kategori Tiket persis sesuai UI Dashboard
         $categories = [
-            'Basic'                      => ['paid' => 0, 'revenue' => 0],
-            'Advance'                    => ['paid' => 0, 'revenue' => 0],
-            'Basic - Advance'            => ['paid' => 0, 'revenue' => 0],
-            'Online'                     => ['paid' => 0, 'revenue' => 0],
-            'Workshop'                   => ['paid' => 0, 'revenue' => 0],
-            'Basic - Advance + Workshop' => ['paid' => 0, 'revenue' => 0],
+            'Basic'                       => ['paid' => 0, 'revenue' => 0],
+            'Advanced'                    => ['paid' => 0, 'revenue' => 0],
+            'Basic - Advanced'            => ['paid' => 0, 'revenue' => 0],
+            'Online'                      => ['paid' => 0, 'revenue' => 0],
+            'Workshop'                    => ['paid' => 0, 'revenue' => 0],
+            'Basic - Advanced + Workshop' => ['paid' => 0, 'revenue' => 0],
         ];
 
         // 3. Ambil semua data master tiket dari database
@@ -44,33 +44,34 @@ class AdminController extends Controller
 
         /**
          * 4. COCOKKAN LANGSUNG DARI KOLOM `ticket_category`
-         * Tidak ada lagi tebak-tebakan nama/sinonim. Murni membaca kolom ticket_category!
+         * Kategori dinormalisasi (Advance -> Advanced, Basic-Advance -> Basic-Advanced,
+         * termasuk varian legacy) agar selalu tercocokkan ke ejaan benar.
          */
         foreach ($paidBookings as $booking) {
             $ticket = $allTickets->firstWhere('id', $booking->ticket_id);
             if (!$ticket) continue;
 
-            $category = trim($ticket->ticket_category);
+            $category = \App\Models\WaGroupLink::normalizeCategory(trim($ticket->ticket_category));
             $amount = $booking->amount ?: ($ticket->price ?? 0);
 
             if ($category === 'Basic') {
                 $categories['Basic']['paid']    += 1;
                 $categories['Basic']['revenue'] += $amount;
-            } elseif ($category === 'Advance') {
-                $categories['Advance']['paid']    += 1;
-                $categories['Advance']['revenue'] += $amount;
-            } elseif ($category === 'Basic-Advance' || $category === 'Basic - Advance') {
-                $categories['Basic - Advance']['paid']    += 1;
-                $categories['Basic - Advance']['revenue'] += $amount;
+            } elseif ($category === 'Advanced') {
+                $categories['Advanced']['paid']    += 1;
+                $categories['Advanced']['revenue'] += $amount;
+            } elseif ($category === 'Basic-Advanced') {
+                $categories['Basic - Advanced']['paid']    += 1;
+                $categories['Basic - Advanced']['revenue'] += $amount;
             } elseif ($category === 'Online') {
                 $categories['Online']['paid']    += 1;
                 $categories['Online']['revenue'] += $amount;
             } elseif ($category === 'Workshop') {
                 $categories['Workshop']['paid']    += 1;
                 $categories['Workshop']['revenue'] += $amount;
-            } elseif ($category === 'Basic-Advance + Workshop' || $category === 'Basic - Advance + Workshop') {
-                $categories['Basic - Advance + Workshop']['paid']    += 1;
-                $categories['Basic - Advance + Workshop']['revenue'] += $amount;
+            } elseif ($category === 'Basic-Advanced + Workshop') {
+                $categories['Basic - Advanced + Workshop']['paid']    += 1;
+                $categories['Basic - Advanced + Workshop']['revenue'] += $amount;
             }
         }
 
@@ -135,7 +136,7 @@ class AdminController extends Controller
     {
         $request->validate([
             'ticket_name'     => 'required|string|max:100',
-            'ticket_category' => 'required|string|in:Basic,Advance,Basic-Advance,Online,Workshop,Basic-Advance + Workshop',
+            'ticket_category' => 'required|string|in:Basic,Advanced,Basic-Advanced,Online,Workshop,Basic-Advanced + Workshop',
             'price'           => 'required|numeric|min:0',
             'quota'           => 'required|integer|min:1',
             'start_date'      => 'nullable|date',
@@ -174,7 +175,7 @@ class AdminController extends Controller
     {
         $request->validate([
             'ticket_name'     => 'required|string|max:100',
-            'ticket_category' => 'required|string|in:Basic,Advance,Basic-Advance,Online,Workshop,Basic-Advance + Workshop',
+            'ticket_category' => 'required|string|in:Basic,Advanced,Basic-Advanced,Online,Workshop,Basic-Advanced + Workshop',
             'price'           => 'required|numeric|min:0',
             'quota'           => 'required|integer|min:0',
             'start_date'      => 'nullable|date',
@@ -234,9 +235,9 @@ class AdminController extends Controller
      */
     public function groupLinks(): View
     {
-        // Hanya 4 grup yang dikelola: Basic, Advance, Online, Workshop.
-        // Kategori combo (Basic-Advance, Basic-Advance + Workshop) tidak punya grup sendiri.
-        $allowedCategories = ['Basic', 'Advance', 'Online', 'Workshop'];
+        // Hanya 4 grup yang dikelola: Basic, Advanced, Online, Workshop.
+        // Kategori combo (Basic-Advanced, Basic-Advanced + Workshop) tidak punya grup sendiri.
+        $allowedCategories = ['Basic', 'Advanced', 'Online', 'Workshop'];
 
         $categories = \App\Models\Ticket::select('ticket_category')->distinct()->pluck('ticket_category');
         $links = \App\Models\WaGroupLink::pluck('wa_group_link', 'ticket_category');

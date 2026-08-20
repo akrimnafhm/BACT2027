@@ -35,7 +35,7 @@ class TicketSeeder extends Seeder
             ],
             [
                 'ticket_name'     => 'Early Bird', 
-                'ticket_category' => 'Advance', 
+                'ticket_category' => 'Advanced', 
                 'price'           => 1850000, 
                 'quota'           => 50, 
                 'start_date'      => $now, 
@@ -45,7 +45,7 @@ class TicketSeeder extends Seeder
             ],
             [
                 'ticket_name'     => 'Early Bird', 
-                'ticket_category' => 'Basic-Advance', 
+                'ticket_category' => 'Basic-Advanced', 
                 'price'           => 2200000, 
                 'quota'           => 50, 
                 'start_date'      => $now, 
@@ -75,7 +75,7 @@ class TicketSeeder extends Seeder
             ],
             [
                 'ticket_name'     => 'Early Bird', 
-                'ticket_category' => 'Basic-Advance + Workshop', 
+                'ticket_category' => 'Basic-Advanced + Workshop', 
                 'price'           => 2900000, 
                 'quota'           => 50, 
                 'start_date'      => $now, 
@@ -101,7 +101,7 @@ class TicketSeeder extends Seeder
             ],
             [
                 'ticket_name'     => 'Regular', 
-                'ticket_category' => 'Advance', 
+                'ticket_category' => 'Advanced', 
                 'price'           => 2100000, 
                 'quota'           => 150, 
                 'start_date'      => $regularStart, 
@@ -111,7 +111,7 @@ class TicketSeeder extends Seeder
             ],
             [
                 'ticket_name'     => 'Regular', 
-                'ticket_category' => 'Basic-Advance', 
+                'ticket_category' => 'Basic-Advanced', 
                 'price'           => 2700000, 
                 'quota'           => 150, 
                 'start_date'      => $regularStart, 
@@ -141,7 +141,7 @@ class TicketSeeder extends Seeder
             ],
             [
                 'ticket_name'     => 'Regular', 
-                'ticket_category' => 'Basic-Advance + Workshop', 
+                'ticket_category' => 'Basic-Advanced + Workshop', 
                 'price'           => 3400000, 
                 'quota'           => 150, 
                 'start_date'      => $regularStart, 

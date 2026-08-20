@@ -31,7 +31,7 @@ class ProfileController extends Controller
                         ->get();
 
         // Link grup WA per kategori unik dari tiket yang dibeli.
-        // Kategori combo diperluas ke grup komponennya (Basic-Advance -> Basic + Advance).
+        // Kategori combo diperluas ke grup komponennya (Basic-Advanced -> Basic + Advanced).
         $groupLinks = [];
         foreach ($paidTickets as $ticket) {
             foreach (\App\Models\WaGroupLink::groupCategoriesFor($ticket->ticket_category) as $cat) {
@@ -42,8 +42,8 @@ class ProfileController extends Controller
         }
         $groupLinks = array_filter($groupLinks);
 
-        // Urutan tampil konsisten: Basic, Advance, Online, Workshop
-        $linkOrder = ['Basic' => 0, 'Advance' => 1, 'Online' => 2, 'Workshop' => 3];
+        // Urutan tampil konsisten: Basic, Advanced, Online, Workshop
+        $linkOrder = ['Basic' => 0, 'Advanced' => 1, 'Online' => 2, 'Workshop' => 3];
         uksort($groupLinks, fn ($a, $b) => ($linkOrder[$a] ?? 9) <=> ($linkOrder[$b] ?? 9));
 
         return view('profile.edit', compact('user') + [

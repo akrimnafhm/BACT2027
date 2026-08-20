@@ -41,15 +41,15 @@
             slides: [
                 {
                     image: '{{ asset('images/home-1.png') }}',
-                    text: 'Where Science Meets Heritage, and Knowledge Becomes a Lasting Journey. Join us in the heart of Yogyakarta for the Basic Advance Course on Transfusion 2027—a place where scientific excellence, meaningful collaboration, and the timeless warmth of Javanese hospitality come together to inspire the future of transfusion medicine.'
+                    text: 'Where Science Meets Heritage, and Knowledge Becomes a Lasting Journey. Join us in the heart of Yogyakarta for the Basic Advanced Course on Transfusion 2027—a place where scientific excellence, meaningful collaboration, and the timeless warmth of Javanese hospitality come together to inspire the future of transfusion medicine.'
                 },
                 {
                     image: '{{ asset('images/home-2.png') }}',
-                    text: 'Every Journey Begins with a Single Drop. Every Expert Begins with a Shared Passion. Experience an unforgettable learning journey at the Basic Advance Course on Transfusion 2027, surrounded by the cultural charm of Yogyakarta, where knowledge flows, friendships grow, and every encounter leaves a lasting impression.'
+                    text: 'Every Journey Begins with a Single Drop. Every Expert Begins with a Shared Passion. Experience an unforgettable learning journey at the Basic Advanced Course on Transfusion 2027, surrounded by the cultural charm of Yogyakarta, where knowledge flows, friendships grow, and every encounter leaves a lasting impression.'
                 },
                 {
                     image: '{{ asset('images/home-3.png') }}',
-                    text: 'Like the Lifeblood That Connects Us, Knowledge Is Meant to Be Shared. In the enchanting city of Yogyakarta, the Basic Advance Course on Transfusion 2027 invites you to discover new insights, cultivate meaningful collaborations, and create unforgettable moments where science, culture, and humanity meet.'
+                    text: 'Like the Lifeblood That Connects Us, Knowledge Is Meant to Be Shared. In the enchanting city of Yogyakarta, the Basic Advanced Course on Transfusion 2027 invites you to discover new insights, cultivate meaningful collaborations, and create unforgettable moments where science, culture, and humanity meet.'
                 }
             ],
             startTimer() {
