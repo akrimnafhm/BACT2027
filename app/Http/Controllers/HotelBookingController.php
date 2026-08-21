@@ -265,7 +265,7 @@ class HotelBookingController extends Controller
                 ],
             ],
             'payment' => [
-                'payment_due_date' => 1440 // Expired VA/Link dalam menit (24 jam)
+                'payment_due_date' => 120 // Expired VA/Link dalam menit (24 jam)
             ],
             'customer' => [
                 'id' => (string) $user->id,
