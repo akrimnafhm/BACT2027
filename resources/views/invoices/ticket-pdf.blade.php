@@ -180,7 +180,7 @@
             </tr>
         </table>
 
-        <div class="section-title">Ditagihkan Kepada</div>
+        <div class="section-title">Data Peserta</div>
         <table class="meta-table">
             <tr>
                 <td class="label">Nama</td>
