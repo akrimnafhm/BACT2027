@@ -283,7 +283,7 @@
                                                     <a href="{{ route('admin.participants.invoice.preview', $item->id) }}"
                                                         class="px-3 py-1.5 bg-[#234661] hover:bg-[#1c3b54] text-white text-xs font-bold rounded-lg transition inline-flex items-center gap-1">
                                                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                                                        Invoice
+                                                        Receipt
                                                     </a>
                                                 @endif
 
@@ -323,7 +323,7 @@
                                                 <a href="{{ route('admin.participants.invoice.preview', $item->id) }}"
                                                     class="px-3 py-1.5 bg-[#234661] hover:bg-[#1c3b54] text-white text-xs font-bold rounded-lg transition inline-flex items-center gap-1">
                                                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                                                    Invoice
+                                                    Receipt
                                                 </a>
                                             @endif
 
