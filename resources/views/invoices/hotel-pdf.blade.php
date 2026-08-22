@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Invoice {{ $reservation->invoice_number }}</title>
+    <title>Receipt {{ $reservation->invoice_number }}</title>
     <style>
         @page { margin: 32px 36px; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -148,7 +148,7 @@
                         </div>
                     </td>
                     <td class="doc-title">
-                        <h2>Invoice</h2>
+                        <h2>Receipt</h2>
                         <p>No. {{ $reservation->invoice_number }}</p>
                     </td>
                 </tr>
@@ -187,10 +187,12 @@
         </table>
 
         <div class="section-title">Rincian Menginap</div>
+        @php($unitPrice = $reservation->hotelRoom->price_per_night ?? round((float) $reservation->total_price / max(1, $reservation->total_nights * max(1, $reservation->quantity))))
         <table class="items">
             <thead>
                 <tr>
                     <th>Deskripsi</th>
+                    <th style="text-align:center;">Jumlah Kamar</th>
                     <th style="text-align:center;">Qty (Malam)</th>
                     <th style="text-align:right;">Harga/Malam</th>
                     <th style="text-align:right;">Subtotal</th>
@@ -199,8 +201,9 @@
             <tbody>
                 <tr>
                     <td class="desc">{{ $reservation->hotelRoom->room_type ?? 'Kamar Hotel' }}</td>
+                    <td style="text-align:center;">{{ max(1, $reservation->quantity) }}</td>
                     <td style="text-align:center;">{{ $reservation->total_nights }}</td>
-                    <td class="amount">Rp {{ number_format($reservation->total_price / max(1, $reservation->total_nights), 0, ',', '.') }}</td>
+                    <td class="amount">Rp {{ number_format($unitPrice, 0, ',', '.') }}</td>
                     <td class="amount">Rp {{ number_format($reservation->total_price, 0, ',', '.') }}</td>
                 </tr>
             </tbody>
@@ -241,7 +244,7 @@
             </table>
         </div>
 
-        <p style="font-size:10px; color:#6b7280;">Invoice ini diterbitkan secara otomatis oleh sistem pendaftaran BACT 2027.</p>
+        <p style="font-size:10px; color:#6b7280;">Receipt ini diterbitkan secara otomatis oleh sistem pendaftaran BACT 2027.</p>
 
         <div class="footer">
             Panitia BACT 2027 &bull; bactyogyakarta.com

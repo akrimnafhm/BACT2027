@@ -236,7 +236,7 @@
                                             <th class="px-5 py-3.5 font-bold">Nama & Gelar</th>
                                             <th class="px-5 py-3.5 font-bold">Email</th>
                                             <th class="px-5 py-3.5 font-bold">WhatsApp</th>
-                                            <th class="px-5 py-3.5 font-bold">NIK</th>
+                                            <!-- <th class="px-5 py-3.5 font-bold">NIK</th> -->
                                             <th class="px-5 py-3.5 font-bold">Instansi</th>
                                             <th class="px-5 py-3.5 font-bold">Tiket</th>
                                             <th class="px-5 py-3.5 font-bold">Waktu Check-in</th>
@@ -249,7 +249,7 @@
                                                 <td class="px-5 py-3.5 text-gray-700 whitespace-nowrap">{{ $p->name_with_title }}</td>
                                                 <td class="px-5 py-3.5 text-gray-700 whitespace-nowrap">{{ $p->gmail_account }}</td>
                                                 <td class="px-5 py-3.5 text-gray-700 whitespace-nowrap">{{ $p->whatsapp_number }}</td>
-                                                <td class="px-5 py-3.5 text-gray-700 whitespace-nowrap">{{ $p->nik }}</td>
+                                                <!-- <td class="px-5 py-3.5 text-gray-700 whitespace-nowrap">{{ $p->nik }}</td> -->
                                                 <td class="px-5 py-3.5 text-gray-700">
                                                     {{ $p->institution_name }}<br>
                                                     <span class="text-[11px] text-gray-400">{{ $p->institution_city }}, {{ $p->institution_province }}</span>

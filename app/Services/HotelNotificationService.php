@@ -36,7 +36,7 @@ class HotelNotificationService
                     'response' => $result,
                 ]);
             } catch (\Throwable $e) {
-                Log::error('Gagal kirim notifikasi WA hotel: ' . $e->getMessage());
+                Log::error('Gagal kirim notifikasi WA hotel: '.$e->getMessage());
             }
         }
 
@@ -62,7 +62,7 @@ class HotelNotificationService
                 Mail::to($email)->send(new HotelPaidMail($subject, $body, $invoicePdf, $invoiceFilename));
                 Log::info("Notifikasi email hotel dikirim ke {$email} (Reservasi {$reservation->id})");
             } catch (\Throwable $e) {
-                Log::error('Gagal kirim notifikasi email hotel: ' . $e->getMessage());
+                Log::error('Gagal kirim notifikasi email hotel: '.$e->getMessage());
             }
         }
 
@@ -71,22 +71,23 @@ class HotelNotificationService
     }
 
     /**
-     * Ganti placeholder {nama}, {hotel}, {kode_booking}, {id_pesanan}, {invoice}, {check_in}, {check_out}, {malam}, {harga}.
+     * Ganti placeholder {nama}, {hotel}, {kode_booking}, {id_pesanan}, {invoice}, {check_in}, {check_out}, {malam}, {kamar}, {harga}.
      */
     protected function renderPlaceholders(string $template, HotelReservation $reservation): string
     {
         $room = $reservation->hotelRoom;
 
         $replacers = [
-            '{nama}'        => $reservation->guest_name ?: $reservation->user->name ?? '',
-            '{hotel}'       => $room ? $room->room_type : 'Hotel',
+            '{nama}' => $reservation->guest_name ?: $reservation->user->name ?? '',
+            '{hotel}' => $room ? $room->room_type : 'Hotel',
             '{kode_booking}' => $reservation->booking_code ?: '-',
-            '{id_pesanan}'  => (string) $reservation->id,
-            '{invoice}'     => $reservation->invoice_number ?: '-',
-            '{check_in}'    => $reservation->check_in ? $reservation->check_in->format('d M Y') : '-',
-            '{check_out}'   => $reservation->check_out ? $reservation->check_out->format('d M Y') : '-',
-            '{malam}'       => (string) ($reservation->total_nights ?: 0),
-            '{harga}'       => number_format((float) $reservation->total_price, 0, ',', '.'),
+            '{id_pesanan}' => (string) $reservation->id,
+            '{invoice}' => $reservation->invoice_number ?: '-',
+            '{check_in}' => $reservation->check_in ? $reservation->check_in->format('d M Y') : '-',
+            '{check_out}' => $reservation->check_out ? $reservation->check_out->format('d M Y') : '-',
+            '{malam}' => (string) ($reservation->total_nights ?: 0),
+            '{kamar}' => (string) max(1, (int) $reservation->quantity),
+            '{harga}' => number_format((float) $reservation->total_price, 0, ',', '.'),
         ];
 
         return str_replace(array_keys($replacers), array_values($replacers), $template);

@@ -4,9 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pesan Hotel & Akomodasi - BACT 2027</title>
+    <title>Reservasi Hotel Saya - BACT 2027</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    
+
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 
@@ -15,15 +15,15 @@
     <!-- 1. NAVBAR (KONSISTEN DENGAN HALAMAN BOOKING TIKET) -->
     @include('partials.navbar')
 
-    <!-- 2. KONTEN UTAMA - KATALOG KAMAR -->
+    <!-- 2. KONTEN UTAMA - DAFTAR RESERVASI -->
     <main class="max-w-7xl mx-auto px-6 pt-32 pb-16 flex-grow w-full space-y-10">
 
         <!-- Header Seksi -->
         <div class="text-center max-w-3xl mx-auto space-y-3">
             <span class="text-xs font-extrabold text-[#E19404] uppercase tracking-widest">Akomodasi Resmi Simposium</span>
-            <h1 class="text-3xl md:text-4xl font-black text-[#234661]">Pilihan Kamar Hotel Mitra BACT 2027</h1>
+            <h1 class="text-3xl md:text-4xl font-black text-[#234661]">Reservasi Hotel Saya</h1>
             <p class="text-sm md:text-base text-gray-600 leading-relaxed">
-                Nikmati kenyamanan menginap di venue utama simposium dengan harga khusus peserta. Pilih tipe kamar yang sesuai dengan preferensimu.
+                Kelola seluruh reservasi kamar hotel Anda untuk BACT 2027 di satu tempat.
             </p>
         </div>
 
@@ -46,10 +46,10 @@
              ========================================================= -->
         @if(isset($status) && $status === 'guest')
             <div class="max-w-3xl mx-auto bg-white rounded-2xl shadow-sm p-8 border border-gray-200 text-center">
-                <h3 class="text-lg font-bold text-gray-800 mb-4">Pilih Kamar Hotel Anda</h3>
-                <p class="text-gray-500 mb-6 text-sm">Anda harus login terlebih dahulu untuk melihat ketersediaan dan memesan kamar hotel akomodasi.</p>
+                <h3 class="text-lg font-bold text-gray-800 mb-4">Cek Reservasi Hotel Anda</h3>
+                <p class="text-gray-500 mb-6 text-sm">Anda harus login terlebih dahulu untuk melihat dan mengelola reservasi hotel akomodasi.</p>
                 <a href="{{ route('login') }}" class="inline-block bg-[#E19404] hover:bg-orange-600 text-white font-bold py-3 px-8 rounded-xl transition shadow-md">
-                    Login untuk Memesan Hotel
+                    Login untuk Melihat Reservasi
                 </a>
             </div>
 
@@ -66,112 +66,54 @@
             </div>
 
         <!-- =========================================================
-             C. KONDISI RESERVASI PENDING (BELUM LUNAS)
+             C. SUDAH LOGIN: DAFTAR RESERVASI (TANPA KATALOG)
              ========================================================= -->
-        @elseif(isset($status) && $status === 'pending')
-            <div class="max-w-3xl mx-auto space-y-6">
-
-                <div class="mt-6 bg-yellow-50 rounded-xl border border-yellow-200 p-6 text-center">
-                    <h3 class="text-base font-bold text-yellow-800 mb-2">Pembayaran Belum Selesai</h3>
-                    <p class="text-yellow-700 mb-4 text-sm">Mohon selesaikan pembayaran untuk reservasi hotel Anda. Pesanan akan diproses setelah pembayaran dikonfirmasi.</p>
-                    <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
-                        <a href="{{ route('hotels.checkout', $reservation->id) }}" class="inline-flex justify-center items-center bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-6 rounded-xl transition shadow-md">
-                            Lanjutkan Pembayaran
-                        </a>
-                        <form method="POST" action="{{ route('hotels.cancel', $reservation->id) }}" onsubmit="return confirm('Batalkan reservasi ini? Kamu bisa memesan ulang setelahnya.')">
-                            @csrf
-                            <button type="submit" class="inline-flex justify-center items-center bg-white border border-red-200 text-red-600 hover:bg-red-50 font-bold py-3 px-6 rounded-xl transition shadow-sm">
-                                Batalkan Reservasi
-                            </button>
-                        </form>
+        @else
+            {{-- ---------- TOOLBAR JUDUL + TOMBOL RESERVASI LAGI ---------- --}}
+            <section class="space-y-6 max-w-5xl mx-auto">
+                <div class="flex items-center justify-between gap-3 flex-wrap">
+                    <div class="flex items-center gap-3">
+                        <h2 class="text-xl font-black text-[#234661]">Daftar Reservasi</h2>
+                        <span class="text-[11px] font-bold bg-[#FBE39D]/60 text-[#E19404] px-3 py-1 rounded-full">{{ $reservations->count() }} Reservasi Aktif</span>
                     </div>
-                    <p class="text-xs text-yellow-700 mt-4">Pembatalan hanya berlaku sebelum pembayaran.</p>
-                </div>
-
-                @include('hotels.partials.invoice', ['reservation' => $reservation, 'statusLabel' => 'Pending'])
-            </div>
-
-        <!-- =========================================================
-             D. KONDISI RESERVASI PAID (SUDAH DIBAYAR)
-             ========================================================= -->
-        @elseif(isset($status) && $status === 'paid')
-            <div class="max-w-3xl mx-auto space-y-6">
-
-                <div class="flex justify-end">
-                    <a href="{{ route('hotels.invoice.preview', $reservation->id) }}" class="inline-flex items-center gap-1.5 bg-[#234661] hover:bg-[#1c3b54] text-white text-xs font-bold py-2.5 px-5 rounded-xl transition shadow-md">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                        Lihat Invoice
+                    <a href="{{ route('hotels.catalog') }}" class="inline-flex items-center gap-2 bg-[#E19404] hover:bg-orange-600 text-white text-xs sm:text-sm font-extrabold py-3 px-6 rounded-xl transition shadow-md hover:shadow-lg">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                        Reservasi Hotel Lagi
                     </a>
                 </div>
 
-                @include('hotels.partials.invoice', ['reservation' => $reservation, 'statusLabel' => 'Sudah Dibayar'])
-            </div>
-
-        <!-- =========================================================
-             E. KONDISI SIAP / READY (SUDAH LOGIN & PROFIL LENGKAP)
-             ========================================================= -->
-        @else
-            <!-- Grid Daftar Kamar (Deluxe King & Deluxe Twin) -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-                @forelse($hotels as $hotel)
-                    <div class="bg-white rounded-3xl border border-gray-200 shadow-sm hover:shadow-xl transition duration-300 flex flex-col overflow-hidden group">
-                        
-                        <!-- Foto Kamar-->
-                        <div class="h-64 sm:h-72 w-full overflow-hidden relative bg-gray-100">
-                            @if(is_array($hotel->photos) && count($hotel->photos) > 0)
-                                <img src="{{ asset('storage/' . $hotel->photos[0]) }}" alt="{{ $hotel->room_type }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
-                            @else
-                                <div class="w-full h-full flex items-center justify-center text-gray-400 font-bold text-sm">Foto Tidak Tersedia</div>
-                            @endif
+                {{-- ---------- EMPTY STATE: BELUM PERNAH RESERVASI ---------- --}}
+                @if($reservations->isEmpty())
+                    <div class="bg-white rounded-3xl border-2 border-dashed border-gray-300 p-12 text-center space-y-4">
+                        <div class="mx-auto w-16 h-16 rounded-full bg-[#FFF8E7] flex items-center justify-center">
+                            <svg class="w-8 h-8 text-[#E19404]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M1 5h16v14H1zM17 9h3l3 3v7h-6M5.5 19a2 2 0 104 0 2 2 0 00-4 0zm11 0a2 2 0 104 0 2 2 0 00-4 0z"></path></svg>
                         </div>
-
-                        <!-- Detail & Spesifikasi Kamar -->
-                        <div class="p-7 flex flex-col flex-grow justify-between space-y-6">
-                            <div class="space-y-4">
-                                <div class="flex justify-between items-start gap-2">
-                                    <h2 class="text-2xl font-black text-[#234661]">{{ $hotel->room_type }}</h2>
-                                    <div class="text-right">
-                                        <span class="text-xl font-black text-[#E19404]">Rp {{ number_format($hotel->price_per_night, 0, ',', '.') }}</span>
-                                        <span class="block text-[11px] font-bold text-gray-400 uppercase">per malam</span>
-                                    </div>
-                                </div>
-
-                                <!-- Deskripsi -->
-                                <p class="text-sm text-gray-600 leading-relaxed">
-                                    {{ $hotel->description ?: 'Kamar bernuansa nyaman dan elegan untuk mendukung kelancaran aktivitasmu selama simposium berlangsung.' }}
-                                </p>
-
-                                <!-- Facilities Tag / Badge -->
-                                @if($hotel->facilities)
-                                    <div class="space-y-1.5 pt-2 border-t border-gray-100">
-                                        <span class="text-[11px] font-bold uppercase text-gray-400 tracking-wider">Fasilitas Termasuk:</span>
-                                        <div class="flex flex-wrap gap-1.5">
-                                            @foreach(explode(',', $hotel->facilities) as $fac)
-                                                <span class="px-3 py-1 bg-[#FBE39D]/40 border border-[#E19404]/20 text-gray-800 text-xs font-bold rounded-lg">
-                                                    {{ trim($fac) }}
-                                                </span>
-                                            @endforeach
-                                        </div>
-                                    </div>
-                                @endif
-                            </div>
-
-                            <!-- Tombol Action -->
-                            <div class="pt-4 border-t border-gray-100">
-                                <a href="{{ route('hotels.book', $hotel->id) }}" class="block w-full text-center py-3.5 px-6 rounded-2xl bg-[#E19404] hover:bg-orange-600 text-white font-extrabold text-sm transition shadow-md hover:shadow-lg">
-                                    Pesan Kamar Ini &rarr;
-                                </a>
-                            </div>
-                        </div>
-
+                        <h3 class="text-lg font-black text-gray-800">Anda belum memesan hotel sama sekali</h3>
+                        <p class="text-sm text-gray-500 max-w-md mx-auto leading-relaxed">
+                            Belum ada reservasi kamar hotel yang tercatat atas nama Anda. Jelajahi katalog kamar Hotel De Djokja dan amankan tempat menginap Anda untuk BACT 2027.
+                        </p>
+                        <a href="{{ route('hotels.catalog') }}" class="inline-block bg-[#234661] hover:bg-[#1c3b54] text-white font-extrabold text-sm py-3.5 px-8 rounded-xl transition shadow-md hover:shadow-lg mt-2">
+                            Lihat Katalog &amp; Pesan Kamar
+                        </a>
                     </div>
-                @empty
-                    <div class="col-span-full py-16 bg-white rounded-3xl border border-gray-200 text-center text-gray-500 space-y-2">
-                        <p class="text-base font-bold text-gray-700">Belum Ada Tipe Kamar yang Tersedia</p>
-                        <p class="text-xs text-gray-400">Silakan hubungi panitia atau cek kembali halaman ini secara berkala.</p>
+                @else
+                    {{-- ---------- KARTU RESERVASI MENYAMPING (PENDING DI URUTAN PERTAMA) ---------- --}}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 items-start">
+                        @foreach($reservations->sortByDesc(fn ($r) => $r->status === 'pending') as $reservation)
+                            @include('hotels.partials.reservation-card', [
+                                'reservation' => $reservation,
+                                'statusLabel' => $reservation->status === 'pending' ? 'Pending' : 'Sudah Dibayar',
+                            ])
+                        @endforeach
                     </div>
-                @endforelse
-            </div>
+
+                    @if($pendingReservation)
+                        <p class="text-xs text-amber-700 bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3 text-center font-medium">
+                            Selesaikan pembayaran untuk kode booking <strong>{{ $pendingReservation->booking_code }}</strong> terlebih dahulu sebelum dapat memesan kamar lainnya. Pembatalan hanya berlaku sebelum pembayaran.
+                        </p>
+                    @endif
+                @endif
+            </section>
         @endif
 
     </main>

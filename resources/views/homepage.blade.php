@@ -500,7 +500,7 @@
             <div class="text-center max-w-2xl mx-auto mb-10">
                 <span class="text-xs font-extrabold text-[#FBE39D] uppercase tracking-widest">Arsip Acara</span>
                 <h2 class="text-3xl sm:text-4xl font-extrabold mt-1">Galeri BACT Sebelumnya</h2>
-                <p class="text-sm text-gray-400 mt-2">Momen antusiasme peserta medis pada perhelatan BACT tahun-tahun sebelumnya.</p>
+                <p class="text-sm text-gray-400 mt-2">Momen antusiasme peserta pada perhelatan BACT tahun-tahun sebelumnya.</p>
             </div>
 
             <!-- x-data untuk mengontrol Slideshow -->

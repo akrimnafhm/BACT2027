@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Invoice {{ $booking->invoice_number }}</title>
+    <title>Receipt {{ $booking->invoice_number }}</title>
     <style>
         @page {
         size: A4;
@@ -162,7 +162,7 @@
                         </div>
                     </td>
                     <td class="doc-title">
-                        <h2>Invoice</h2>
+                        <h2>Receipt</h2>
                         <p>No. {{ $booking->invoice_number }}</p>
                     </td>
                 </tr>
@@ -241,7 +241,7 @@
         </div>
 
         <p class="qr-note">Kode Tiket: <b>{{ $booking->checkin_token }}</b> — gunakan untuk proses check-in pada hari-H.</p>
-        <p class="qr-note">Invoice ini diterbitkan secara otomatis oleh sistem pendaftaran BACT 2027.</p>
+        <p class="qr-note">Receipt ini diterbitkan secara otomatis oleh sistem pendaftaran BACT 2027.</p>
 
         <div class="footer">
             Panitia BACT 2027 &bull; bactyogyakarta.com

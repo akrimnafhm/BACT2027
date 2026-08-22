@@ -111,6 +111,7 @@
                             <th class="py-3.5 px-5">Kode & Tanggal</th>
                             <th class="py-3.5 px-5">Nama Pemesan</th>
                             <th class="py-3.5 px-5">Tipe Kamar</th>
+                            <th class="py-3.5 px-5 text-center">Jumlah</th>
                             <th class="py-3.5 px-5">Check-In / Out</th>
                             <th class="py-3.5 px-5">Tagihan</th>
                             <th class="py-3.5 px-5 text-center">Status</th>
@@ -138,6 +139,10 @@
                                 
                                 <td class="py-3.5 px-5 font-bold text-gray-800">
                                     {{ $res->hotelRoom->room_type ?? 'Kamar Dihapus' }}
+                                </td>
+                                
+                                <td class="py-3.5 px-5 text-center">
+                                    <span class="inline-block bg-[#234661]/10 text-[#234661] text-xs font-black px-2.5 py-1 rounded-lg whitespace-nowrap">{{ max(1, $res->quantity) }} Kamar</span>
                                 </td>
                                 
                                 <td class="py-3.5 px-5 whitespace-nowrap">
@@ -177,7 +182,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="py-12 px-6 text-center text-gray-500">
+                                <td colspan="8" class="py-12 px-6 text-center text-gray-500">
                                     Belum ada data reservasi hotel yang ditemukan sesuai filter.
                                 </td>
                             </tr>
@@ -288,13 +293,17 @@
                 </div>
                 <div class="grid grid-cols-2 gap-3 border-b border-gray-100 pb-3">
                     <div>
+                        <p class="text-xs text-gray-400 uppercase font-bold">Jumlah Kamar</p>
+                        <p class="text-base font-black text-[#234661]">${item.quantity ?? 1} Kamar</p>
+                    </div>
+                    <div>
                         <p class="text-xs text-gray-400 uppercase font-bold">Total Malam</p>
                         <p class="text-base font-black text-gray-900">${item.total_nights} Malam</p>
                     </div>
-                    <div>
-                        <p class="text-xs text-gray-400 uppercase font-bold">Total Tagihan</p>
-                        <p class="text-base font-black text-[#E19404]">Rp${new Intl.NumberFormat('id-ID').format(item.total_price)}</p>
-                    </div>
+                </div>
+                <div class="border-b border-gray-100 pb-3">
+                    <p class="text-xs text-gray-400 uppercase font-bold">Total Tagihan</p>
+                    <p class="text-base font-black text-[#E19404]">Rp${new Intl.NumberFormat('id-ID').format(item.total_price)}</p>
                 </div>
                 <div class="pb-1">
                     <p class="text-xs text-gray-400 uppercase font-bold">Catatan Khusus</p>

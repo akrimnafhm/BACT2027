@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\HotelRoom;
 use App\Models\HotelReservation;
+use App\Models\HotelRoom;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -14,37 +14,37 @@ class HotelController extends Controller
      */
     public function index(Request $request)
     {
-        $search   = $request->input('search');
+        $search = $request->input('search');
         $roomType = $request->input('room_type');
-        $status   = $request->input('status');
+        $status = $request->input('status');
 
-        $query = \App\Models\HotelReservation::with(['user', 'hotelRoom'])->latest();
+        $query = HotelReservation::with(['user', 'hotelRoom'])->latest();
 
         // Filter Pencarian (Kode, Nama, Email)
-        if (!empty($search)) {
+        if (! empty($search)) {
             $query->where(function ($q) use ($search) {
                 $q->where('booking_code', 'like', "%{$search}%")
-                  ->orWhereHas('user', function ($q2) use ($search) {
-                      $q2->where('name', 'like', "%{$search}%")
-                         ->orWhere('email', 'like', "%{$search}%");
-                  });
+                    ->orWhereHas('user', function ($q2) use ($search) {
+                        $q2->where('name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                    });
             });
         }
 
         // Filter Tipe Kamar
-        if (!empty($roomType)) {
+        if (! empty($roomType)) {
             $query->whereHas('hotelRoom', function ($q) use ($roomType) {
                 $q->where('room_type', $roomType);
             });
         }
 
         // Filter Status
-        if (!empty($status)) {
+        if (! empty($status)) {
             $query->where('status', $status);
         }
 
         $reservations = $query->paginate(10)->withQueryString();
-        $roomTypes = \App\Models\HotelRoom::select('room_type')->distinct()->pluck('room_type');
+        $roomTypes = HotelRoom::select('room_type')->distinct()->pluck('room_type');
 
         return view('admin.hotels', compact('reservations', 'search', 'roomType', 'status', 'roomTypes'));
     }
@@ -54,41 +54,41 @@ class HotelController extends Controller
      */
     public function exportReservations(Request $request)
     {
-        $search   = $request->input('search');
+        $search = $request->input('search');
         $roomType = $request->input('room_type');
-        $status   = $request->input('status');
+        $status = $request->input('status');
 
-        $query = \App\Models\HotelReservation::with(['user', 'hotelRoom'])->oldest();
+        $query = HotelReservation::with(['user', 'hotelRoom'])->oldest();
 
-        if (!empty($search)) {
+        if (! empty($search)) {
             $query->where(function ($q) use ($search) {
                 $q->where('booking_code', 'like', "%{$search}%")
-                  ->orWhereHas('user', function ($q2) use ($search) {
-                      $q2->where('name', 'like', "%{$search}%")
-                         ->orWhere('email', 'like', "%{$search}%");
-                  });
+                    ->orWhereHas('user', function ($q2) use ($search) {
+                        $q2->where('name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                    });
             });
         }
 
-        if (!empty($roomType)) {
+        if (! empty($roomType)) {
             $query->whereHas('hotelRoom', function ($q) use ($roomType) {
                 $q->where('room_type', $roomType);
             });
         }
 
-        if (!empty($status)) {
+        if (! empty($status)) {
             $query->where('status', $status);
         }
 
         $reservations = $query->get();
-        $fileName = 'Data-Reservasi-Hotel-BACT2027-' . date('Y-m-d-His') . '.csv';
+        $fileName = 'Data-Reservasi-Hotel-BACT2027-'.date('Y-m-d-His').'.csv';
 
         $headers = [
-            "Content-type"        => "text/csv; charset=UTF-8",
-            "Content-Disposition" => "attachment; filename=$fileName",
-            "Pragma"              => "no-cache",
-            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
-            "Expires"             => "0"
+            'Content-type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=$fileName",
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
         ];
 
         $callback = function () use ($reservations) {
@@ -101,12 +101,13 @@ class HotelController extends Controller
                 'Nama Pemesan',
                 'Email',
                 'Tipe Kamar',
+                'Jumlah Kamar',
                 'Check-In',
                 'Check-Out',
                 'Total Malam',
                 'Total Tagihan',
                 'Status',
-                'Catatan Khusus'
+                'Catatan Khusus',
             ], ',');
 
             foreach ($reservations as $row) {
@@ -116,12 +117,13 @@ class HotelController extends Controller
                     $row->user->name ?? 'User Terhapus',
                     $row->user->email ?? '-',
                     $row->hotelRoom->room_type ?? 'Kamar Dihapus',
+                    max(1, (int) $row->quantity),
                     $row->check_in,
                     $row->check_out,
                     $row->total_nights,
                     $row->total_price,
                     strtoupper($row->status),
-                    $row->special_request ?? '-'
+                    $row->special_request ?? '-',
                 ], ',');
             }
             fclose($file);
@@ -140,12 +142,12 @@ class HotelController extends Controller
         }
 
         $request->validate([
-            'room_type'       => 'required|string|max:255',
+            'room_type' => 'required|string|max:255',
             'price_per_night' => 'required|numeric|min:0',
-            'quota'           => 'required|integer|min:0',
-            'description'     => 'nullable|string',
-            'facilities'      => 'nullable|string',
-            'image'           => 'required|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'quota' => 'required|integer|min:0',
+            'description' => 'nullable|string',
+            'facilities' => 'nullable|string',
+            'image' => 'required|image|mimes:jpeg,png,jpg,webp|max:2048',
         ], [
             'image.max' => 'Ukuran foto kamar melebihi batas maksimal 2 MB.',
         ]);
@@ -153,13 +155,13 @@ class HotelController extends Controller
         $imagePath = $request->file('image')->store('hotels', 'public');
 
         HotelRoom::create([
-            'room_type'       => $request->input('room_type'),
+            'room_type' => $request->input('room_type'),
             'price_per_night' => $request->input('price_per_night'),
-            'quota'           => $request->input('quota'),
-            'description'     => $request->input('description'),
-            'facilities'      => $request->input('facilities'),
-            'image'           => $imagePath,
-            'is_active'       => true,
+            'quota' => $request->input('quota'),
+            'description' => $request->input('description'),
+            'facilities' => $request->input('facilities'),
+            'image' => $imagePath,
+            'is_active' => true,
         ]);
 
         return back()->with('success', 'Tipe kamar baru berhasil ditambahkan!');
@@ -175,24 +177,24 @@ class HotelController extends Controller
         }
 
         $request->validate([
-            'room_type'       => 'required|string|max:255',
+            'room_type' => 'required|string|max:255',
             'price_per_night' => 'required|numeric|min:0',
-            'quota'           => 'required|integer|min:0',
-            'description'     => 'nullable|string',
-            'facilities'      => 'nullable|string',
-            'image'           => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'quota' => 'required|integer|min:0',
+            'description' => 'nullable|string',
+            'facilities' => 'nullable|string',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ], [
             'image.max' => 'Ukuran foto kamar melebihi batas maksimal 2 MB.',
         ]);
 
         $hotel = HotelRoom::findOrFail($id);
-        
+
         $data = [
-            'room_type'       => $request->input('room_type'),
+            'room_type' => $request->input('room_type'),
             'price_per_night' => $request->input('price_per_night'),
-            'quota'           => $request->input('quota'),
-            'description'     => $request->input('description'),
-            'facilities'      => $request->input('facilities'),
+            'quota' => $request->input('quota'),
+            'description' => $request->input('description'),
+            'facilities' => $request->input('facilities'),
         ];
 
         if ($request->hasFile('image')) {
@@ -229,7 +231,7 @@ class HotelController extends Controller
     public function toggle($id)
     {
         $hotel = HotelRoom::findOrFail($id);
-        $hotel->is_active = !$hotel->is_active;
+        $hotel->is_active = ! $hotel->is_active;
         $hotel->save();
 
         return back()->with('success', 'Status ketersediaan kamar berhasil diubah!');
@@ -248,17 +250,17 @@ class HotelController extends Controller
         $oldStatus = $reservation->status;
         $newStatus = $request->input('status');
 
-        // Jika dibatalkan (cancelled), kembalikan kuota kamar +1
+        // Jika dibatalkan (cancelled), kembalikan kuota kamar sebanyak jumlah kamar yang dipesan
         if ($oldStatus !== 'cancelled' && $newStatus === 'cancelled') {
             if ($reservation->hotelRoom) {
-                $reservation->hotelRoom->increment('quota', 1);
+                $reservation->hotelRoom->increment('quota', max(1, (int) $reservation->quantity));
             }
         }
 
-        // Jika sebelumnya cancelled lalu diaktifkan lagi (paid/pending), kurangi kuota -1
+        // Jika sebelumnya cancelled lalu diaktifkan lagi (paid/pending), kurangi kuota sebanyak jumlah kamar
         if ($oldStatus === 'cancelled' && $newStatus !== 'cancelled') {
-            if ($reservation->hotelRoom && $reservation->hotelRoom->quota > 0) {
-                $reservation->hotelRoom->decrement('quota', 1);
+            if ($reservation->hotelRoom && $reservation->hotelRoom->quota >= max(1, (int) $reservation->quantity)) {
+                $reservation->hotelRoom->decrement('quota', max(1, (int) $reservation->quantity));
             }
         }
 

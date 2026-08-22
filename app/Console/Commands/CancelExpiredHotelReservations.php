@@ -28,13 +28,13 @@ class CancelExpiredHotelReservations extends Command
                 $query->where('payment_expired_at', '<=', now())
                     ->orWhere(function ($query) use ($deadline) {
                         $query->whereNull('payment_expired_at')
-                              ->where('created_at', '<=', $deadline);
+                            ->where('created_at', '<=', $deadline);
                     });
             })
             ->chunkById(100, function ($reservations) use (&$cancelled) {
                 foreach ($reservations as $reservation) {
                     if ($reservation->hotelRoom) {
-                        $reservation->hotelRoom->increment('quota');
+                        $reservation->hotelRoom->increment('quota', max(1, (int) $reservation->quantity));
                     }
 
                     $reservation->cancelled_at = now();

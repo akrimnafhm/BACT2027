@@ -2,27 +2,28 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\HotelRoom;
 use App\Models\HotelReservation;
+use App\Models\HotelRoom;
 use App\Services\HotelNotificationService;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Carbon\Carbon;
 
 class HotelBookingController extends Controller
 {
+    /**
+     * Halaman "/hotel": daftar reservasi milik peserta (tanpa katalog).
+     */
     public function index(Request $request)
     {
         // 1. Cek status pengguna saat membuka halaman hotel
-        if (!Auth::check()) {
-            $status = 'guest';
+        if (! Auth::check()) {
             return view('hotels.index', [
-                'hotels'      => HotelRoom::where('is_active', true)->oldest()->get(),
-                'status'      => $status,
-                'reservation' => null,
+                'status' => 'guest',
             ]);
         }
 
@@ -30,45 +31,76 @@ class HotelBookingController extends Controller
 
         if (empty($user->nik) || empty($user->phone_number)) {
             return view('hotels.index', [
-                'hotels'      => HotelRoom::where('is_active', true)->oldest()->get(),
-                'status'      => 'incomplete',
-                'reservation' => null,
+                'status' => 'incomplete',
             ]);
         }
 
-        $existingReservation = HotelReservation::where('user_id', $user->id)
-                                ->latest()
-                                ->first();
+        // MULTI-RESERVASI: peserta boleh punya lebih dari satu reservasi aktif
+        // (pending + paid), dengan syarat hanya BOLEH ADA SATU pending.
+        $reservations = HotelReservation::where('user_id', $user->id)
+            ->whereIn('status', ['pending', 'paid'])
+            ->latest()
+            ->get();
 
-        $existingReservation = $this->syncReservationFromCallback($request, $user, $existingReservation);
+        $latestReservation = $reservations->first();
+
+        $this->syncReservationFromCallback($request, $user, $latestReservation);
 
         // Jaga konsistensi: batalkan otomatis bila timer pembayaran sudah habis
         // (defense-in-depth, cron rutin menjalankan hal yang sama).
-        if ($existingReservation && $existingReservation->status === 'pending' && $this->isReservationExpired($existingReservation)) {
-            $this->cancelExpiredReservation($existingReservation);
-            $existingReservation = null;
-        }
+        $reservations->where('status', 'pending')->each(function ($reservation) {
+            if ($this->isReservationExpired($reservation)) {
+                $this->cancelExpiredReservation($reservation);
+            }
+        });
 
-        if ($existingReservation && $existingReservation->status === 'paid') {
-            return view('hotels.index', [
-                'hotels'      => HotelRoom::where('is_active', true)->oldest()->get(),
-                'status'      => 'paid',
-                'reservation' => $existingReservation,
-            ]);
-        }
-
-        if ($existingReservation && $existingReservation->status === 'pending') {
-            return view('hotels.index', [
-                'hotels'      => HotelRoom::where('is_active', true)->oldest()->get(),
-                'status'      => 'pending',
-                'reservation' => $existingReservation,
-            ]);
-        }
+        $reservations = HotelReservation::where('user_id', $user->id)
+            ->whereIn('status', ['pending', 'paid'])
+            ->with('hotelRoom')
+            ->latest()
+            ->get();
 
         return view('hotels.index', [
-            'hotels'      => HotelRoom::where('is_active', true)->oldest()->get(),
-            'status'      => 'ready',
-            'reservation' => null,
+            'status' => 'ready',
+            'reservations' => $reservations,
+            'pendingReservation' => $reservations->firstWhere('status', 'pending'),
+        ]);
+    }
+
+    /**
+     * Halaman katalog kamar hotel, dipisah dari daftar reservasi.
+     */
+    public function catalog()
+    {
+        if (! Auth::check()) {
+            return view('hotels.catalog', [
+                'hotels' => HotelRoom::where('is_active', true)->oldest()->get(),
+                'status' => 'guest',
+            ]);
+        }
+
+        $user = Auth::user();
+
+        if (empty($user->nik) || empty($user->phone_number)) {
+            return view('hotels.catalog', [
+                'hotels' => HotelRoom::where('is_active', true)->oldest()->get(),
+                'status' => 'incomplete',
+            ]);
+        }
+
+        // Batalkan otomatis pending yang kedaluwarsa agar kuota di katalog akurat.
+        HotelReservation::where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->get()
+            ->each(function ($reservation) {
+                if ($this->isReservationExpired($reservation)) {
+                    $this->cancelExpiredReservation($reservation);
+                }
+            });
+
+        return view('hotels.catalog', [
+            'hotels' => HotelRoom::where('is_active', true)->oldest()->get(),
+            'status' => 'ready',
         ]);
     }
 
@@ -76,7 +108,10 @@ class HotelBookingController extends Controller
     {
         $hotel = HotelRoom::where('is_active', true)->findOrFail($id);
 
-        return view('hotels.book', compact('hotel'));
+        // Sisa kuota kamar untuk membatasi pilihan jumlah kamar di form.
+        $remainingQuota = (int) $hotel->quota;
+
+        return view('hotels.book', compact('hotel', 'remainingQuota'));
     }
 
     /**
@@ -87,59 +122,73 @@ class HotelBookingController extends Controller
         $user = Auth::user();
 
         // 0. Pastikan profil lengkap & email terverifikasi sebelum pesan hotel
-        if (!$this->isProfileComplete($user)) {
+        if (! $this->isProfileComplete($user)) {
             return redirect()->route('profile.edit')->with('error', 'Silakan lengkapi profil dan verifikasi email/WhatsApp Anda sebelum memesan hotel.');
         }
 
-        // 1. Validasi Tanggal Check-in & Check-out (Kunci 18-21 Jan 2027)
+        // 1. Validasi Tanggal Check-in & Check-out (Kunci 18-21 Jan 2027) + Jumlah Kamar
         $request->validate([
             'check_in' => 'required|date|after_or_equal:2027-01-18|before_or_equal:2027-01-20',
             'check_out' => 'required|date|after:check_in|before_or_equal:2027-01-21',
+            'quantity' => 'required|integer|min:1|max:99',
         ], [
             'check_in.after_or_equal' => 'Tanggal Check-in paling cepat adalah 18 Januari 2027.',
             'check_out.before_or_equal' => 'Tanggal Check-out maksimal adalah 21 Januari 2027.',
-            'check_out.after' => 'Tanggal Check-out harus setelah tanggal Check-in.'
+            'check_out.after' => 'Tanggal Check-out harus setelah tanggal Check-in.',
+            'quantity.required' => 'Jumlah kamar wajib diisi.',
+            'quantity.integer' => 'Jumlah kamar harus berupa angka.',
+            'quantity.min' => 'Jumlah kamar minimal 1.',
         ]);
 
         $room = HotelRoom::where('is_active', true)->findOrFail($id);
+        $quantity = (int) $request->input('quantity', 1);
 
         // Auto-cancel reservasi pending yang sudah expired (defense-in-depth)
-        $stalePending = HotelReservation::where('user_id', $user->id)
-                        ->where('status', 'pending')
-                        ->latest()
-                        ->first();
-        if ($stalePending && $this->isReservationExpired($stalePending)) {
-            $this->cancelExpiredReservation($stalePending);
-        }
+        HotelReservation::where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->get()
+            ->each(function ($reservation) {
+                if ($this->isReservationExpired($reservation)) {
+                    $this->cancelExpiredReservation($reservation);
+                }
+            });
 
-        // 1 user 1 reservasi: blokir jika masih ada reservasi aktif (pending/paid)
-        $hasActiveReservation = HotelReservation::where('user_id', $user->id)
-                                ->whereIn('status', ['pending', 'paid'])
-                                ->exists();
-        if ($hasActiveReservation) {
+        // MULTI-RESERVASI: peserta boleh punya banyak reservasi (termasuk tipe kamar
+        // yang sama), dengan syarat tidak ada pembayaran PENDING yang menggantung.
+        $hasPendingReservation = HotelReservation::where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->exists();
+        if ($hasPendingReservation) {
             return redirect()->route('hotels.index')
-                ->with('error', 'Anda sudah memiliki reservasi hotel yang aktif. Selesaikan atau batalkan reservasi tersebut terlebih dahulu.');
+                ->with('error', 'Anda masih memiliki reservasi hotel yang menunggu pembayaran. Selesaikan atau batalkan terlebih dahulu sebelum memesan kamar lain.');
         }
 
-        // 2. Hitung durasi menginap (malam) & total harga
-        $checkInDate = \Carbon\Carbon::parse($request->check_in);
-        $checkOutDate = \Carbon\Carbon::parse($request->check_out);
+        if ($quantity > (int) $room->quota) {
+            return back()
+                ->withInput()
+                ->with('error', 'Maaf, sisa kuota kamar ini tinggal '.max(0, (int) $room->quota).'. Silakan sesuaikan jumlah kamar.');
+        }
+
+        // 2. Hitung durasi menginap (malam) & total harga (malam × harga/malam × jumlah kamar)
+        $checkInDate = Carbon::parse($request->check_in);
+        $checkOutDate = Carbon::parse($request->check_out);
         $nights = $checkInDate->diffInDays($checkOutDate);
-        $totalPrice = $room->price_per_night * $nights;
+        $totalPrice = $room->price_per_night * $nights * $quantity;
 
         // 3. Generate kode booking unik (misal: HTL-20270118-AB12)
-        $bookingCode = 'HTL-' . $checkInDate->format('Ymd') . '-' . strtoupper(Str::random(4));
+        $bookingCode = 'HTL-'.$checkInDate->format('Ymd').'-'.strtoupper(Str::random(4));
 
-        // 3b. Kurangi kuota kamar secara atomik (sama seperti kuota tiket: pending tetap menghabiskan kuota)
+        // 3b. Kurangi kuota kamar sebanyak jumlah kamar yang dipesan secara atomik
+        // (pending tetap menghabiskan kuota, sama seperti aturan tiket).
         $reserved = HotelRoom::where('id', $room->id)
-                    ->where('quota', '>', 0)
-                    ->decrement('quota');
+            ->where('quota', '>=', $quantity)
+            ->decrement('quota', $quantity);
 
-        if (!$reserved) {
-            return back()->with('error', 'Maaf, kuota kamar hotel ini sudah habis.');
+        if (! $reserved) {
+            return back()->with('error', 'Maaf, kuota kamar hotel ini baru saja habis / tidak cukup untuk '.$quantity.' kamar.');
         }
 
-        // 4. Buat reservasi baru (1 user 1 reservasi; pending yang ada sudah ditangani di atas)
+        // 4. Buat reservasi baru (pending global maksimal 1 sudah divalidasi di atas)
         $reservation = HotelReservation::create([
             'user_id' => $user->id,
             'booking_code' => $bookingCode,
@@ -147,6 +196,7 @@ class HotelBookingController extends Controller
             'check_in' => $request->check_in,
             'check_out' => $request->check_out,
             'total_nights' => $nights,
+            'quantity' => $quantity,
             'total_price' => $totalPrice,
             'guest_name' => $user->name,
             'guest_nik' => $user->nik,
@@ -163,10 +213,10 @@ class HotelBookingController extends Controller
      */
     private function isProfileComplete($user): bool
     {
-        return !empty($user->email_verified_at) &&
-               !empty($user->name) &&
-               !empty($user->nik) &&
-               !empty($user->gender);
+        return ! empty($user->email_verified_at) &&
+               ! empty($user->name) &&
+               ! empty($user->nik) &&
+               ! empty($user->gender);
     }
 
     /**
@@ -179,16 +229,16 @@ class HotelBookingController extends Controller
         $user = Auth::user();
 
         $reservation = HotelReservation::where('id', $id)
-                        ->where('user_id', $user->id)
-                        ->firstOrFail();
+            ->where('user_id', $user->id)
+            ->firstOrFail();
 
         if ($reservation->status !== 'pending') {
             return back()->with('error', 'Reservasi hanya dapat dibatalkan sebelum pembayaran. Untuk yang sudah lunas, silakan hubungi panitia.');
         }
 
-        // Kembalikan kuota kamar
+        // Kembalikan kuota kamar sebanyak jumlah kamar yang dipesan
         if ($reservation->hotelRoom) {
-            $reservation->hotelRoom->increment('quota');
+            $reservation->hotelRoom->increment('quota', max(1, (int) $reservation->quantity));
         }
 
         $reservation->cancelled_at = now();
@@ -207,12 +257,12 @@ class HotelBookingController extends Controller
         $user = Auth::user();
 
         $reservation = HotelReservation::where('id', $id)
-                        ->where('user_id', $user->id)
-                        ->firstOrFail();
+            ->where('user_id', $user->id)
+            ->firstOrFail();
 
         if ($reservation->status === 'paid') {
             return redirect()->route('hotels.index')
-                             ->with('success', 'Reservasi hotel ini sudah lunas.');
+                ->with('success', 'Reservasi hotel ini sudah lunas.');
         }
 
         $room = HotelRoom::find($reservation->hotel_room_id);
@@ -220,18 +270,20 @@ class HotelBookingController extends Controller
         // REUSE: Jika link pembayaran DOKU sebelumnya masih valid, jangan buat pembayaran baru.
         if ($reservation->payment_url && $reservation->payment_expired_at && $reservation->payment_expired_at->gt(now())) {
             $paymentUrl = $reservation->payment_url;
+
             return view('hotels.checkout', compact('reservation', 'room', 'paymentUrl'));
         }
 
         // Timer sudah habis -> batalkan otomatis, user harus reservasi ulang.
         if ($reservation->payment_expired_at && $reservation->payment_expired_at->lte(now())) {
             $this->cancelExpiredReservation($reservation);
+
             return redirect()->route('hotels.index')
                 ->with('error', 'Timer pembayaran sudah habis, reservasi dibatalkan otomatis. Silakan pesan ulang.');
         }
 
         // Buat Nomor Invoice unik (Contoh: INV-HTL-1-1785...)
-        $invoiceNumber = 'INV-HTL-' . $reservation->id . '-' . time();
+        $invoiceNumber = 'RC-HTL-'.$reservation->id.'-'.time();
 
         // -------------------------------------------------------------
         // PEMANGGILAN API DOKU CHECKOUT (DIRECT VIA LARAVEL HTTP CLIENT)
@@ -245,6 +297,18 @@ class HotelBookingController extends Controller
             : 'https://api-sandbox.doku.com';
 
         // 1. Siapkan Data Pesanan untuk DOKU
+        // Line item: SATU BARIS PER KAMAR (qty = jumlah malam per kamar),
+        // sehingga total baris = jumlah kamar yang dipesan.
+        $unitPrice = (int) ($room->price_per_night ?? round((float) $reservation->total_price / max(1, $reservation->total_nights * $reservation->quantity)));
+        $lineItems = [];
+        for ($i = 1; $i <= max(1, (int) $reservation->quantity); $i++) {
+            $lineItems[] = [
+                'name' => ($room->room_type ?? 'Kamar Hotel').(max(1, (int) $reservation->quantity) > 1 ? ' - Kamar '.$i : ''),
+                'quantity' => $reservation->total_nights ?: 1,
+                'price' => $unitPrice,
+            ];
+        }
+
         $requestBody = [
             'order' => [
                 'amount' => (int) $reservation->total_price,
@@ -256,24 +320,18 @@ class HotelBookingController extends Controller
                     'simulated_paid' => 1,
                 ]),
                 'notification_url' => config('services.doku.notification_url', url('/api/doku/notification')),
-                'line_items' => [
-                    [
-                        'name'     => $room->room_type ?? 'Kamar Hotel',
-                        'quantity' => $reservation->total_nights ?: 1,
-                        'price'    => (int) ($room->price_per_night ?? round($reservation->total_price / max(1, $reservation->total_nights))),
-                    ],
-                ],
+                'line_items' => $lineItems,
             ],
             'payment' => [
-                'payment_due_date' => 120 // Expired VA/Link dalam menit (24 jam)
+                'payment_due_date' => 120, // Expired VA/Link dalam menit (24 jam)
             ],
             'customer' => [
                 'id' => (string) $user->id,
                 'name' => $reservation->guest_name ?: $user->name,
                 'email' => $reservation->guest_email ?: $user->email,
                 'phone' => $reservation->guest_phone ?: $user->phone_number,
-                'country' => 'ID'
-            ]
+                'country' => 'ID',
+            ],
         ];
 
         $jsonBody = json_encode($requestBody);
@@ -281,16 +339,16 @@ class HotelBookingController extends Controller
         // 2. Buat Tanda Tangan Keamanan (HMAC-SHA256 Signature DOKU)
         $requestId = (string) Str::uuid();
         $requestTimestamp = gmdate("Y-m-d\TH:i:s\Z");
-        $requestTarget = "/checkout/v1/payment";
+        $requestTarget = '/checkout/v1/payment';
 
         $digest = base64_encode(hash('sha256', $jsonBody, true));
-        $rawSignature = "Client-Id:" . $clientId . "\n"
-                      . "Request-Id:" . $requestId . "\n"
-                      . "Request-Timestamp:" . $requestTimestamp . "\n"
-                      . "Request-Target:" . $requestTarget . "\n"
-                      . "Digest:" . $digest;
+        $rawSignature = 'Client-Id:'.$clientId."\n"
+                      .'Request-Id:'.$requestId."\n"
+                      .'Request-Timestamp:'.$requestTimestamp."\n"
+                      .'Request-Target:'.$requestTarget."\n"
+                      .'Digest:'.$digest;
 
-        $signature = "HMACSHA256=" . base64_encode(hash_hmac('sha256', $rawSignature, $secretKey, true));
+        $signature = 'HMACSHA256='.base64_encode(hash_hmac('sha256', $rawSignature, $secretKey, true));
 
         // 3. Tembak API DOKU
         try {
@@ -300,15 +358,16 @@ class HotelBookingController extends Controller
                 'Request-Timestamp' => $requestTimestamp,
                 'Signature' => $signature,
                 'Content-Type' => 'application/json',
-            ])->send('POST', $baseUrl . $requestTarget, [
-                'body' => $jsonBody
+            ])->send('POST', $baseUrl.$requestTarget, [
+                'body' => $jsonBody,
             ]);
         } catch (\Throwable $e) {
             Log::error('DOKU hotel checkout request exception', [
                 'reservation_id' => $reservation->id,
-                'base_url'       => $baseUrl,
-                'error'          => $e->getMessage(),
+                'base_url' => $baseUrl,
+                'error' => $e->getMessage(),
             ]);
+
             return back()->with('error', 'Gagal memproses ke gerbang pembayaran DOKU. Silakan coba lagi.');
         }
 
@@ -321,9 +380,9 @@ class HotelBookingController extends Controller
 
             // Simpan invoice_number, link, dan waktu expired link untuk reuse saat "Lanjutkan Pembayaran".
             $reservation->update([
-                'invoice_number'      => $invoiceNumber,
-                'payment_url'         => $paymentUrl,
-                'payment_expired_at'  => $paymentExpiredAt,
+                'invoice_number' => $invoiceNumber,
+                'payment_url' => $paymentUrl,
+                'payment_expired_at' => $paymentExpiredAt,
             ]);
 
             return view('hotels.checkout', compact('reservation', 'room', 'paymentUrl'));
@@ -332,10 +391,11 @@ class HotelBookingController extends Controller
         // Jika gagal konek ke DOKU
         Log::error('DOKU hotel checkout failed', [
             'reservation_id' => $reservation->id,
-            'base_url'       => $baseUrl,
-            'http_status'    => $response->status(),
-            'response'       => $dokuResult,
+            'base_url' => $baseUrl,
+            'http_status' => $response->status(),
+            'response' => $dokuResult,
         ]);
+
         return back()->with('error', 'Gagal memproses ke gerbang pembayaran DOKU. Silakan coba lagi.');
     }
 
@@ -347,14 +407,14 @@ class HotelBookingController extends Controller
         $user = Auth::user();
 
         $reservation = HotelReservation::where('id', $id)
-                        ->where('user_id', $user->id)
-                        ->firstOrFail();
+            ->where('user_id', $user->id)
+            ->firstOrFail();
 
         abort_unless($reservation->status === 'paid', 403);
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('invoices.hotel-pdf', compact('reservation'));
+        $pdf = Pdf::loadView('invoices.hotel-pdf', compact('reservation'));
 
-        $filename = 'invoice-' . ($reservation->invoice_number ?: $reservation->booking_code) . '.pdf';
+        $filename = 'invoice-'.($reservation->invoice_number ?: $reservation->booking_code).'.pdf';
 
         if (request()->query('inline')) {
             return $pdf->stream($filename);
@@ -371,16 +431,16 @@ class HotelBookingController extends Controller
         $user = Auth::user();
 
         $reservation = HotelReservation::where('id', $id)
-                        ->where('user_id', $user->id)
-                        ->firstOrFail();
+            ->where('user_id', $user->id)
+            ->firstOrFail();
 
         abort_unless($reservation->status === 'paid', 403);
 
         return view('invoices.preview', [
-            'title'       => 'Invoice ' . ($reservation->invoice_number ?: $reservation->booking_code),
-            'pdfUrl'      => route('hotels.invoice', $reservation->id) . '?inline=1',
+            'title' => 'Receipt '.($reservation->invoice_number ?: $reservation->booking_code),
+            'pdfUrl' => route('hotels.invoice', $reservation->id).'?inline=1',
             'downloadUrl' => route('hotels.invoice', $reservation->id),
-            'backUrl'     => route('hotels.index'),
+            'backUrl' => route('hotels.index'),
         ]);
     }
 
@@ -398,7 +458,7 @@ class HotelBookingController extends Controller
         $reservation = $this->syncReservationFromCallback($request, $user, $reservation);
 
         $isProduction = filter_var(config('services.doku.is_production', false), FILTER_VALIDATE_BOOL);
-        $shouldAutoFinalize = !$isProduction && ((int) $request->query('simulated_paid', 0) === 1 || $reservation->status === 'pending');
+        $shouldAutoFinalize = ! $isProduction && ((int) $request->query('simulated_paid', 0) === 1 || $reservation->status === 'pending');
 
         if ($shouldAutoFinalize && $reservation->status !== 'paid') {
             $reservation->update(['status' => 'paid']);
@@ -431,7 +491,7 @@ class HotelBookingController extends Controller
 
         $isPaidCallback = in_array($incomingStatus, ['SUCCESS', 'PAID', 'COMPLETED', 'SETTLED', 'CAPTURED'], true);
 
-        if (!$isPaidCallback && !$incomingInvoice) {
+        if (! $isPaidCallback && ! $incomingInvoice) {
             return $existingReservation;
         }
 
@@ -443,7 +503,7 @@ class HotelBookingController extends Controller
                 ->first();
         }
 
-        if (!$targetReservation) {
+        if (! $targetReservation) {
             $targetReservation = $existingReservation;
         }
 
@@ -474,7 +534,7 @@ class HotelBookingController extends Controller
     private function cancelExpiredReservation(HotelReservation $reservation): void
     {
         if ($reservation->hotelRoom) {
-            $reservation->hotelRoom->increment('quota');
+            $reservation->hotelRoom->increment('quota', max(1, (int) $reservation->quantity));
         }
 
         $reservation->cancelled_at = now();

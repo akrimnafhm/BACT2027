@@ -2,13 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Ticket;
 use App\Models\HotelRoom;
+use App\Models\Ticket;
 use App\Models\TicketBooking;
+use App\Models\WaGroupLink;
 use App\Services\TicketNotificationService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -20,31 +23,31 @@ class BookingController extends Controller
      */
     public function index(Request $request)
     {
-        if (!Auth::check()) {
+        if (! Auth::check()) {
             return view('booking.bridge', [
-                'status'  => 'guest',
+                'status' => 'guest',
             ]);
         }
 
         $user = Auth::user();
 
         $latestBooking = TicketBooking::where('user_id', $user->id)
-                            ->latest()
-                            ->first();
+            ->latest()
+            ->first();
 
         $latestBooking = $this->syncBookingFromCallback($request, $user, $latestBooking);
 
-        if (!$this->isProfileComplete($user)) {
+        if (! $this->isProfileComplete($user)) {
             return view('booking.bridge', [
-                'status'          => 'incomplete',
-                'user'            => $user,
+                'status' => 'incomplete',
+                'user' => $user,
                 'existingBooking' => $latestBooking,
             ]);
         }
 
         $bookings = TicketBooking::where('user_id', $user->id)
-                    ->latest()
-                    ->get();
+            ->latest()
+            ->get();
 
         // Semua tiket yang sudah LUNAS — tampilkan semuanya (user boleh punya >1 tiket).
         $paidBookings = $bookings->where('status', 'paid')->values();
@@ -69,9 +72,9 @@ class BookingController extends Controller
             // ke grup komponennya -> pembeli Basic-Advanced tetap dapat 2 tombol (Basic + Advanced).
             $groupLinks = [];
             foreach ($paidBookings as $b) {
-                foreach (\App\Models\WaGroupLink::groupCategoriesFor($b->ticket_category) as $cat) {
-                    if (!array_key_exists($cat, $groupLinks)) {
-                        $groupLinks[$cat] = \App\Models\WaGroupLink::where('ticket_category', $cat)->value('wa_group_link');
+                foreach (WaGroupLink::groupCategoriesFor($b->ticket_category) as $cat) {
+                    if (! array_key_exists($cat, $groupLinks)) {
+                        $groupLinks[$cat] = WaGroupLink::where('ticket_category', $cat)->value('wa_group_link');
                     }
                 }
             }
@@ -82,19 +85,19 @@ class BookingController extends Controller
             uksort($groupLinks, fn ($a, $b) => ($linkOrder[$a] ?? 9) <=> ($linkOrder[$b] ?? 9));
 
             return view('booking.bridge', [
-                'status'         => 'tickets',
-                'user'           => $user,
-                'paidBookings'   => $paidBookings,
+                'status' => 'tickets',
+                'user' => $user,
+                'paidBookings' => $paidBookings,
                 'pendingBooking' => $pendingBooking,
-                'groupLinks'     => $groupLinks,
+                'groupLinks' => $groupLinks,
             ]);
         }
 
         $latestCancelled = $bookings->firstWhere('status', 'cancelled');
         if ($latestCancelled) {
             return view('booking.bridge', [
-                'status'          => 'cancelled',
-                'user'            => $user,
+                'status' => 'cancelled',
+                'user' => $user,
                 'existingBooking' => $latestCancelled,
             ]);
         }
@@ -102,15 +105,15 @@ class BookingController extends Controller
         $latestDeleted = $bookings->firstWhere('status', 'deleted');
         if ($latestDeleted) {
             return view('booking.bridge', [
-                'status'          => 'deleted',
-                'user'            => $user,
+                'status' => 'deleted',
+                'user' => $user,
                 'existingBooking' => $latestDeleted,
             ]);
         }
 
         return view('booking.bridge', [
-            'status'          => 'bridge',
-            'user'            => $user,
+            'status' => 'bridge',
+            'user' => $user,
             'existingBooking' => null,
         ]);
     }
@@ -125,8 +128,8 @@ class BookingController extends Controller
         $user = Auth::user();
 
         $booking = TicketBooking::where('id', $id)
-                    ->where('user_id', $user->id)
-                    ->firstOrFail();
+            ->where('user_id', $user->id)
+            ->firstOrFail();
 
         // Peserta manual dikelola panitia — pembatalan lewat panitia, bukan user.
         if ($booking->source === 'manual') {
@@ -139,11 +142,11 @@ class BookingController extends Controller
 
         // Kembalikan kuota tiket
         if ($booking->ticket_id) {
-            \App\Models\Ticket::where('id', $booking->ticket_id)->increment('quota');
+            Ticket::where('id', $booking->ticket_id)->increment('quota');
         }
 
-        $noteLine = now()->format('d M Y H:i') . ' — Dibatalkan oleh user';
-        $booking->notes = trim(($booking->notes ? $booking->notes . "\n" : '') . $noteLine);
+        $noteLine = now()->format('d M Y H:i').' — Dibatalkan oleh user';
+        $booking->notes = trim(($booking->notes ? $booking->notes."\n" : '').$noteLine);
         $booking->notes_updated_at = now();
         $booking->cancelled_at = now();
         $booking->status = 'cancelled';
@@ -157,32 +160,32 @@ class BookingController extends Controller
      */
     public function form()
     {
-        if (!Auth::check()) {
+        if (! Auth::check()) {
             return redirect()->route('booking.index');
         }
 
         $user = Auth::user();
 
-        if (!$this->isProfileComplete($user)) {
+        if (! $this->isProfileComplete($user)) {
             return redirect()->route('booking.index')
                 ->with('error', 'Mohon lengkapi profil terlebih dahulu sebelum melanjutkan ke halaman booking.');
         }
 
         $existingBooking = TicketBooking::where('user_id', $user->id)
-                            ->latest()
-                            ->first();
+            ->latest()
+            ->first();
 
         // Beli tiket berikutnya hanya diperbolehkan jika tidak ada pesanan yang BELUM LUNAS (pending).
         $hasPendingBooking = TicketBooking::where('user_id', $user->id)
-                            ->where('status', 'pending')
-                            ->exists();
+            ->where('status', 'pending')
+            ->exists();
 
         // Jika pending sudah kedaluwarsa, batalkan otomatis agar user bisa langsung booking ulang.
         if ($hasPendingBooking) {
             $stalePending = TicketBooking::where('user_id', $user->id)
-                            ->where('status', 'pending')
-                            ->latest()
-                            ->first();
+                ->where('status', 'pending')
+                ->latest()
+                ->first();
             if ($stalePending && $this->isBookingExpired($stalePending)) {
                 $this->cancelExpiredBooking($stalePending);
                 $hasPendingBooking = false;
@@ -197,9 +200,9 @@ class BookingController extends Controller
         // Kategori tiket yang sudah dimiliki (tidak dihitung jika sudah dibatalkan).
         // Aturan: 1 kategori hanya boleh dimiliki 1 tiket.
         $ownedCategories = TicketBooking::where('user_id', $user->id)
-                            ->where('status', '!=', 'cancelled')
-                            ->pluck('ticket_category')
-                            ->all();
+            ->where('status', '!=', 'cancelled')
+            ->pluck('ticket_category')
+            ->all();
 
         $hotels = HotelRoom::where('is_active', true)->get();
         $now = Carbon::now();
@@ -207,25 +210,25 @@ class BookingController extends Controller
         $activeTickets = Ticket::where('is_active', true)
             ->where(function ($query) use ($now) {
                 $query->whereNull('start_date')
-                      ->orWhere('start_date', '<=', $now);
+                    ->orWhere('start_date', '<=', $now);
             })
             ->where(function ($query) use ($now) {
                 $query->whereNull('end_date')
-                      ->orWhere('end_date', '>=', $now);
+                    ->orWhere('end_date', '>=', $now);
             })
             ->get();
 
         foreach ($activeTickets as $ticket) {
-            $ticket->display_name = $ticket->ticket_name . ' - ' . $ticket->ticket_category;
+            $ticket->display_name = $ticket->ticket_name.' - '.$ticket->ticket_category;
         }
 
         return view('booking.index', [
-            'status'          => 'ready',
-            'user'            => $user,
-            'tickets'         => $activeTickets,
+            'status' => 'ready',
+            'user' => $user,
+            'tickets' => $activeTickets,
             'existingBooking' => $existingBooking ?? null,
             'ownedCategories' => $ownedCategories,
-            'hotels'          => $hotels,
+            'hotels' => $hotels,
         ]);
     }
 
@@ -235,17 +238,17 @@ class BookingController extends Controller
     public function process(Request $request)
     {
         $request->validate([
-            'ticket_id'            => 'required|exists:tickets,id',
-            'full_name'            => 'required|string|max:255',
-            'name_with_title'      => 'required|string|max:255',
-            'nik'                  => 'required|digits:16',
-            'profession'           => 'required|string|max:255',
-            'whatsapp_number'      => 'required|string|max:20',
-            'gmail_account'        => 'required|email|max:255',
+            'ticket_id' => 'required|exists:tickets,id',
+            'full_name' => 'required|string|max:255',
+            'name_with_title' => 'required|string|max:255',
+            'nik' => 'required|digits:16',
+            'profession' => 'required|string|max:255',
+            'whatsapp_number' => 'required|string|max:20',
+            'gmail_account' => 'required|email|max:255',
             'plataran_sehat_email' => 'required|email|max:255',
-            'institution_name'     => 'required|string|max:255',
+            'institution_name' => 'required|string|max:255',
             'institution_district' => 'required|string|max:255',
-            'institution_city'     => 'required|string|max:255',
+            'institution_city' => 'required|string|max:255',
             'institution_province' => 'required|string|max:255',
         ]);
 
@@ -254,7 +257,7 @@ class BookingController extends Controller
         $now = Carbon::now();
 
         // Validasi keamanan tiket
-        if (!$ticket->is_active) {
+        if (! $ticket->is_active) {
             return back()->with('error', 'Maaf, tiket ini sedang dinonaktifkan oleh panitia.');
         }
         if ($ticket->start_date && $ticket->start_date->gt($now)) {
@@ -267,19 +270,19 @@ class BookingController extends Controller
         // ATURAN MULTI-TIKET:
         // 1) Beli tiket berikutnya hanya jika tidak ada pesanan PENDING (wajib lunas/batalkan dulu).
         $hasPendingBooking = TicketBooking::where('user_id', $user->id)
-                            ->where('status', 'pending')
-                            ->exists();
+            ->where('status', 'pending')
+            ->exists();
         if ($hasPendingBooking) {
             return back()->with('error', 'Anda masih memiliki pesanan tiket yang belum lunas. Silakan selesaikan atau batalkan pembayaran tersebut terlebih dahulu sebelum membeli tiket lain.');
         }
 
         // 2) Satu kategori hanya boleh dimiliki satu tiket (tiket yang dibatalkan tidak dihitung).
         $ownedCategories = TicketBooking::where('user_id', $user->id)
-                            ->where('status', '!=', 'cancelled')
-                            ->pluck('ticket_category')
-                            ->all();
+            ->where('status', '!=', 'cancelled')
+            ->pluck('ticket_category')
+            ->all();
         if (in_array($ticket->ticket_category, $ownedCategories)) {
-            return back()->with('error', 'Anda sudah memiliki tiket kategori "' . $ticket->ticket_category . '". Setiap kategori hanya dapat dibeli satu tiket.');
+            return back()->with('error', 'Anda sudah memiliki tiket kategori "'.$ticket->ticket_category.'". Setiap kategori hanya dapat dibeli satu tiket.');
         }
 
         // LOCK KUOTA + LOCK DATA DALAM SATU TRANSAKSI ATOMIK.
@@ -287,10 +290,10 @@ class BookingController extends Controller
         // condition saat kuota menipis & banyak user memesan bersamaan. Jika gagal,
         // seluruh transaksi di-rollback sehingga kuota tidak berkurang tanpa booking.
         try {
-            $booking = \Illuminate\Support\Facades\DB::transaction(function () use ($ticket, $request, $user) {
+            $booking = DB::transaction(function () use ($ticket, $request, $user) {
                 $reserved = Ticket::where('id', $ticket->id)
-                            ->where('quota', '>', 0)
-                            ->decrement('quota');
+                    ->where('quota', '>', 0)
+                    ->decrement('quota');
 
                 if ($reserved === 0) {
                     throw new \RuntimeException('kuota_habis');
@@ -300,20 +303,20 @@ class BookingController extends Controller
                 return TicketBooking::updateOrCreate(
                     ['user_id' => $user->id, 'status' => 'pending'],
                     [
-                        'ticket_id'            => $ticket->id,
-                        'ticket_name'          => $ticket->ticket_name,       // Lock Nama Tiket
-                        'ticket_category'      => $ticket->ticket_category,   // Lock Kategori
-                        'amount'               => $ticket->price,             // Lock Harga Beli
-                        'full_name'            => $request->full_name,
-                        'name_with_title'      => $request->name_with_title,
-                        'nik'                  => $request->nik,
-                        'profession'           => $request->profession,
-                        'whatsapp_number'      => $request->whatsapp_number,
-                        'gmail_account'        => $request->gmail_account,
+                        'ticket_id' => $ticket->id,
+                        'ticket_name' => $ticket->ticket_name,       // Lock Nama Tiket
+                        'ticket_category' => $ticket->ticket_category,   // Lock Kategori
+                        'amount' => $ticket->price,             // Lock Harga Beli
+                        'full_name' => $request->full_name,
+                        'name_with_title' => $request->name_with_title,
+                        'nik' => $request->nik,
+                        'profession' => $request->profession,
+                        'whatsapp_number' => $request->whatsapp_number,
+                        'gmail_account' => $request->gmail_account,
                         'plataran_sehat_email' => $request->plataran_sehat_email,
-                        'institution_name'     => $request->institution_name,
+                        'institution_name' => $request->institution_name,
                         'institution_district' => $request->institution_district,
-                        'institution_city'     => $request->institution_city,
+                        'institution_city' => $request->institution_city,
                         'institution_province' => $request->institution_province,
                     ]
                 );
@@ -336,44 +339,46 @@ class BookingController extends Controller
         $user = Auth::user();
 
         $booking = TicketBooking::where('id', $id)
-                    ->where('user_id', $user->id)
-                    ->firstOrFail();
+            ->where('user_id', $user->id)
+            ->firstOrFail();
 
         if ($booking->status === 'paid') {
             return redirect()->route('booking.index')
-                             ->with('success', 'Tiket ini sudah lunas.');
+                ->with('success', 'Tiket ini sudah lunas.');
         }
 
         if ($booking->status !== 'pending') {
             return redirect()->route('booking.index')
-                             ->with('error', 'Pemesanan ini sudah tidak aktif. Silakan lakukan pemesanan ulang.');
+                ->with('error', 'Pemesanan ini sudah tidak aktif. Silakan lakukan pemesanan ulang.');
         }
 
         // Peserta manual tidak membayar online — dikonfirmasi langsung oleh panitia.
         if ($booking->source === 'manual') {
             return redirect()->route('booking.index')
-                             ->with('error', 'Tiket peserta manual dikonfirmasi oleh panitia, tidak perlu melakukan pembayaran online.');
+                ->with('error', 'Tiket peserta manual dikonfirmasi oleh panitia, tidak perlu melakukan pembayaran online.');
         }
 
         // Batalkan otomatis bila melewati batas waktu pembayaran atau tiket sudah tidak berlaku.
         if ($this->isBookingExpired($booking)) {
             $this->cancelExpiredBooking($booking);
+
             return redirect()->route('booking.index')
-                             ->with('error', 'Pemesanan otomatis dibatalkan karena melewati batas waktu pembayaran atau tiket sudah tidak berlaku. Silakan lakukan pemesanan ulang.');
+                ->with('error', 'Pemesanan otomatis dibatalkan karena melewati batas waktu pembayaran atau tiket sudah tidak berlaku. Silakan lakukan pemesanan ulang.');
         }
 
         // REUSE: Jika link pembayaran DOKU sebelumnya masih valid, jangan buat pembayaran baru.
         if ($booking->payment_url && $booking->payment_expired_at && $booking->payment_expired_at->gt(now())) {
             $ticket = Ticket::find($booking->ticket_id);
-            $displayName = $booking->ticket_name . ' - ' . $booking->ticket_category;
+            $displayName = $booking->ticket_name.' - '.$booking->ticket_category;
+
             return view('booking.checkout', compact('booking', 'ticket', 'displayName') + ['paymentUrl' => $booking->payment_url]);
         }
 
         $ticket = Ticket::find($booking->ticket_id);
-        $displayName = $booking->ticket_name . ' - ' . $booking->ticket_category;
+        $displayName = $booking->ticket_name.' - '.$booking->ticket_category;
 
         // Buat Nomor Invoice unik (Contoh: INV-BACT-1-1785...)
-        $invoiceNumber = 'INV-BACT-' . $booking->id . '-' . time();
+        $invoiceNumber = 'RC-BACT-'.$booking->id.'-'.time();
 
         // -------------------------------------------------------------
         // PEMANGGILAN API DOKU CHECKOUT (DIRECT VIA LARAVEL HTTP CLIENT)
@@ -400,23 +405,23 @@ class BookingController extends Controller
                 'notification_url' => config('services.doku.notification_url', url('/api/doku/notification')),
                 'line_items' => [
                     [
-                        'name'     => ($booking->ticket_name ? $booking->ticket_name . ' - ' : '') . $booking->ticket_category,
+                        'name' => ($booking->ticket_name ? $booking->ticket_name.' - ' : '').$booking->ticket_category,
                         'quantity' => 1,
-                        'price'    => (int) $booking->amount,
+                        'price' => (int) $booking->amount,
                     ],
                 ],
             ],
             'payment' => [
-                'payment_due_date' => 120 // Expired VA/Link dalam menit (24 jam)
+                'payment_due_date' => 120, // Expired VA/Link dalam menit (24 jam)
             ],
             'customer' => [
                 'id' => (string) $user->id,
                 'name' => $booking->full_name,
                 'email' => $booking->gmail_account,
                 'phone' => $booking->whatsapp_number,
-                'address' => $booking->institution_name . ', ' . $booking->institution_city,
-                'country' => 'ID'
-            ]
+                'address' => $booking->institution_name.', '.$booking->institution_city,
+                'country' => 'ID',
+            ],
         ];
 
         $jsonBody = json_encode($requestBody);
@@ -424,16 +429,16 @@ class BookingController extends Controller
         // 2. Buat Tanda Tangan Keamanan (HMAC-SHA256 Signature DOKU)
         $requestId = (string) Str::uuid();
         $requestTimestamp = gmdate("Y-m-d\TH:i:s\Z");
-        $requestTarget = "/checkout/v1/payment";
+        $requestTarget = '/checkout/v1/payment';
 
         $digest = base64_encode(hash('sha256', $jsonBody, true));
-        $rawSignature = "Client-Id:" . $clientId . "\n"
-                      . "Request-Id:" . $requestId . "\n"
-                      . "Request-Timestamp:" . $requestTimestamp . "\n"
-                      . "Request-Target:" . $requestTarget . "\n"
-                      . "Digest:" . $digest;
+        $rawSignature = 'Client-Id:'.$clientId."\n"
+                      .'Request-Id:'.$requestId."\n"
+                      .'Request-Timestamp:'.$requestTimestamp."\n"
+                      .'Request-Target:'.$requestTarget."\n"
+                      .'Digest:'.$digest;
 
-        $signature = "HMACSHA256=" . base64_encode(hash_hmac('sha256', $rawSignature, $secretKey, true));
+        $signature = 'HMACSHA256='.base64_encode(hash_hmac('sha256', $rawSignature, $secretKey, true));
 
         // 3. Tembak API DOKU
         try {
@@ -443,15 +448,16 @@ class BookingController extends Controller
                 'Request-Timestamp' => $requestTimestamp,
                 'Signature' => $signature,
                 'Content-Type' => 'application/json',
-            ])->send('POST', $baseUrl . $requestTarget, [
-                'body' => $jsonBody
+            ])->send('POST', $baseUrl.$requestTarget, [
+                'body' => $jsonBody,
             ]);
         } catch (\Throwable $e) {
             Log::error('DOKU checkout request exception', [
-                'booking_id'   => $booking->id,
-                'base_url'     => $baseUrl,
-                'error'        => $e->getMessage(),
+                'booking_id' => $booking->id,
+                'base_url' => $baseUrl,
+                'error' => $e->getMessage(),
             ]);
+
             return back()->with('error', 'Gagal memproses ke gerbang pembayaran DOKU. Silakan coba lagi.');
         }
 
@@ -464,9 +470,9 @@ class BookingController extends Controller
             // Simpan invoice_number, link, dan waktu expired link agar bisa di-reuse saat "Lanjutkan Pembayaran".
             $paymentExpiredAt = $this->parsePaymentExpiredDate($dokuResult);
             $booking->update([
-                'invoice_number'      => $invoiceNumber,
-                'payment_url'         => $paymentUrl,
-                'payment_expired_at'  => $paymentExpiredAt,
+                'invoice_number' => $invoiceNumber,
+                'payment_url' => $paymentUrl,
+                'payment_expired_at' => $paymentExpiredAt,
             ]);
 
             return view('booking.checkout', compact('booking', 'ticket', 'displayName', 'paymentUrl'));
@@ -475,10 +481,11 @@ class BookingController extends Controller
         // Jika gagal konek ke DOKU
         Log::error('DOKU checkout failed', [
             'booking_id' => $booking->id,
-            'base_url'   => $baseUrl,
+            'base_url' => $baseUrl,
             'http_status' => $response->status(),
-            'response'   => $dokuResult,
+            'response' => $dokuResult,
         ]);
+
         return back()->with('error', 'Gagal memproses ke gerbang pembayaran DOKU. Silakan coba lagi.');
     }
 
@@ -490,14 +497,14 @@ class BookingController extends Controller
         $user = Auth::user();
 
         $booking = TicketBooking::where('id', $id)
-                    ->where('user_id', $user->id)
-                    ->firstOrFail();
+            ->where('user_id', $user->id)
+            ->firstOrFail();
 
         abort_unless($booking->status === 'paid', 403);
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('invoices.ticket-pdf', compact('booking'));
+        $pdf = Pdf::loadView('invoices.ticket-pdf', compact('booking'));
 
-        $filename = 'invoice-' . ($booking->invoice_number ?: ('ticket-' . $booking->id)) . '.pdf';
+        $filename = 'invoice-'.($booking->invoice_number ?: ('ticket-'.$booking->id)).'.pdf';
 
         if (request()->query('inline')) {
             return $pdf->stream($filename);
@@ -514,16 +521,16 @@ class BookingController extends Controller
         $user = Auth::user();
 
         $booking = TicketBooking::where('id', $id)
-                    ->where('user_id', $user->id)
-                    ->firstOrFail();
+            ->where('user_id', $user->id)
+            ->firstOrFail();
 
         abort_unless($booking->status === 'paid', 403);
 
         return view('invoices.preview', [
-            'title'       => 'Invoice ' . ($booking->invoice_number ?: ('Tiket-' . $booking->id)),
-            'pdfUrl'      => route('invoice.ticket', $booking->id) . '?inline=1',
+            'title' => 'Receipt '.($booking->invoice_number ?: ('Tiket-'.$booking->id)),
+            'pdfUrl' => route('invoice.ticket', $booking->id).'?inline=1',
             'downloadUrl' => route('invoice.ticket', $booking->id),
-            'backUrl'     => route('booking.index'),
+            'backUrl' => route('booking.index'),
         ]);
     }
 
@@ -541,11 +548,11 @@ class BookingController extends Controller
         $booking = $this->syncBookingFromCallback($request, $user, $booking);
 
         $isProduction = filter_var(config('services.doku.is_production', false), FILTER_VALIDATE_BOOL);
-        $shouldAutoFinalize = !$isProduction && ((int) $request->query('simulated_paid', 0) === 1 || $booking->status === 'pending');
+        $shouldAutoFinalize = ! $isProduction && ((int) $request->query('simulated_paid', 0) === 1 || $booking->status === 'pending');
 
         if ($shouldAutoFinalize && $booking->status !== 'paid') {
             $booking->update([
-                'status'  => 'paid',
+                'status' => 'paid',
                 'paid_at' => $booking->paid_at ?? now(),
             ]);
             app(TicketNotificationService::class)->sendTicketPaid($booking);
@@ -563,10 +570,10 @@ class BookingController extends Controller
 
     private function isProfileComplete($user): bool
     {
-        return !empty($user->email_verified_at) &&
-               !empty($user->name) &&
-               !empty($user->nik) &&
-               !empty($user->gender);
+        return ! empty($user->email_verified_at) &&
+               ! empty($user->name) &&
+               ! empty($user->nik) &&
+               ! empty($user->gender);
     }
 
     /**
@@ -598,11 +605,11 @@ class BookingController extends Controller
     private function cancelExpiredBooking(TicketBooking $booking): void
     {
         if ($booking->ticket_id) {
-            \App\Models\Ticket::where('id', $booking->ticket_id)->increment('quota');
+            Ticket::where('id', $booking->ticket_id)->increment('quota');
         }
 
-        $noteLine = now()->format('d M Y H:i') . ' — Dibatalkan otomatis oleh sistem (melewati batas waktu pembayaran / tiket kedaluwarsa)';
-        $booking->notes = trim(($booking->notes ? $booking->notes . "\n" : '') . $noteLine);
+        $noteLine = now()->format('d M Y H:i').' — Dibatalkan otomatis oleh sistem (melewati batas waktu pembayaran / tiket kedaluwarsa)';
+        $booking->notes = trim(($booking->notes ? $booking->notes."\n" : '').$noteLine);
         $booking->notes_updated_at = now();
         $booking->cancelled_at = now();
         $booking->status = 'cancelled';
@@ -640,7 +647,7 @@ class BookingController extends Controller
     {
         if (empty($booking->checkin_token)) {
             $booking->update([
-                'checkin_token' => 'BACT-' . $booking->id . '-' . strtoupper(Str::random(10)),
+                'checkin_token' => 'BACT-'.$booking->id.'-'.strtoupper(Str::random(10)),
             ]);
             $booking->refresh();
         }
@@ -664,7 +671,7 @@ class BookingController extends Controller
 
         $isPaidCallback = in_array($incomingStatus, ['SUCCESS', 'PAID', 'COMPLETED', 'SETTLED', 'CAPTURED'], true);
 
-        if (!$isPaidCallback && !$incomingInvoice) {
+        if (! $isPaidCallback && ! $incomingInvoice) {
             return $existingBooking;
         }
 
@@ -676,13 +683,13 @@ class BookingController extends Controller
                 ->first();
         }
 
-        if (!$targetBooking) {
+        if (! $targetBooking) {
             $targetBooking = $existingBooking;
         }
 
         if ($targetBooking && $isPaidCallback && $targetBooking->status !== 'paid') {
             $targetBooking->update([
-                'status'  => 'paid',
+                'status' => 'paid',
                 'paid_at' => $targetBooking->paid_at ?? now(),
             ]);
             app(TicketNotificationService::class)->sendTicketPaid($targetBooking);

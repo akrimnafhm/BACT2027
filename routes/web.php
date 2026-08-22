@@ -1,19 +1,19 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BookingController;
-use App\Http\Controllers\HomeController;
-use App\Http\Controllers\HotelController;
-use App\Http\Controllers\HotelBookingController;
+use App\Http\Controllers\BroadcastController;
 use App\Http\Controllers\ContentController;
+use App\Http\Controllers\HomeController;
+use App\Http\Controllers\HotelBookingController;
+use App\Http\Controllers\HotelController;
 use App\Http\Controllers\NotificationTemplateController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Middleware\IsAdmin;
-use App\Services\FonnteService;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 
 // ==========================================
 // RUTE PUBLIK (Bisa diakses siapa saja)
@@ -26,7 +26,6 @@ Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/booking', [BookingController::class, 'index'])->name('booking.index');
 Route::get('/booking/form', [BookingController::class, 'form'])->name('booking.form');
 Route::get('/hotel', [HotelBookingController::class, 'index'])->name('hotels.index');
-
 
 // ==========================================
 // RUTE GUEST (Hanya untuk yang belum login)
@@ -45,7 +44,6 @@ Route::middleware('guest')->group(function () {
     Route::post('/forgot-password/reset', [AuthController::class, 'processResetPassword'])->name('forgot-password.reset');
 });
 
-
 // ==========================================
 // RUTE USER (Hanya untuk yang sudah login)
 // ==========================================
@@ -60,11 +58,13 @@ Route::middleware('auth')->group(function () {
     // Verifikasi Email
     Route::post('/email/verification-notification', function (Request $request) {
         $request->user()->sendEmailVerificationNotification();
+
         return back()->with('success', 'Link verifikasi telah dikirim ke email Anda! Cek folder Log.');
     })->middleware('throttle:6,1')->name('verification.send');
 
     Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $request) {
         $request->fulfill();
+
         return redirect('/profile')->with('success', 'Email berhasil diverifikasi!');
     })->middleware('signed')->name('verification.verify');
 
@@ -90,7 +90,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/invoice/ticket/{id}', [BookingController::class, 'invoice'])->name('invoice.ticket');
     Route::get('/invoice/ticket/{id}/preview', [BookingController::class, 'invoicePreview'])->name('invoice.ticket.preview');
 
-    // AKOMODASI HOTEL (Katalog & Pemesanan Peserta)
+    // AKOMODASI HOTEL (Daftar Reservasi Peserta & Katalog Terpisah)
+    Route::get('/hotel/katalog', [HotelBookingController::class, 'catalog'])->name('hotels.catalog');
     Route::get('/hotel/book/{id}', [HotelBookingController::class, 'create'])->name('hotels.book');
     Route::post('/hotel/book/{id}', [HotelBookingController::class, 'store'])->name('hotels.store');
     Route::get('/hotel/checkout/{id}', [HotelBookingController::class, 'checkout'])->name('hotels.checkout');
@@ -103,7 +104,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/hotel/invoice/{id}', [HotelBookingController::class, 'invoice'])->name('hotels.invoice');
     Route::get('/hotel/invoice/{id}/preview', [HotelBookingController::class, 'invoicePreview'])->name('hotels.invoice.preview');
 });
-
 
 // ==========================================
 // RUTE KHUSUS ADMIN (Dilindungi Middleware)
@@ -158,7 +158,7 @@ Route::middleware(['auth', IsAdmin::class])->prefix('admin')->group(function () 
     // =========================================================
     Route::get('/hotels', [HotelController::class, 'index'])->name('admin.hotels.index');
     Route::post('/hotels/reservations/{id}/status', [HotelController::class, 'updateReservationStatus'])->name('admin.hotels.reservations.status');
-    Route::get('/admin/hotels/export', [App\Http\Controllers\HotelController::class, 'exportReservations'])->name('admin.hotels.export');
+    Route::get('/admin/hotels/export', [HotelController::class, 'exportReservations'])->name('admin.hotels.export');
 
     // =========================================================
     // 5. KARYA LOMBA (Placeholder)
@@ -204,8 +204,8 @@ Route::middleware(['auth', IsAdmin::class])->prefix('admin')->group(function () 
     // 7. BROADCAST WA
     // 7. BROADCAST WA & 8. QR CHECK-IN
     // =========================================================
-    Route::get('/broadcast', [\App\Http\Controllers\BroadcastController::class, 'index'])->name('admin.broadcast.index');
-    Route::post('/broadcast/send', [\App\Http\Controllers\BroadcastController::class, 'send'])->name('admin.broadcast.send');
+    Route::get('/broadcast', [BroadcastController::class, 'index'])->name('admin.broadcast.index');
+    Route::post('/broadcast/send', [BroadcastController::class, 'send'])->name('admin.broadcast.send');
 
     // =========================================================
     // 7B. TEMPLATE NOTIFIKASI (WA & EMAIL)
@@ -213,7 +213,7 @@ Route::middleware(['auth', IsAdmin::class])->prefix('admin')->group(function () 
     Route::get('/notifications', [NotificationTemplateController::class, 'index'])->name('admin.notifications.index');
     Route::post('/notifications', [NotificationTemplateController::class, 'update'])->name('admin.notifications.update');
 
-        // =========================================================
+    // =========================================================
     // 8. QR CHECK-IN (Placeholder)
     // =========================================================
     Route::get('/checkin', function () {

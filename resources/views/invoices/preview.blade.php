@@ -122,7 +122,7 @@
         </a>
     </div>
     <div class="pdf-wrap">
-        <iframe src="{{ $pdfUrl }}" title="Preview Invoice"></iframe>
+        <iframe src="{{ $pdfUrl }}" title="Preview Receipt"></iframe>
     </div>
 </body>
 </html>

@@ -22,7 +22,7 @@
         unset($baseQuery['tab']);
     @endphp
 
-    <main class="max-w-7xl mx-auto px-6 py-10 flex-grow w-full space-y-6">
+    <main class="max-w-full mx-auto px-12 py-10 flex-grow w-full space-y-6">
 
         <!-- Notifikasi -->
         @if(session('success'))
@@ -98,7 +98,7 @@
                 <input type="hidden" name="tab" value="{{ $tab }}">
 
                 <!-- Search -->
-                <div class="w-54 md:w-54 relative flex-shrink-0">
+                <div class="w-96 md:w-96 relative flex-shrink-0">
                     <input type="text" name="search" value="{{ $search }}" placeholder="Cari nama, email, NIK..."
                         class="w-full pl-9 pr-3 py-2 text-xs border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] outline-none">
                     <svg class="w-4 h-4 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -181,8 +181,8 @@
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-gray-50 border-b border-gray-200 text-[11px] font-extrabold text-gray-400 uppercase tracking-wider">
-                            <th class="py-3.5 px-5">Gelombang</th>
-                            <th class="py-3.5 px-5">Kategori</th>
+                            <th class="py-3.5 px-5">Tiket</th>
+                            <!-- <th class="py-3.5 px-5">Kategori</th> -->
                             <th class="py-3.5 px-5">Sumber</th>
                             <th class="py-3.5 px-5">Nama Peserta & Gelar</th>
                             <th class="py-3.5 px-5">Instansi</th>
@@ -196,15 +196,23 @@
 
                                 <!-- Gelombang -->
                                 <td class="py-3.5 px-5 font-bold text-gray-800 whitespace-nowrap">
-                                    {{ $item->ticket->ticket_name ?? 'Tiket BACT' }}
+                                    <div class="flex flex-col items-start gap-2">
+                                        <span>
+                                            {{ $item->ticket->ticket_name ?? 'Tiket BACT' }}
+                                        </span>
+
+                                        <span class="px-2.5 py-1 bg-[#FBE39D] text-[#E19404] font-bold text-xs rounded-lg whitespace-nowrap">
+                                            {{ $item->ticket->ticket_category ?? 'Umum' }}
+                                        </span>
+                                    </div>
                                 </td>
 
                                 <!-- Kategori -->
-                                <td class="py-3.5 px-5">
+                                <!-- <td class="py-3.5 px-5">
                                     <span class="px-2.5 py-1 bg-[#FBE39D] text-[#E19404] font-extrabold text-xs rounded-lg inline-block whitespace-nowrap">
                                         {{ $item->ticket->ticket_category ?? 'Umum' }}
                                     </span>
-                                </td>
+                                </td> -->
 
                                 <!-- Sumber (Website / Manual) -->
                                 <td class="py-3.5 px-5">
@@ -503,7 +511,7 @@
                     </div>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-<div>
+                <div>
                     <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Instansi / RS <span class="text-red-500">*</span></label>
                     <input type="text" name="institution_name" required placeholder="RSUD Dr. Soetomo" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl">
                 </div>

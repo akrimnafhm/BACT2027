@@ -143,7 +143,7 @@
             <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 mb-6">
                 <p class="text-xs font-extrabold text-[#E19404] uppercase tracking-wider mb-2">Placeholder yang didukung:</p>
                 <div class="flex flex-wrap gap-2">
-                    @foreach(['{nama}', '{hotel}', '{kode_booking}', '{id_pesanan}', '{invoice}', '{check_in}', '{check_out}', '{malam}', '{harga}'] as $ph)
+                    @foreach(['{nama}', '{hotel}', '{kode_booking}', '{id_pesanan}', '{invoice}', '{check_in}', '{check_out}', '{malam}', '{kamar}', '{harga}'] as $ph)
                         <code class="px-2 py-1 bg-[#FFF8E7] border border-[#E19404]/30 rounded-lg text-xs font-bold text-gray-800">{{ $ph }}</code>
                     @endforeach
                 </div>

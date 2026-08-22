@@ -361,7 +361,7 @@
                 <h3 class="font-extrabold text-gray-900 text-base">Tambah Tipe Kamar Baru</h3>
                 <button type="button" onclick="closeAddHotelModal()" class="text-gray-500 hover:text-gray-800">✕</button>
             </div>
-            <form action="{{ route('admin.hotels.store') }}" method="POST" enctype="multipart/form-data" class="p-6 space-y-4">
+            <form id="addHotelForm" action="{{ route('admin.hotels.store') }}" method="POST" enctype="multipart/form-data" class="p-6 space-y-4">
                 @csrf
                 <div>
                     <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Tipe / Nama Kamar</label>
@@ -383,7 +383,19 @@
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Foto Kamar</label>
-                    <input type="file" name="photos[]" multiple required accept="image/*" class="w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-[#FBE39D] file:text-[#E19404] hover:file:bg-orange-100 cursor-pointer border border-gray-300 rounded-xl">
+                    <input type="file" id="add_photos_picker" accept="image/*" multiple class="hidden">
+                    <div id="add_photos_dropzone" onclick="document.getElementById('add_photos_picker').click()"
+                        class="cursor-pointer border-2 border-dashed border-gray-300 hover:border-[#E19404] hover:bg-[#FFF8E7]/40 rounded-2xl py-7 text-center transition">
+                        <svg class="w-8 h-8 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12m0-12l-4 4m4-4l4 4"></path></svg>
+                        <p class="text-sm font-bold text-gray-700 mt-2">Klik untuk memilih foto</p>
+                        <p class="text-[11px] text-gray-400 mt-0.5">Anda dapat memilih beberapa foto sekaligus</p>
+                    </div>
+                    <div id="add_photos_list" class="grid grid-cols-3 sm:grid-cols-4 gap-3 mt-3"></div>
+                    <button type="button" id="add_photos_addbtn" onclick="document.getElementById('add_photos_picker').click()"
+                        class="hidden mt-3 w-full py-2.5 border border-dashed border-[#E19404]/50 text-[#E19404] hover:bg-[#FFF8E7] rounded-xl text-xs font-extrabold transition">
+                        + Tambah Foto
+                    </button>
+                    <p class="text-[11px] text-gray-400 mt-2">Maksimal 5 foto, masing-masing maksimal 2 MB (JPG/PNG/WEBP).</p>
                 </div>
                 <div class="flex justify-end gap-2 pt-3 border-t border-gray-100">
                     <button type="button" onclick="closeAddHotelModal()" class="px-4 py-2 text-xs font-bold text-gray-600 bg-gray-100 rounded-xl">Batal</button>
@@ -424,8 +436,24 @@
                     <textarea name="description" id="edit_description" rows="3" class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404]"></textarea>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Ganti Foto Kamar</label>
-                    <input type="file" name="photos[]" multiple accept="image/*" class="w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-[#FBE39D] file:text-[#E19404] hover:file:bg-orange-100 cursor-pointer border border-gray-300 rounded-xl">
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Foto Kamar</label>
+
+                    <!-- Foto lama (bisa dihapus satu per satu) -->
+                    <div id="edit_photos_existing" class="grid grid-cols-3 gap-3"></div>
+
+                    <input type="file" id="edit_photos_picker" accept="image/*" multiple class="hidden">
+                    <div id="edit_photos_dropzone" onclick="document.getElementById('edit_photos_picker').click()"
+                        class="mt-3 cursor-pointer border-2 border-dashed border-gray-300 hover:border-[#E19404] hover:bg-[#FFF8E7]/40 rounded-2xl py-7 text-center transition">
+                        <svg class="w-8 h-8 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12m0-12l-4 4m4-4l4 4"></path></svg>
+                        <p class="text-sm font-bold text-gray-700 mt-2">Klik untuk menambah foto baru</p>
+                        <p class="text-[11px] text-gray-400 mt-0.5">Anda dapat memilih beberapa foto sekaligus</p>
+                    </div>
+                    <div id="edit_photos_list" class="grid grid-cols-3 sm:grid-cols-4 gap-3 mt-3"></div>
+                    <button type="button" id="edit_photos_addbtn" onclick="document.getElementById('edit_photos_picker').click()"
+                        class="hidden mt-3 w-full py-2.5 border border-dashed border-[#E19404]/50 text-[#E19404] hover:bg-[#FFF8E7] rounded-xl text-xs font-extrabold transition">
+                        + Tambah Foto
+                    </button>
+                    <p class="text-[11px] text-gray-400 mt-2">Foto baru akan ditambahkan setelah foto lama. Total maksimal 5 foto, masing-masing maksimal 2 MB (JPG/PNG/WEBP).</p>
                 </div>
                 <div class="flex justify-end gap-2 pt-3 border-t border-gray-100">
                     <button type="button" onclick="closeEditHotelModal()" class="px-4 py-2 text-xs font-bold text-gray-600 bg-gray-100 rounded-xl">Batal</button>
@@ -479,8 +507,202 @@
             document.getElementById('editTicketModal').classList.add('hidden');
         }
 
-        // --- 2. SCRIPT KELOLA MODAL KAMAR HOTEL ---
+        // --- 2. SCRIPT KELOLA MODAL KAMAR HOTEL + MANAJER FOTO ---
+        const HOTEL_PHOTO_MAX = 5;
+        const HOTEL_PHOTO_MAX_BYTES = 2 * 1024 * 1024;
+        const HOTEL_STORAGE_BASE = "{{ asset('storage') }}";
+
+        // Hitung total foto aktif pada satu modal (baru + lama yang tidak dihapus)
+        function countManagedPhotos(prefix) {
+            let total = document.getElementById(prefix + '_photos_list').children.length;
+            if (prefix === 'edit') {
+                document.querySelectorAll('#edit_photos_existing .js-photo-existing').forEach(function (el) {
+                    if (!el.dataset.removed) total++;
+                });
+            }
+            return total;
+        }
+
+        function updateHotelPhotoUI(prefix) {
+            const dropzone = document.getElementById(prefix + '_photos_dropzone');
+            const addBtn = document.getElementById(prefix + '_photos_addbtn');
+            const listEl = document.getElementById(prefix + '_photos_list');
+
+            const hasNewPhotos = listEl.children.length > 0 ||
+                (prefix === 'edit' && document.querySelectorAll('#edit_photos_existing .js-photo-existing').length > 0);
+
+            // Dropzone besar hanya tampil saat belum ada thumbnail sama sekali
+            dropzone.classList.toggle('hidden', hasNewPhotos);
+            addBtn.classList.toggle('hidden', !hasNewPhotos);
+
+            const total = countManagedPhotos(prefix);
+            const full = total >= HOTEL_PHOTO_MAX;
+
+            addBtn.disabled = full;
+            addBtn.classList.toggle('opacity-50', full);
+            addBtn.classList.toggle('cursor-not-allowed', full);
+            addBtn.innerHTML = full
+                ? 'Maksimal ' + HOTEL_PHOTO_MAX + ' foto tercapai'
+                : '+ Tambah Foto';
+        }
+
+        // Kerangka thumbnail: gambar + badge opsional + tombol hapus
+        function buildPhotoThumb(options) {
+            const el = document.createElement('div');
+            el.className = 'relative aspect-[4/3] rounded-xl overflow-hidden border border-gray-200 bg-gray-100';
+            el.title = options.title || '';
+
+            const img = document.createElement('img');
+            img.src = options.src;
+            img.alt = 'Foto kamar';
+            img.className = 'w-full h-full object-cover transition';
+            el.appendChild(img);
+
+            if (options.badge) {
+                const badge = document.createElement('span');
+                badge.className = 'absolute top-1 left-1 text-[9px] font-black px-1.5 py-0.5 rounded-md bg-[#234661]/80 text-white uppercase tracking-wide';
+                badge.textContent = options.badge;
+                el.appendChild(badge);
+            }
+
+            if (options.onDelete) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.setAttribute('aria-label', 'Hapus foto');
+                btn.className = 'absolute top-1 right-1 w-6 h-6 flex items-center justify-center rounded-lg bg-red-500 hover:bg-red-600 text-white shadow-md transition js-delete-btn';
+                btn.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>';
+                btn.addEventListener('click', options.onDelete);
+                el.appendChild(btn);
+            }
+
+            return el;
+        }
+
+        function toggleExistingPhoto(thumbEl) {
+            const form = document.getElementById('editHotelForm');
+            const path = thumbEl.dataset.path;
+            const overlay = thumbEl.querySelector('.js-delete-overlay');
+            const btn = thumbEl.querySelector('.js-delete-btn');
+            const img = thumbEl.querySelector('img');
+
+            const willRemove = !thumbEl.dataset.removed;
+            thumbEl.dataset.removed = willRemove ? '1' : '';
+
+            img.classList.toggle('opacity-40', willRemove);
+            img.classList.toggle('grayscale', willRemove);
+            thumbEl.classList.toggle('ring-2', willRemove);
+            thumbEl.classList.toggle('ring-red-400', willRemove);
+            overlay.classList.toggle('hidden', !willRemove);
+            overlay.classList.toggle('flex', willRemove);
+            btn.innerHTML = willRemove
+                ? '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 10h10M8 15l-5-5 5-5m13 9v4a2 2 0 01-2 2H8"></path></svg>'
+                : '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>';
+            btn.classList.toggle('bg-red-500', !willRemove);
+            btn.classList.toggle('bg-gray-700', willRemove);
+
+            // Sinkronkan input hidden removed_photos[] untuk backend
+            let hiddenInput = form.querySelector('.js-removed-photo[value="' + path + '"]');
+            if (willRemove && !hiddenInput) {
+                hiddenInput = document.createElement('input');
+                hiddenInput.type = 'hidden';
+                hiddenInput.name = 'removed_photos[]';
+                hiddenInput.value = path;
+                hiddenInput.className = 'js-removed-photo';
+                form.appendChild(hiddenInput);
+            } else if (!willRemove && hiddenInput) {
+                hiddenInput.remove();
+            }
+        }
+
+        // Render foto lama milik kamar yang sedang diedit
+        function renderExistingPhotos(photos) {
+            const wrap = document.getElementById('edit_photos_existing');
+            wrap.innerHTML = '';
+
+            (photos || []).forEach(function (path) {
+                const thumbEl = buildPhotoThumb({
+                    src: HOTEL_STORAGE_BASE + '/' + path,
+                    title: path,
+                    onDelete: function () { toggleExistingPhoto(thumbEl); },
+                });
+                thumbEl.className += ' js-photo-existing cursor-pointer';
+                thumbEl.dataset.path = path;
+                thumbEl.dataset.removed = '';
+
+                const overlay = document.createElement('span');
+                overlay.className = 'js-delete-overlay absolute inset-0 bg-red-500/70 text-white text-[10px] font-black uppercase tracking-wider items-center justify-center hidden';
+                overlay.textContent = 'Akan Dihapus';
+                thumbEl.appendChild(overlay);
+
+                wrap.appendChild(thumbEl);
+            });
+        }
+
+        // Pemilihan file: setiap file dibungkus input tersembunyi sendiri
+        function handleHotelPhotoPicked(prefix) {
+            const picker = document.getElementById(prefix + '_photos_picker');
+            const files = Array.from(picker.files || []);
+            picker.value = ''; // reset agar file yang sama bisa dipilih lagi
+
+            if (!files.length) return;
+
+            const form = document.getElementById(prefix === 'add' ? 'addHotelForm' : 'editHotelForm');
+            const listEl = document.getElementById(prefix + '_photos_list');
+            const skipped = [];
+            const oversized = [];
+
+            files.forEach(function (file) {
+                if (!file.type.startsWith('image/')) { skipped.push(file.name); return; }
+                if (file.size > HOTEL_PHOTO_MAX_BYTES) { oversized.push(file.name); return; }
+                if (countManagedPhotos(prefix) >= HOTEL_PHOTO_MAX) { skipped.push(file.name); return; }
+
+                // Bungkus satu file ke dalam satu input file tersembunyi
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                const holder = document.createElement('input');
+                holder.type = 'file';
+                holder.name = 'photos[]';
+                holder.className = 'hidden js-photo-holder';
+                holder.files = dt.files;
+                form.appendChild(holder);
+
+                const objectUrl = URL.createObjectURL(file);
+                const thumbEl = buildPhotoThumb({
+                    src: objectUrl,
+                    title: file.name,
+                    badge: 'Baru',
+                    onDelete: function () {
+                        URL.revokeObjectURL(objectUrl);
+                        holder.remove();
+                        thumbEl.remove();
+                        updateHotelPhotoUI(prefix);
+                    },
+                });
+                listEl.appendChild(thumbEl);
+            });
+
+            if (oversized.length) alert('Foto berikut melebihi batas 2 MB dan tidak ditambahkan:\n- ' + oversized.join('\n- '));
+            if (skipped.length) alert('Foto berikut dilewati karena bukan gambar atau melebihi batas ' + HOTEL_PHOTO_MAX + ' foto:\n- ' + skipped.join('\n- '));
+
+            updateHotelPhotoUI(prefix);
+        }
+
+        function resetHotelPhotoManager(prefix) {
+            const formId = prefix === 'add' ? 'addHotelForm' : 'editHotelForm';
+            const form = document.getElementById(formId);
+
+            form.querySelectorAll('.js-photo-holder').forEach(function (el) { el.remove(); });
+            form.querySelectorAll('.js-removed-photo').forEach(function (el) { el.remove(); });
+
+            document.getElementById(prefix + '_photos_list').innerHTML = '';
+            if (prefix === 'edit') renderExistingPhotos([]);
+            document.getElementById(prefix + '_photos_picker').value = '';
+
+            updateHotelPhotoUI(prefix);
+        }
+
         function openAddHotelModal() {
+            resetHotelPhotoManager('add');
             document.getElementById('addHotelModal').classList.remove('hidden');
         }
         function closeAddHotelModal() {
@@ -495,13 +717,32 @@
             document.getElementById('edit_price_per_night').value = item.price_per_night;
             document.getElementById('edit_quota').value = item.quota;
             document.getElementById('edit_description').value = item.description || '';
-            
+
+            resetHotelPhotoManager('edit');
+            renderExistingPhotos(item.photos);
+            updateHotelPhotoUI('edit');
+
             document.getElementById('editHotelForm').action = `/admin/tickets/hotels/${item.id}`;
             document.getElementById('editHotelModal').classList.remove('hidden');
         }
         function closeEditHotelModal() {
             document.getElementById('editHotelModal').classList.add('hidden');
         }
+
+        // Pasang listener picker & pengaman minimal 1 foto saat tambah kamar
+        document.addEventListener('DOMContentLoaded', function () {
+            ['add', 'edit'].forEach(function (prefix) {
+                document.getElementById(prefix + '_photos_picker')
+                    .addEventListener('change', function () { handleHotelPhotoPicked(prefix); });
+            });
+
+            document.getElementById('addHotelForm').addEventListener('submit', function (e) {
+                if (countManagedPhotos('add') === 0) {
+                    e.preventDefault();
+                    alert('Minimal 1 foto kamar harus diunggah.');
+                }
+            });
+        });
 
         // --- 3. SCRIPT UNHIDE TIKET NON-AKTIF & AJAX TOGGLE ---
         document.addEventListener('DOMContentLoaded', function() {

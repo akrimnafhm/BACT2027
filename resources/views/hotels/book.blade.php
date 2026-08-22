@@ -53,17 +53,14 @@
             <!-- KOLOM KIRI (5 SPAN): DETAIL AKOMODASI -->
             <!-- ========================================== -->
             <div class="lg:col-span-5 bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden lg:sticky lg:top-28">
-                <!-- Foto Kamar-->
-                <div class="h-64 sm:h-72 w-full bg-gray-100 overflow-hidden relative">
-                    @if(is_array($hotel->photos) && count($hotel->photos) > 0)
-                        <img src="{{ asset('storage/' . $hotel->photos[0]) }}" alt="{{ $hotel->room_type }}" class="w-full h-full object-cover">
-                    @else
-                        <div class="w-full h-full flex items-center justify-center text-gray-400 font-bold text-sm">Foto Tidak Tersedia</div>
-                    @endif
-                    <div class="absolute top-4 left-4 bg-white/95 backdrop-blur-md px-3.5 py-1.5 rounded-full text-xs font-extrabold text-gray-800 shadow-sm">
-                        Akomodasi Resmi
-                    </div>
-                </div>
+                <!-- Foto Kamar (SLIDER) -->
+                @include('hotels.partials.gallery', [
+                    'photos'      => $hotel->photos,
+                    'alt'         => $hotel->room_type,
+                    'heightClass' => 'h-64 sm:h-72',
+                    'uid'         => 'book-' . $hotel->id,
+                    'badge'       => 'Akomodasi Resmi',
+                ])
 
                 <!-- Info Kamar -->
                 <div class="p-6 space-y-5">
@@ -187,6 +184,43 @@
                         </div>
                     </div>
 
+                    <!-- PILIH JUMLAH KAMAR -->
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-sm font-extrabold text-gray-900 uppercase tracking-wider">Jumlah Kamar</h3>
+                            <span class="text-xs font-bold {{ $remainingQuota > 0 ? 'text-gray-500' : 'text-red-500' }} bg-gray-100 px-3 py-1 rounded-full">
+                                Sisa Kuota: {{ max(0, $remainingQuota) }} Kamar
+                            </span>
+                        </div>
+
+                        <div class="flex items-center gap-4 flex-wrap">
+                            <div class="flex items-stretch">
+                                <button type="button" id="qty_minus" aria-label="Kurangi kamar"
+                                        class="px-4 py-3 border border-gray-300 rounded-l-xl bg-gray-50 hover:bg-gray-100 text-gray-700 font-black text-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
+                                        {{ $remainingQuota < 1 ? 'disabled' : '' }}>&minus;</button>
+                                <input type="number"
+                                       name="quantity"
+                                       id="quantity_input"
+                                       min="1"
+                                       max="{{ max(1, $remainingQuota) }}"
+                                       value="{{ old('quantity', 1) }}"
+                                       required
+                                       {{ $remainingQuota < 1 ? 'disabled' : '' }}
+                                       class="w-20 px-2 py-3 border-y border-gray-300 text-center text-sm font-black text-gray-900 outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] transition bg-white">
+                                <button type="button" id="qty_plus" aria-label="Tambah kamar"
+                                        class="px-4 py-3 border border-gray-300 rounded-r-xl bg-gray-50 hover:bg-gray-100 text-gray-700 font-black text-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
+                                        {{ $remainingQuota < 2 ? 'disabled' : '' }}>+</button>
+                            </div>
+                            <p class="text-xs text-gray-400 leading-relaxed">
+                                Bisa memesan lebih dari 1 kamar dalam satu reservasi.<br>
+                                Total tagihan = malam &times; harga/malam &times; jumlah kamar.
+                            </p>
+                        </div>
+
+                        @if($remainingQuota < 1)
+                            <p class="text-xs font-bold text-red-500">Maaf, kuota kamar ini sedang habis.</p>
+                        @endif
+                    </div>
                     <!-- RINGKASAN BIAYA (REAL-TIME KALKULATOR) -->
                     <div class="bg-[#FFFCEF] border border-[#FBE39D] rounded-2xl p-6 space-y-4">
                         <span class="text-xs font-extrabold text-[#E19404] uppercase tracking-wider block">Ringkasan Biaya</span>
@@ -194,6 +228,11 @@
                         <div class="flex justify-between items-center text-sm font-bold text-gray-700">
                             <span>Durasi Menginap:</span>
                             <span id="nights_count" class="text-base text-gray-900 font-black">0 Malam</span>
+                        </div>
+
+                        <div class="flex justify-between items-center text-sm font-bold text-gray-700">
+                            <span>Jumlah Kamar:</span>
+                            <span id="qty_count" class="text-base text-gray-900 font-black">1 Kamar</span>
                         </div>
 
                         <div class="flex justify-between items-center pt-3 border-t border-[#FBE39D]/60">
@@ -230,8 +269,15 @@
             const checkInInput  = document.getElementById('check_in');
             const checkOutInput = document.getElementById('check_out');
             const nightsText    = document.getElementById('nights_count');
+            const qtyText       = document.getElementById('qty_count');
             const priceText     = document.getElementById('total_price');
             const submitBtn     = document.getElementById('submit_btn');
+
+            // Jumlah kamar
+            const qtyInput  = document.getElementById('quantity_input');
+            const qtyMinus  = document.getElementById('qty_minus');
+            const qtyPlus   = document.getElementById('qty_plus');
+            const MAX_QTY   = {{ max(1, $remainingQuota) }};
             
             // Ambil harga dari database hotel
             const pricePerNight = Number({{ $hotel->price_per_night }});
@@ -290,11 +336,29 @@
                 }
             }
 
+            function getQuantity() {
+                let qty = parseInt(qtyInput ? qtyInput.value : '1', 10);
+                if (isNaN(qty) || qty < 1) qty = 1;
+                if (qty > MAX_QTY) qty = MAX_QTY;
+                return qty;
+            }
+
+            function clampQuantity() {
+                if (!qtyInput) return 1;
+                const qty = getQuantity();
+                if (String(qty) !== String(qtyInput.value)) qtyInput.value = qty;
+                return qty;
+            }
+
             function calculateCost() {
                 enforceRange();
 
                 const checkInVal  = checkInInput.value;
                 const checkOutVal = checkOutInput.value;
+                const quantity    = clampQuantity();
+
+                // Tampilkan jumlah kamar di ringkasan
+                if (qtyText) qtyText.textContent = quantity + ' Kamar';
 
                 if (checkInVal && checkOutVal) {
                     const start = new Date(checkInVal);
@@ -306,7 +370,7 @@
 
                     // Jika check-out > check-in (minimal 1 malam)
                     if (diffDays > 0) {
-                        const totalPrice = diffDays * pricePerNight;
+                        const totalPrice = diffDays * pricePerNight * quantity;
 
                         if (nightsText) nightsText.textContent = diffDays + ' Malam';
                         if (priceText)  priceText.textContent  = 'Rp ' + totalPrice.toLocaleString('id-ID');
@@ -331,7 +395,7 @@
                 }
             }
 
-            // Dengarkan perubahan input tanggal
+            // Dengarkan perubahan input tanggal & jumlah kamar
             if (checkInInput && checkOutInput) {
                 checkInInput.addEventListener('change', calculateCost);
                 checkOutInput.addEventListener('change', calculateCost);
@@ -340,11 +404,33 @@
                 checkInInput.addEventListener('blur', calculateCost);
                 checkOutInput.addEventListener('blur', calculateCost);
 
+                if (qtyInput) {
+                    qtyInput.addEventListener('input', calculateCost);
+                    qtyInput.addEventListener('change', calculateCost);
+                    qtyInput.addEventListener('blur', calculateCost);
+                }
+
+                if (qtyMinus && qtyPlus) {
+                    qtyMinus.addEventListener('click', function () {
+                        const current = getQuantity();
+                        qtyInput.value = Math.max(1, current - 1);
+                        calculateCost();
+                    });
+                    qtyPlus.addEventListener('click', function () {
+                        const current = getQuantity();
+                        qtyInput.value = Math.min(MAX_QTY, current + 1);
+                        calculateCost();
+                    });
+                }
+
                 // Panggil sekali di awal untuk antisipasi browser autofill/old value
                 calculateCost();
             }
         });
     </script>
+
+    <!-- 5. LIGHTBOX & PENGGERAK SLIDER FOTO -->
+    @include('hotels.partials.lightbox')
 
 </body>
 </html>

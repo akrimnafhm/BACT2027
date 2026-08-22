@@ -19,6 +19,7 @@ class HotelReservation extends Model
         'check_in',
         'check_out',
         'total_nights',
+        'quantity',
         'total_price',
         'guest_name',
         'guest_nik',
@@ -37,13 +38,14 @@ class HotelReservation extends Model
      * Tipe data konversi otomatis (casting)
      */
     protected $casts = [
-        'check_in'     => 'date',
-        'check_out'    => 'date',
+        'check_in' => 'date',
+        'check_out' => 'date',
         'total_nights' => 'integer',
-        'total_price'  => 'decimal:2',
-        'notified_at'  => 'datetime',
+        'quantity' => 'integer',
+        'total_price' => 'decimal:2',
+        'notified_at' => 'datetime',
         'payment_expired_at' => 'datetime',
-        'cancelled_at'  => 'datetime',
+        'cancelled_at' => 'datetime',
     ];
 
     /**

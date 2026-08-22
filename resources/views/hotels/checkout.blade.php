@@ -82,7 +82,11 @@
                             <span class="font-bold text-gray-900 mt-0.5 sm:mt-0">{{ $reservation->total_nights }} Malam</span>
                         </div>
                         <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center py-3 px-5">
-                            <span class="text-gray-500 font-medium">Harga per Malam</span>
+                            <span class="text-gray-500 font-medium">Jumlah Kamar</span>
+                            <span class="font-bold text-gray-900 mt-0.5 sm:mt-0">{{ max(1, $reservation->quantity) }} Kamar</span>
+                        </div>
+                        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center py-3 px-5">
+                            <span class="text-gray-500 font-medium">Harga per Malam (per Kamar)</span>
                             <span class="font-bold text-gray-900 mt-0.5 sm:mt-0">Rp {{ number_format($room->price_per_night ?? 0, 0, ',', '.') }}</span>
                         </div>
                     </div>
