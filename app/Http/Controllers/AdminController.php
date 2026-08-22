@@ -352,7 +352,8 @@ class AdminController extends Controller
         $request->validate([
             'room_type' => 'required|string|max:255',
             'price_per_night' => 'required|numeric|min:0',
-            'quota' => 'required|integer|min:0',
+            // Kuota di sini adalah SELISIH (bisa negatif, mis. -2). Kosong = tidak berubah.
+            'quota' => 'nullable|integer',
             'description' => 'nullable|string',
             'photos' => 'nullable|array|max:5',
             'photos.*' => 'image|mimes:jpeg,png,jpg,webp|max:2048',
@@ -364,6 +365,14 @@ class AdminController extends Controller
         ]);
 
         $hotel = HotelRoom::findOrFail($id);
+
+        // 0. Validasi penyesuaian kuota: hasil akhir tidak boleh negatif
+        $quotaDelta = (int) $request->input('quota', 0);
+        if ($hotel->quota + $quotaDelta < 0) {
+            throw ValidationException::withMessages([
+                'quota' => "Penyesuaian kuota tidak valid: {$hotel->quota} kamar (".($quotaDelta > 0 ? '+' : '').$quotaDelta.') menghasilkan angka negatif.',
+            ]);
+        }
 
         // 1. Proses penghapusan foto lama yang dipilih admin (per foto)
         $currentPhotos = is_array($hotel->photos) ? $hotel->photos : [];
@@ -401,7 +410,6 @@ class AdminController extends Controller
         $data = [
             'room_type' => $request->input('room_type'),
             'price_per_night' => $request->input('price_per_night'),
-            'quota' => $request->input('quota'),
             'description' => $request->input('description'),
         ];
 
@@ -411,6 +419,13 @@ class AdminController extends Controller
         }
 
         $hotel->update($data);
+
+        // Terapkan penyesuaian kuota secara atomik (aman dari pemesanan bersamaan)
+        if ($quotaDelta > 0) {
+            $hotel->increment('quota', $quotaDelta);
+        } elseif ($quotaDelta < 0) {
+            $hotel->decrement('quota', abs($quotaDelta));
+        }
 
         return redirect()->route('admin.tickets.index')
             ->with('success', 'Data kamar hotel berhasil diperbarui!');
@@ -471,7 +486,7 @@ class AdminController extends Controller
         $dateFrom = $request->input('date_from');
         $dateTo = $request->input('date_to');
 
-        $query = TicketBooking::with('ticket')->latest();
+        $query = TicketBooking::with(['ticket', 'user'])->latest();
 
         if (! empty($search)) {
             $query->where(function ($q) use ($search) {
@@ -862,6 +877,32 @@ class AdminController extends Controller
         app(TicketNotificationService::class)->sendTicketPaid($booking);
 
         return back()->with('success', 'Peserta "'.($booking->name_with_title ?: $booking->full_name).'" berhasil dikonfirmasi dan tercatat sebagai LUNAS.');
+    }
+
+    /**
+     * KONFIRMASI MANUAL JOIN GRUP WHATSAPP (per orang).
+     * Dipakai bila peserta sudah gabung grup tanpa menekan tombol di website:
+     * admin dapat menandai (wa_joined_at = sekarang) atau membatalkan tanda.
+     */
+    public function toggleWaJoined(int $id): RedirectResponse
+    {
+        $booking = TicketBooking::findOrFail($id);
+        $participantName = $booking->name_with_title ?: $booking->full_name;
+        $user = $booking->user;
+
+        if (! $user) {
+            return back()->with('error', 'Peserta "'.$participantName.'" tidak terhubung ke akun website, status WA tidak dapat diubah.');
+        }
+
+        if ($user->wa_joined_at) {
+            $user->update(['wa_joined_at' => null]);
+
+            return back()->with('success', 'Status WA "'.$participantName.'" dikosongkan kembali.');
+        }
+
+        $user->update(['wa_joined_at' => now()]);
+
+        return back()->with('success', 'Peserta "'.$participantName.'" ditandai SUDAH JOIN grup WhatsApp.');
     }
 
     /**

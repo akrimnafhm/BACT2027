@@ -412,7 +412,7 @@ class BookingController extends Controller
                 ],
             ],
             'payment' => [
-                'payment_due_date' => 120, // Expired VA/Link dalam menit (24 jam)
+                'payment_due_date' => 1440, // Expired VA/Link dalam menit (24 jam)
             ],
             'customer' => [
                 'id' => (string) $user->id,
@@ -566,6 +566,30 @@ class BookingController extends Controller
             'order_id' => $request->query('order_id'),
             'simulated_paid' => $request->query('simulated_paid'),
         ], fn ($value) => $value !== null && $value !== ''));
+    }
+
+    /**
+     * Tracking klik tombol "Join Grup WA" di halaman bridge.
+     * Menandai user sebagai sudah join (sekali saja), lalu mengarahkan
+     * ke link grup WhatsApp asli agar pengalaman peserta tidak berubah.
+     */
+    public function joinWaGroup(string $category)
+    {
+        $link = WaGroupLink::linkFor($category);
+
+        if (! $link) {
+            return redirect()->route('booking.index')->with(
+                'error',
+                'Link grup WhatsApp belum tersedia. Hubungi panitia untuk bantuan.'
+            );
+        }
+
+        $user = Auth::user();
+        if ($user && is_null($user->wa_joined_at)) {
+            $user->forceFill(['wa_joined_at' => now()])->save();
+        }
+
+        return redirect()->away($link);
     }
 
     private function isProfileComplete($user): bool

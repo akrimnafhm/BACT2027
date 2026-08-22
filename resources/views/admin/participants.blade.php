@@ -233,6 +233,12 @@
                                 <td class="py-3.5 px-5">
                                     <div class="flex items-center gap-1.5">
                                         <div class="font-extrabold text-gray-900">{{ $item->name_with_title ?: $item->full_name }}</div>
+                                        @if($tab === 'peserta' && $item->user?->wa_joined_at)
+                                            <span title="Sudah join grup WhatsApp{{ $item->user->wa_joined_at ? ' (' . $item->user->wa_joined_at->format('d M Y H:i') . ')' : '' }}"
+                                                class="flex-shrink-0 inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#25D366]">
+                                                <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2zm.01 18.2c-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.26 8.26 0 01-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24 4.54 0 8.24 3.7 8.24 8.24 0 4.54-3.7 8.24-8.23 8.24zm4.52-6.16c-.25-.12-1.47-.72-1.69-.81-.23-.08-.39-.12-.56.13-.17.24-.64.8-.78.97-.14.16-.29.18-.54.06-.25-.12-1.05-.39-1.99-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.02-.38.11-.51.11-.11.25-.29.37-.43.12-.14.17-.25.25-.41.08-.17.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.48-.41-.42-.56-.43h-.48c-.17 0-.43.06-.66.31-.22.25-.86.85-.86 2.07 0 1.22.89 2.4 1.01 2.56.12.17 1.75 2.67 4.23 3.74.59.26 1.05.41 1.41.52.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.67-1.18.21-.58.21-1.07.14-1.18-.06-.11-.22-.17-.47-.29z"/></svg>
+                                            </span>
+                                        @endif
                                         @if($tab === 'all' && $item->notes)
                                             <button type="button" onclick="openViewModal({{ json_encode($item) }})"
                                                 title="Lihat catatan" class="flex-shrink-0 p-1 text-[#E19404] hover:bg-[#FBE39D] rounded-md transition cursor-pointer">
@@ -328,6 +334,22 @@
                                                     <button type="submit" class="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 text-xs font-bold rounded-lg transition whitespace-nowrap">Kembalikan</button>
                                                 </form>
                                             @else
+                                                @if($item->user)
+                                                    @if($item->user->wa_joined_at)
+                                                        <form method="POST" action="{{ route('admin.participants.waToggle', $item->id) }}" onsubmit="return confirm('Kosongkan tanda WA untuk {{ addslashes($item->name_with_title ?: $item->full_name) }}?')">
+                                                            @csrf
+                                                            <button type="submit" title="Batalkan status sudah-join grup WA"
+                                                                class="px-3 py-1.5 bg-green-100 hover:bg-red-50 hover:text-red-600 text-green-700 text-xs font-bold rounded-lg transition whitespace-nowrap">✓ Join WA</button>
+                                                        </form>
+                                                    @else
+                                                        <form method="POST" action="{{ route('admin.participants.waToggle', $item->id) }}" onsubmit="return confirm('Tandai {{ addslashes($item->name_with_title ?: $item->full_name) }} sebagai SUDAH JOIN grup WhatsApp?')">
+                                                            @csrf
+                                                            <button type="submit" title="Konfirmasi manual: peserta sudah join grup tanpa klik tombol di website"
+                                                                class="px-3 py-1.5 bg-green-50 hover:bg-green-100 text-green-600 text-xs font-bold rounded-lg transition whitespace-nowrap">Konfirmasi WA</button>
+                                                        </form>
+                                                    @endif
+                                                @endif
+
                                                 <button type="button" onclick="openDeleteModal({{ $item->id }}, '{{ addslashes($item->name_with_title ?: $item->full_name) }}')"
                                                     class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-lg transition">Hapus</button>
                                             @endif

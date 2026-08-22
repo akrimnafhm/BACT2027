@@ -41,7 +41,7 @@ it('mengelola foto kamar saat edit: hapus per foto dan tambah foto baru', functi
     $this->actingAs($admin)->put(route('admin.hotels.update', $room->id), [
         'room_type' => 'Deluxe King',
         'price_per_night' => 500000,
-        'quota' => 5,
+        'quota' => 0,
         'description' => null,
         'removed_photos' => [$oldA],
         'photos' => [$newPhoto],
@@ -55,7 +55,8 @@ it('mengelola foto kamar saat edit: hapus per foto dan tambah foto baru', functi
         ->and($photos)->toContain($oldB)
         ->and(count($photos))->toBe(2)
         ->and(Storage::disk('public')->exists($oldA))->toBeFalse()
-        ->and(Storage::disk('public')->exists($oldB))->toBeTrue();
+        ->and(Storage::disk('public')->exists($oldB))->toBeTrue()
+        ->and((int) $room->quota)->toBe(5);
 
     // Foto lama yang tersisa masih ada di storage dan terdaftar di DB
     foreach ($photos as $path) {
@@ -88,7 +89,7 @@ it('menolak total foto lebih dari 5 saat mengedit kamar', function () {
     $response = $this->actingAs($admin)->put(route('admin.hotels.update', $room->id), [
         'room_type' => 'Suite',
         'price_per_night' => 900000,
-        'quota' => 3,
+        'quota' => 0,
         'description' => null,
         'photos' => [
             UploadedFile::fake()->image('n1.jpg'),
@@ -101,4 +102,52 @@ it('menolak total foto lebih dari 5 saat mengedit kamar', function () {
     // Data tidak berubah
     $room->refresh();
     expect(count($room->photos))->toBe(4);
+});
+
+it('menerapkan kuota sebagai selisih dan menolak hasil negatif', function () {
+    Storage::fake('public');
+    $admin = adminUser();
+
+    $room = HotelRoom::create([
+        'room_type' => 'Deluxe Twin',
+        'price_per_night' => 750000,
+        'quota' => 5,
+        'is_active' => true,
+    ]);
+
+    // Tambah 3 kamar -> 8
+    $this->actingAs($admin)->put(route('admin.hotels.update', $room->id), [
+        'room_type' => 'Deluxe Twin',
+        'price_per_night' => 750000,
+        'quota' => 3,
+        'description' => null,
+    ]);
+    expect((int) $room->fresh()->quota)->toBe(8);
+
+    // Kurangi 2 kamar -> 6
+    $this->actingAs($admin)->put(route('admin.hotels.update', $room->id), [
+        'room_type' => 'Deluxe Twin',
+        'price_per_night' => 750000,
+        'quota' => -2,
+        'description' => null,
+    ]);
+    expect((int) $room->fresh()->quota)->toBe(6);
+
+    // Kosong = tidak berubah
+    $this->actingAs($admin)->put(route('admin.hotels.update', $room->id), [
+        'room_type' => 'Deluxe Twin',
+        'price_per_night' => 750000,
+        'description' => null,
+    ]);
+    expect((int) $room->fresh()->quota)->toBe(6);
+
+    // Hasil negatif (-10 dari 6) -> ditolak, kuota tetap
+    $this->actingAs($admin)->put(route('admin.hotels.update', $room->id), [
+        'room_type' => 'Deluxe Twin',
+        'price_per_night' => 750000,
+        'quota' => -10,
+        'description' => null,
+    ])->assertSessionHasErrors('quota');
+
+    expect((int) $room->fresh()->quota)->toBe(6);
 });

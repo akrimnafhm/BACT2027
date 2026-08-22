@@ -409,7 +409,7 @@
          4. MODAL EDIT TIPE KAMAR HOTEL
          ========================================================= -->
     <div id="editHotelModal" class="fixed inset-0 z-50 hidden overflow-y-auto bg-gray-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full border border-gray-200 overflow-hidden">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-xl w-full border border-gray-200 overflow-hidden">
             <div class="bg-[#FBE39D] px-6 py-4 border-b border-[#E19404]/20 flex justify-between items-center">
                 <h3 class="font-extrabold text-gray-900 text-base">Edit Data Kamar Hotel</h3>
                 <button type="button" onclick="closeEditHotelModal()" class="text-gray-500 hover:text-gray-800">✕</button>
@@ -427,8 +427,10 @@
                         <input type="number" name="price_per_night" id="edit_price_per_night" required min="0" class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404]">
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Stok Kuota Kamar</label>
-                        <input type="number" name="quota" id="edit_quota" required min="0" class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404]">
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Sesuaikan Kuota Kamar (&plusmn;)</label>
+                        <input type="number" name="quota" id="edit_quota" placeholder="Contoh: -2 atau 3"
+                            class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404]">
+                        <p id="edit_quota_preview" class="text-[11px] font-bold text-gray-500 mt-1.5"></p>
                     </div>
                 </div>
                 <div>
@@ -701,6 +703,40 @@
             updateHotelPhotoUI(prefix);
         }
 
+        // --- PREVIEW PENYESUAIAN KUOTA KAMAR (EDIT): input = selisih, tampilkan hasil akhir ---
+        function updateHotelQuotaPreview() {
+            const quotaInput = document.getElementById('edit_quota');
+            const previewEl = document.getElementById('edit_quota_preview');
+            if (!quotaInput || !previewEl) return;
+
+            const submitBtn = document.querySelector('#editHotelForm button[type="submit"]');
+            const baseQuota = parseInt(quotaInput.dataset.base || '0', 10);
+            const raw = quotaInput.value.trim();
+            previewEl.classList.remove('text-gray-500', 'text-green-700', 'text-amber-600', 'text-red-600');
+
+            // Kosong / bukan angka = tidak ada perubahan
+            if (raw === '' || isNaN(parseInt(raw, 10))) {
+                previewEl.textContent = 'Sisa kuota saat ini: ' + baseQuota + ' kamar — biarkan kosong bila tidak ingin mengubah.';
+                previewEl.classList.add('text-gray-500');
+                if (submitBtn) submitBtn.disabled = false;
+                return;
+            }
+
+            const delta = parseInt(raw, 10);
+            const result = baseQuota + delta;
+
+            if (result < 0) {
+                previewEl.textContent = 'Tidak bisa disimpan: hasil ' + result + ' kurang dari 0. Sisa kuota saat ini hanya ' + baseQuota + ' kamar.';
+                previewEl.classList.add('text-red-600');
+                if (submitBtn) submitBtn.disabled = true;
+                return;
+            }
+
+            previewEl.textContent = baseQuota + ' kamar ' + (delta >= 0 ? '+ ' : '− ') + Math.abs(delta) + ' = ' + result + ' kamar setelah disimpan.';
+            previewEl.classList.add(delta > 0 ? 'text-green-700' : (delta < 0 ? 'text-amber-600' : 'text-gray-500'));
+            if (submitBtn) submitBtn.disabled = false;
+        }
+
         function openAddHotelModal() {
             resetHotelPhotoManager('add');
             document.getElementById('addHotelModal').classList.remove('hidden');
@@ -715,8 +751,11 @@
 
             document.getElementById('edit_room_type').value = item.room_type;
             document.getElementById('edit_price_per_night').value = item.price_per_night;
-            document.getElementById('edit_quota').value = item.quota;
+            const quotaInput = document.getElementById('edit_quota');
+            quotaInput.value = '';
+            quotaInput.dataset.base = item.quota;
             document.getElementById('edit_description').value = item.description || '';
+            updateHotelQuotaPreview();
 
             resetHotelPhotoManager('edit');
             renderExistingPhotos(item.photos);
@@ -735,6 +774,9 @@
                 document.getElementById(prefix + '_photos_picker')
                     .addEventListener('change', function () { handleHotelPhotoPicked(prefix); });
             });
+
+            document.getElementById('edit_quota').addEventListener('input', updateHotelQuotaPreview);
+            document.getElementById('edit_quota').addEventListener('change', updateHotelQuotaPreview);
 
             document.getElementById('addHotelForm').addEventListener('submit', function (e) {
                 if (countManagedPhotos('add') === 0) {

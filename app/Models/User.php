@@ -22,6 +22,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'degree_back',
         'address',
         'institution',
+        'wa_joined_at',
     ];
 
     protected $hidden = [
@@ -32,12 +33,13 @@ class User extends Authenticatable implements MustVerifyEmail
     protected function casts(): array
     {
         return [
-            'email_verified_at'  => 'datetime',
-            'phone_verified_at'  => 'datetime',
-            'otp_expires_at'     => 'datetime',
+            'email_verified_at' => 'datetime',
+            'phone_verified_at' => 'datetime',
+            'otp_expires_at' => 'datetime',
             'email_otp_expires_at' => 'datetime',
-            'otp_sent_at'        => 'datetime',
-            'email_otp_sent_at'  => 'datetime',
+            'otp_sent_at' => 'datetime',
+            'email_otp_sent_at' => 'datetime',
+            'wa_joined_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
