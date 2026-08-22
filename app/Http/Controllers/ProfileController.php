@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Mail\EmailVerificationOtpMail;
+use App\Models\TicketBooking;
+use App\Models\WaGroupLink;
 use App\Services\FonnteService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -25,31 +27,25 @@ class ProfileController extends Controller
             : 0;
 
         // Tiket yang sudah dibeli (lunas) untuk tabel di halaman profil
-        $paidTickets = \App\Models\TicketBooking::where('user_id', $user->id)
-                        ->where('status', 'paid')
-                        ->latest()
-                        ->get();
+        $paidTickets = TicketBooking::where('user_id', $user->id)
+            ->where('status', 'paid')
+            ->latest()
+            ->get();
 
-        // Link grup WA per kategori unik dari tiket yang dibeli.
-        // Kategori combo diperluas ke grup komponennya (Basic-Advanced -> Basic + Advanced).
-        $groupLinks = [];
+        // Tombol join grup WA ditempel pada TIAP TIKET (bukan blok global).
+        // Satu tiket = satu tombol untuk grup dengan kategori yang SAMA persis
+        // (Basic -> grup Basic; Basic-Advanced -> grup Basic-Advanced, tanpa
+        // ekspansi ke grup komponennya). Tombol hanya tampil bila admin sudah
+        // mengisi link grup tersebut.
         foreach ($paidTickets as $ticket) {
-            foreach (\App\Models\WaGroupLink::groupCategoriesFor($ticket->ticket_category) as $cat) {
-                if (!array_key_exists($cat, $groupLinks)) {
-                    $groupLinks[$cat] = \App\Models\WaGroupLink::where('ticket_category', $cat)->value('wa_group_link');
-                }
-            }
+            $link = WaGroupLink::linkFor($ticket->ticket_category);
+            $ticket->wa_group_url = ($link !== null && trim($link) !== '') ? $link : null;
+            $ticket->wa_group_label = WaGroupLink::normalizeCategory((string) $ticket->ticket_category);
         }
-        $groupLinks = array_filter($groupLinks);
-
-        // Urutan tampil konsisten: Basic, Advanced, Online, Workshop
-        $linkOrder = ['Basic' => 0, 'Advanced' => 1, 'Online' => 2, 'Workshop' => 3];
-        uksort($groupLinks, fn ($a, $b) => ($linkOrder[$a] ?? 9) <=> ($linkOrder[$b] ?? 9));
 
         return view('profile.edit', compact('user') + [
             'emailOtpRemaining' => $emailOtpRemaining,
-            'paidTickets'       => $paidTickets,
-            'groupLinks'        => $groupLinks,
+            'paidTickets' => $paidTickets,
         ]);
     }
 
@@ -59,40 +55,40 @@ class ProfileController extends Controller
 
         // 1. Aturan validasi ketat (tanpa address & tanpa gelar)
         $rules = [
-            'name'         => 'required|string|max:255',
+            'name' => 'required|string|max:255',
             'phone_number' => 'required|string|max:20',
-            'nik'          => 'required|string|size:16', // Wajib persis 16 digit NIK
-            'gender'       => 'required|in:Laki-laki,Perempuan', // Wajib pilih
+            'nik' => 'required|string|size:16', // Wajib persis 16 digit NIK
+            'gender' => 'required|in:Laki-laki,Perempuan', // Wajib pilih
         ];
 
         // 2. Jika user mengisi kolom password baru, tambahkan validasi password
         if ($request->filled('new_password')) {
             $rules['current_password'] = 'required|current_password';
-            $rules['new_password']     = 'required|string|min:8|confirmed';
+            $rules['new_password'] = 'required|string|min:8|confirmed';
         }
 
         $request->validate($rules, [
-            'name.required'                     => 'Nama lengkap wajib diisi.',
-            'phone_number.required'             => 'Nomor WhatsApp wajib diisi.',
-            'nik.required'                      => 'NIK wajib diisi.',
-            'nik.size'                          => 'NIK harus berjumlah persis 16 digit angka.',
-            'gender.required'                   => 'Silakan pilih jenis kelamin Anda.',
-            'current_password.required'         => 'Mohon masukkan password saat ini untuk keamanan.',
+            'name.required' => 'Nama lengkap wajib diisi.',
+            'phone_number.required' => 'Nomor WhatsApp wajib diisi.',
+            'nik.required' => 'NIK wajib diisi.',
+            'nik.size' => 'NIK harus berjumlah persis 16 digit angka.',
+            'gender.required' => 'Silakan pilih jenis kelamin Anda.',
+            'current_password.required' => 'Mohon masukkan password saat ini untuk keamanan.',
             'current_password.current_password' => 'Password saat ini yang Anda masukkan tidak sesuai.',
-            'new_password.min'                  => 'Password baru minimal harus terdiri dari 8 karakter.',
-            'new_password.confirmed'            => 'Konfirmasi password baru tidak cocok.',
+            'new_password.min' => 'Password baru minimal harus terdiri dari 8 karakter.',
+            'new_password.confirmed' => 'Konfirmasi password baru tidak cocok.',
         ]);
 
         // 3. Jika nomor HP berubah, cabut status verifikasinya agar wajib verifikasi ulang
         if ($user->phone_number !== $request->phone_number) {
-            $user->phone_verified_at = null; 
+            $user->phone_verified_at = null;
         }
 
         // 4. Update data profil ke database (Tanpa Address)
-        $user->name         = $request->name;
+        $user->name = $request->name;
         $user->phone_number = $request->phone_number;
-        $user->nik          = $request->nik;
-        $user->gender       = $request->gender;
+        $user->nik = $request->nik;
+        $user->gender = $request->gender;
 
         if ($request->filled('new_password')) {
             $user->password = Hash::make($request->new_password);
@@ -107,9 +103,9 @@ class ProfileController extends Controller
     {
         // 1. Validasi apakah form nomor HP kosong saat tombol diklik
         $request->validate([
-            'phone_number' => 'required|string|max:20'
+            'phone_number' => 'required|string|max:20',
         ], [
-            'phone_number.required' => 'Silakan isi nomor WhatsApp terlebih dahulu sebelum meminta OTP.'
+            'phone_number.required' => 'Silakan isi nomor WhatsApp terlebih dahulu sebelum meminta OTP.',
         ]);
 
         $user = Auth::user();
@@ -117,8 +113,9 @@ class ProfileController extends Controller
         // Cooldown kirim ulang: tolak jika belum lewat 2 menit sejak kiriman terakhir berhasil.
         if ($user->otp_sent_at && $user->otp_sent_at->gt(now()->subSeconds(self::OTP_RESEND_COOLDOWN_SECONDS))) {
             $remaining = max(1, $user->otp_sent_at->addSeconds(self::OTP_RESEND_COOLDOWN_SECONDS)->diffInSeconds(now()));
+
             return back()->with('otp_sent', true)->withErrors([
-                'otp_code' => "Mohon tunggu {$remaining} detik lagi sebelum mengirim ulang kode OTP."
+                'otp_code' => "Mohon tunggu {$remaining} detik lagi sebelum mengirim ulang kode OTP.",
             ]);
         }
 
@@ -130,10 +127,10 @@ class ProfileController extends Controller
         $otp = rand(100000, 999999);
 
         $message = "Halo {$user->name},\n\n"
-            . "Kode verifikasi WhatsApp Anda untuk BACT 2027 adalah:\n\n"
-            . "{$otp}\n\n"
-            . "Kode berlaku selama 10 menit. Mohon jangan bagikan kode ini kepada siapa pun.\n\n"
-            . "Terima kasih,\nPanitia BACT 2027";
+            ."Kode verifikasi WhatsApp Anda untuk BACT 2027 adalah:\n\n"
+            ."{$otp}\n\n"
+            ."Kode berlaku selama 10 menit. Mohon jangan bagikan kode ini kepada siapa pun.\n\n"
+            ."Terima kasih,\nPanitia BACT 2027";
 
         // 4. Kirim OTP via Fonnte (WhatsApp sungguhan)
         $sent = false;
@@ -144,7 +141,7 @@ class ProfileController extends Controller
             ]);
             $sent = is_array($result) && ($result['status'] ?? false) === true;
         } catch (\Throwable $e) {
-            Log::error('Gagal kirim OTP via Fonnte: ' . $e->getMessage());
+            Log::error('Gagal kirim OTP via Fonnte: '.$e->getMessage());
         }
 
         // 5. Hanya simpan kode jika pesan benar-benar terkirim. Jika gagal,
@@ -166,9 +163,9 @@ class ProfileController extends Controller
     public function verifyOtp(Request $request)
     {
         $user = Auth::user();
-        
+
         $request->validate([
-            'otp_code' => 'required|numeric'
+            'otp_code' => 'required|numeric',
         ]);
 
         // Cek apakah kodenya sama dan belum kedaluwarsa
@@ -177,7 +174,7 @@ class ProfileController extends Controller
             $user->otp_code = null; // Bersihkan kode setelah dipakai
             $user->otp_expires_at = null;
             $user->save();
-            
+
             return back()->with('success', 'Nomor WhatsApp berhasil diverifikasi!');
         }
 
@@ -192,8 +189,9 @@ class ProfileController extends Controller
         // Cooldown kirim ulang: tolak jika belum lewat 2 menit sejak kiriman terakhir.
         if ($user->email_otp_sent_at && $user->email_otp_sent_at->gt(now()->subSeconds(self::OTP_RESEND_COOLDOWN_SECONDS))) {
             $remaining = max(1, $user->email_otp_sent_at->addSeconds(self::OTP_RESEND_COOLDOWN_SECONDS)->diffInSeconds(now()));
+
             return back()->with('email_otp_sent', true)->withErrors([
-                'email_otp_code' => "Mohon tunggu {$remaining} detik lagi sebelum mengirim ulang kode verifikasi."
+                'email_otp_code' => "Mohon tunggu {$remaining} detik lagi sebelum mengirim ulang kode verifikasi.",
             ]);
         }
 
@@ -212,7 +210,7 @@ class ProfileController extends Controller
             Mail::to($user->email)->send(new EmailVerificationOtpMail($user->name, $otp));
             Log::info("Email verifikasi terkirim ke {$user->email}");
         } catch (\Throwable $e) {
-            Log::error('Gagal mengirim email verifikasi: ' . $e->getMessage());
+            Log::error('Gagal mengirim email verifikasi: '.$e->getMessage());
         }
 
         return back()->with('email_otp_sent', true)->with('success', 'Kode verifikasi telah dikirim ke email Anda!');
@@ -223,7 +221,7 @@ class ProfileController extends Controller
         $user = Auth::user();
 
         $request->validate([
-            'email_otp_code' => 'required|numeric'
+            'email_otp_code' => 'required|numeric',
         ]);
 
         // Cek apakah kodenya sama dan belum kedaluwarsa

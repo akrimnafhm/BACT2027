@@ -92,6 +92,56 @@
             @endif
         </p>
 
+        @if($tab === 'peserta')
+            <!-- PANEL SCREENING GRUP WHATSAPP (CSV) -->
+            <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#25D366] flex-shrink-0">
+                        <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2zm.01 18.2c-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.26 8.26 0 01-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24 4.54 0 8.24 3.7 8.24 8.24 0 4.54-3.7 8.24-8.23 8.24zm4.52-6.16c-.25-.12-1.47-.72-1.69-.81-.23-.08-.39-.12-.56.13-.17.24-.64.8-.78.97-.14.16-.29.18-.54.06-.25-.12-1.05-.39-1.99-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.02-.38.11-.51.11-.11.25-.29.37-.43.12-.14.17-.25.25-.41.08-.17.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.48-.41-.42-.56-.43h-.48c-.17 0-.43.06-.66.31-.22.25-.86.85-.86 2.07 0 1.22.89 2.4 1.01 2.56.12.17 1.75 2.67 4.23 3.74.59.26 1.05.41 1.41.52.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.67-1.18.21-.58.21-1.07.14-1.18-.06-.11-.22-.17-.47-.29z"/></svg>
+                    </span>
+                    <h3 class="text-sm font-extrabold text-gray-900">Screening Anggota Grup WhatsApp</h3>
+                </div>
+
+                <form action="{{ route('admin.participants.waScreen') }}" method="POST" enctype="multipart/form-data"
+                    class="flex flex-col md:flex-row md:items-end gap-3"
+                    onsubmit="return confirm('Scan grup terpilih dengan file ini? Peserta yang cocok akan bertanda ikon WA, tanda lama milik grup sama yang tidak ada di file akan dicabut.')">
+                    @csrf
+
+                    <!-- Upload file CSV -->
+                    <div class="flex-1 min-w-0">
+                        <label for="wa_screen_file" class="block text-[10px] font-extrabold text-gray-500 uppercase mb-1">File CSV (kolom "phone", format 62...)</label>
+                        <input type="file" name="csv_file" id="wa_screen_file" accept=".csv,text/csv,text/plain" required
+                            class="w-full text-xs text-gray-700 border border-gray-300 rounded-xl px-3 py-2 cursor-pointer bg-white
+                                   file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold
+                                   file:bg-green-50 file:text-green-700 file:cursor-pointer hover:file:bg-green-100">
+                    </div>
+
+                    <!-- Dropdown grup -->
+                    <div class="md:w-64 flex-shrink-0">
+                        <label for="wa_screen_group" class="block text-[10px] font-extrabold text-gray-500 uppercase mb-1">Grup yang discan</label>
+                        <select name="group" id="wa_screen_group" required
+                            class="w-full px-3 py-2 text-xs font-bold border border-gray-300 rounded-xl bg-white outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404]">
+                            <option value="" disabled {{ empty(old('group')) ? 'selected' : '' }}>— Pilih Grup —</option>
+                            @foreach($waGroups as $groupName)
+                                <option value="{{ $groupName }}" {{ old('group') === $groupName ? 'selected' : '' }}>{{ $groupName }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <button type="submit"
+                        class="bg-[#25D366] hover:bg-green-600 text-white text-xs font-extrabold px-5 py-2.5 rounded-xl shadow-sm transition transform active:scale-95 whitespace-nowrap">
+                        Mulai Screening
+                    </button>
+                </form>
+
+                @if($waGroups->isEmpty())
+                    <p class="text-[11px] text-red-500 font-bold mt-2">Belum ada grup WhatsApp terdaftar — atur dulu di halaman Group Links.</p>
+                @else
+                    <p class="text-[11px] text-gray-400 mt-2">Peserta lunas yang nomornya cocok akan bertanda ikon WA hijau di samping nama. Nomor di file yang tidak dikenali dilewati saja.</p>
+                @endif
+            </div>
+        @endif
+
         <!-- BOX FILTER 1 BARIS (COMPACT) -->
         <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
             <form action="{{ route('admin.participants') }}" method="GET" class="flex flex-col md:flex-row items-start md:items-center gap-3 flex-wrap">

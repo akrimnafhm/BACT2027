@@ -537,8 +537,11 @@ class AdminController extends Controller
         $waves = Ticket::select('ticket_name')->distinct()->pluck('ticket_name');
         $allTickets = Ticket::all();
 
+        // Daftar grup WA yang terdaftar (untuk dropdown screening di tab Data Peserta)
+        $waGroups = WaGroupLink::orderBy('ticket_category')->pluck('ticket_category');
+
         return view('admin.participants', compact(
-            'participants', 'waves', 'allTickets',
+            'participants', 'waves', 'allTickets', 'waGroups',
             'search', 'categories', 'wave', 'status', 'tab',
             'dateFrom', 'dateTo',
             'paidCount', 'allCount'
@@ -895,14 +898,158 @@ class AdminController extends Controller
         }
 
         if ($user->wa_joined_at) {
-            $user->update(['wa_joined_at' => null]);
+            $user->update(['wa_joined_at' => null, 'wa_joined_group' => null]);
 
             return back()->with('success', 'Status WA "'.$participantName.'" dikosongkan kembali.');
         }
 
-        $user->update(['wa_joined_at' => now()]);
+        $user->update(['wa_joined_at' => now(), 'wa_joined_group' => 'manual']);
 
         return back()->with('success', 'Peserta "'.$participantName.'" ditandai SUDAH JOIN grup WhatsApp.');
+    }
+
+    /**
+     * SCREENING KEANGGOTAAN GRUP WHATSAPP VIA FILE CSV.
+     * Admin mengunggah file CSV berisi kolom "phone" (format 62...) lalu memilih
+     * grup yang akan discan. Sistem menyamakan nomor (dinormalisasi ke format
+     * website 08...) dengan peserta LUNAS yang anggotanya grup tersebut — termasuk
+     * pembeli kategori combo (mis. Basic-Advanced ikut grup Basic dan Advanced).
+     * Peserta yang cocok diberi tanda WA; tanda dari scan grup yang sama pada
+     * peserta yang kini tidak cocok akan dicabut; nomor asing diabaikan.
+     */
+    public function screenWaGroup(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'group' => 'required|string',
+            'csv_file' => 'required|file|mimes:csv,txt|max:5120',
+        ], [
+            'group.required' => 'Grup WhatsApp wajib dipilih.',
+            'csv_file.required' => 'File CSV wajib diunggah.',
+            'csv_file.mimes' => 'File harus berformat .csv',
+            'csv_file.max' => 'Ukuran file maksimal 5 MB.',
+        ]);
+
+        $group = WaGroupLink::normalizeCategory(trim($request->input('group')));
+
+        if (! WaGroupLink::where('ticket_category', $group)->exists()) {
+            return back()->with('error', "Grup \"{$group}\" tidak terdaftar pada link grup WhatsApp.");
+        }
+
+        // 1. Baca file CSV dan ambil seluruh nomor pada kolom "phone"
+        $handle = fopen($request->file('csv_file')->getRealPath(), 'r');
+        if ($handle === false) {
+            return back()->with('error', 'File CSV tidak dapat dibaca.');
+        }
+
+        $header = fgetcsv($handle);
+        if ($header === false || count(array_filter($header)) === 0) {
+            fclose($handle);
+
+            return back()->with('error', 'File CSV kosong atau tidak memiliki baris header.');
+        }
+
+        $header[0] = preg_replace('/^\xEF\xBB\xBF/', '', (string) $header[0]);
+
+        $phoneIndex = null;
+        foreach ($header as $index => $columnName) {
+            if (strtolower(trim((string) $columnName)) === 'phone') {
+                $phoneIndex = $index;
+                break;
+            }
+        }
+
+        if ($phoneIndex === null) {
+            fclose($handle);
+
+            return back()->with('error', 'Kolom "phone" tidak ditemukan pada baris pertama file CSV.');
+        }
+
+        $filePhones = [];
+        while (($row = fgetcsv($handle)) !== false) {
+            $normalized = static::normalizePhone($row[$phoneIndex] ?? null);
+            if ($normalized !== null) {
+                $filePhones[$normalized] = true;
+            }
+        }
+        fclose($handle);
+
+        if (empty($filePhones)) {
+            return back()->with('error', 'Tidak ada nomor HP yang valid pada kolom "phone".');
+        }
+
+        // 2. Kumpulkan peserta lunas yang keanggotaannya mencakup grup terpilih
+        $bookings = TicketBooking::with('user')
+            ->where('status', 'paid')
+            ->get()
+            ->filter(function (TicketBooking $booking) use ($group) {
+                $category = WaGroupLink::normalizeCategory((string) $booking->ticket_category);
+
+                return $category !== '' && in_array($group, WaGroupLink::groupCategoriesFor($category), true);
+            });
+
+        // 3. Tandai yang cocok & cabut tanda lama milik grup sama yang tak cocok lagi
+        $newMarked = 0;
+        $alreadyMarked = 0;
+        $clearedMarks = 0;
+
+        foreach ($bookings as $booking) {
+            $user = $booking->user;
+            if (! $user) {
+                continue;
+            }
+
+            $matched = isset($filePhones[static::normalizePhone($booking->whatsapp_number)]);
+
+            if ($matched) {
+                if (is_null($user->wa_joined_at)) {
+                    $newMarked++;
+                } else {
+                    $alreadyMarked++;
+                }
+                $user->fill([
+                    'wa_joined_at' => $user->wa_joined_at ?? now(),
+                    'wa_joined_group' => $group,
+                ])->save();
+            } elseif ($user->wa_joined_group === $group && ! is_null($user->wa_joined_at)) {
+                $clearedMarks++;
+                $user->fill(['wa_joined_at' => null, 'wa_joined_group' => null])->save();
+            }
+        }
+
+        // 4. Nomor di file yang tidak dikenali di website cukup dilaporkan
+        $unknownNumbers = count($filePhones) - collect($bookings)
+            ->map(fn (TicketBooking $b) => static::normalizePhone($b->whatsapp_number))
+            ->filter(fn ($n) => $n !== null && isset($filePhones[$n]))
+            ->unique()
+            ->count();
+
+        return back()->with(
+            'success',
+            "Scan grup \"{$group}\" selesai: {$newMarked} peserta baru ditandai, "
+            ."{$alreadyMarked} sudah bertanda sebelumnya, {$clearedMarks} tanda dicabut, "
+            ."{$unknownNumbers} nomor di file tidak dikenali di website."
+        );
+    }
+
+    /**
+     * Menyamakan format nomor HP dengan tampilan website (awalan 08...).
+     * Menerima 62..., +62..., 8..., 08..., spasi/tanda hubung apa pun.
+     */
+    private static function normalizePhone(?string $raw): ?string
+    {
+        $digits = preg_replace('/\D/', '', (string) $raw);
+
+        if ($digits === '' || strlen($digits) < 8) {
+            return null;
+        }
+
+        if (str_starts_with($digits, '62')) {
+            $digits = '0'.substr($digits, 2);
+        } elseif (! str_starts_with($digits, '0')) {
+            $digits = '0'.$digits;
+        }
+
+        return $digits;
     }
 
     /**
