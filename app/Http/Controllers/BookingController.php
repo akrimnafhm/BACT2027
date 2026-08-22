@@ -67,29 +67,22 @@ class BookingController extends Controller
 
         // Tampilkan e-ticket + (jika ada) kartu lanjut pembayaran.
         if ($paidBookings->isNotEmpty() || $pendingBooking) {
-            // Link grup WA per kategori unik dari tiket yang sudah dibeli.
-            // Kategori combo (Basic-Advanced, Basic-Advanced + Workshop) diperluas
-            // ke grup komponennya -> pembeli Basic-Advanced tetap dapat 2 tombol (Basic + Advanced).
-            $groupLinks = [];
-            foreach ($paidBookings as $b) {
-                foreach (WaGroupLink::groupCategoriesFor($b->ticket_category) as $cat) {
-                    if (! array_key_exists($cat, $groupLinks)) {
-                        $groupLinks[$cat] = WaGroupLink::where('ticket_category', $cat)->value('wa_group_link');
-                    }
-                }
+            // Tombol join grup WA ditempel pada TIAP TIKET (bukan blok global).
+            // Satu tiket = satu tombol untuk grup dengan kategori yang SAMA persis
+            // (Basic -> grup Basic; Basic-Advanced -> grup Basic-Advanced, tanpa
+            // ekspansi ke grup komponennya). Tombol hanya muncul bila admin
+            // sudah mengisi link grup tersebut.
+            foreach ($paidBookings as $booking) {
+                $link = WaGroupLink::linkFor($booking->ticket_category);
+                $booking->wa_group_url = ($link !== null && trim($link) !== '') ? $link : null;
+                $booking->wa_group_label = WaGroupLink::normalizeCategory((string) $booking->ticket_category);
             }
-            $groupLinks = array_filter($groupLinks);
-
-            // Urutan tampil konsisten: Basic, Advanced, Online, Workshop
-            $linkOrder = ['Basic' => 0, 'Advanced' => 1, 'Online' => 2, 'Workshop' => 3];
-            uksort($groupLinks, fn ($a, $b) => ($linkOrder[$a] ?? 9) <=> ($linkOrder[$b] ?? 9));
 
             return view('booking.bridge', [
                 'status' => 'tickets',
                 'user' => $user,
                 'paidBookings' => $paidBookings,
                 'pendingBooking' => $pendingBooking,
-                'groupLinks' => $groupLinks,
             ]);
         }
 
@@ -566,30 +559,6 @@ class BookingController extends Controller
             'order_id' => $request->query('order_id'),
             'simulated_paid' => $request->query('simulated_paid'),
         ], fn ($value) => $value !== null && $value !== ''));
-    }
-
-    /**
-     * Tracking klik tombol "Join Grup WA" di halaman bridge.
-     * Menandai user sebagai sudah join (sekali saja), lalu mengarahkan
-     * ke link grup WhatsApp asli agar pengalaman peserta tidak berubah.
-     */
-    public function joinWaGroup(string $category)
-    {
-        $link = WaGroupLink::linkFor($category);
-
-        if (! $link) {
-            return redirect()->route('booking.index')->with(
-                'error',
-                'Link grup WhatsApp belum tersedia. Hubungi panitia untuk bantuan.'
-            );
-        }
-
-        $user = Auth::user();
-        if ($user && is_null($user->wa_joined_at)) {
-            $user->forceFill(['wa_joined_at' => now()])->save();
-        }
-
-        return redirect()->away($link);
     }
 
     private function isProfileComplete($user): bool

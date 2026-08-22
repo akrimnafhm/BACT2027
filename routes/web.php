@@ -85,9 +85,6 @@ Route::middleware('auth')->group(function () {
     // Return URL dari DOKU agar status booking bisa disinkronkan saat user kembali ke site
     Route::get('/booking/return/{booking}', [BookingController::class, 'paymentReturn'])->name('booking.return');
 
-    // Tracking klik tombol "Join Grup WA": tandai user sudah join, lalu arahkan ke link grup asli
-    Route::get('/booking/wa-join/{category}', [BookingController::class, 'joinWaGroup'])->name('booking.wa-join');
-
     // Halaman Checkout & Pembayaran Midtrans
     Route::get('/checkout/{id}', [BookingController::class, 'checkout'])->name('checkout');
     Route::get('/invoice/ticket/{id}', [BookingController::class, 'invoice'])->name('invoice.ticket');
@@ -153,6 +150,7 @@ Route::middleware(['auth', IsAdmin::class])->prefix('admin')->group(function () 
     Route::post('/participants/{id}/destroy', [AdminController::class, 'destroyBooking'])->name('admin.participants.destroy');
     Route::post('/participants/{id}/restore', [AdminController::class, 'restoreParticipant'])->name('admin.participants.restore');
     Route::post('/participants/{id}/confirm', [AdminController::class, 'confirmParticipant'])->name('admin.participants.confirm');
+    Route::post('/participants/wa-screen', [AdminController::class, 'screenWaGroup'])->name('admin.participants.waScreen');
     Route::post('/participants/{id}/wa-toggle', [AdminController::class, 'toggleWaJoined'])->name('admin.participants.waToggle');
     Route::get('/participants/{id}/invoice/preview', [AdminController::class, 'participantInvoicePreview'])->name('admin.participants.invoice.preview');
     Route::get('/participants/{id}/invoice', [AdminController::class, 'participantInvoice'])->name('admin.participants.invoice');
