@@ -47,17 +47,39 @@ class ContentController extends Controller
     public function storeAnnouncement(Request $request)
     {
         $request->validate([
-            'badge'   => 'required|string|max:50',
-            'title'   => 'required|string|max:255',
-            'content' => 'required|string',
+            'badge'      => 'required|string|max:50',
+            'title'      => 'required|string|max:255',
+            'content'    => 'required|string',
+            'image'      => 'nullable|image|mimes:jpeg,png,jpg,webp|max:3072',
+            'link'       => 'nullable|url|max:255',
+            'attachment' => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,zip,rar|max:5120',
+        ], [
+            'image.max'      => 'Ukuran gambar pengumuman melebihi batas maksimal 3 MB.',
+            'attachment.max' => 'Ukuran lampiran pengumuman melebihi batas maksimal 5 MB.',
         ]);
+
+        $imagePath = $request->hasFile('image')
+            ? $request->file('image')->store('announcements/images', 'public')
+            : null;
+
+        $attachmentPath = $request->hasFile('attachment')
+            ? $request->file('attachment')->store('announcements/attachments', 'public')
+            : null;
+
+        $attachmentName = $request->hasFile('attachment')
+            ? $request->file('attachment')->getClientOriginalName()
+            : null;
 
         Announcement::create([
             // Gunakan ->input(...) agar tidak bentrok dengan properti internal Laravel
-            'badge'     => strtoupper($request->input('badge')),
-            'title'     => $request->input('title'),
-            'content'   => $request->input('content'),
-            'is_active' => true,
+            'badge'           => strtoupper($request->input('badge')),
+            'title'           => $request->input('title'),
+            'content'         => $request->input('content'),
+            'image_path'      => $imagePath,
+            'external_link'   => $request->input('link'),
+            'attachment_path' => $attachmentPath,
+            'attachment_name' => $attachmentName,
+            'is_active'       => true,
         ]);
 
         return back()->with('success', 'Info pengumuman baru berhasil ditambahkan!');
@@ -69,18 +91,59 @@ class ContentController extends Controller
     public function updateAnnouncement(Request $request, $id)
     {
         $request->validate([
-            'badge'   => 'required|string|max:50',
-            'title'   => 'required|string|max:255',
-            'content' => 'required|string',
+            'badge'             => 'required|string|max:50',
+            'title'             => 'required|string|max:255',
+            'content'           => 'required|string',
+            'image'             => 'nullable|image|mimes:jpeg,png,jpg,webp|max:3072',
+            'link'              => 'nullable|url|max:255',
+            'attachment'        => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,zip,rar|max:5120',
+            'remove_image'      => 'nullable|boolean',
+            'remove_attachment' => 'nullable|boolean',
+        ], [
+            'image.max'      => 'Ukuran gambar pengumuman melebihi batas maksimal 3 MB.',
+            'attachment.max' => 'Ukuran lampiran pengumuman melebihi batas maksimal 5 MB.',
         ]);
 
         $announcement = Announcement::findOrFail($id);
-        $announcement->update([
+        $data = [
             // Gunakan ->input(...) agar bersih dari error linter VS Code
-            'badge'   => strtoupper($request->input('badge')),
-            'title'   => $request->input('title'),
-            'content' => $request->input('content'),
-        ]);
+            'badge'         => strtoupper($request->input('badge')),
+            'title'         => $request->input('title'),
+            'content'       => $request->input('content'),
+            'external_link' => $request->input('link'),
+        ];
+
+        if ($request->boolean('remove_image')) {
+            if ($announcement->image_path && Storage::disk('public')->exists($announcement->image_path)) {
+                Storage::disk('public')->delete($announcement->image_path);
+            }
+            $data['image_path'] = null;
+        }
+
+        if ($request->hasFile('image')) {
+            if ($announcement->image_path && Storage::disk('public')->exists($announcement->image_path)) {
+                Storage::disk('public')->delete($announcement->image_path);
+            }
+            $data['image_path'] = $request->file('image')->store('announcements/images', 'public');
+        }
+
+        if ($request->boolean('remove_attachment')) {
+            if ($announcement->attachment_path && Storage::disk('public')->exists($announcement->attachment_path)) {
+                Storage::disk('public')->delete($announcement->attachment_path);
+            }
+            $data['attachment_path'] = null;
+            $data['attachment_name'] = null;
+        }
+
+        if ($request->hasFile('attachment')) {
+            if ($announcement->attachment_path && Storage::disk('public')->exists($announcement->attachment_path)) {
+                Storage::disk('public')->delete($announcement->attachment_path);
+            }
+            $data['attachment_path'] = $request->file('attachment')->store('announcements/attachments', 'public');
+            $data['attachment_name'] = $request->file('attachment')->getClientOriginalName();
+        }
+
+        $announcement->update($data);
 
         return back()->with('success', 'Info pengumuman berhasil diperbarui!');
     }
@@ -91,6 +154,15 @@ class ContentController extends Controller
     public function destroyAnnouncement($id)
     {
         $announcement = Announcement::findOrFail($id);
+
+        if ($announcement->image_path && Storage::disk('public')->exists($announcement->image_path)) {
+            Storage::disk('public')->delete($announcement->image_path);
+        }
+
+        if ($announcement->attachment_path && Storage::disk('public')->exists($announcement->attachment_path)) {
+            Storage::disk('public')->delete($announcement->attachment_path);
+        }
+
         $announcement->delete();
 
         return back()->with('success', 'Info pengumuman berhasil dihapus!');

@@ -152,7 +152,8 @@
          3. INFO TERKINI / ANNOUNCEMENTS (Slider Rapi + Tombol Panah < >)
          ========================================================= -->
     @if(!empty($announcements) && count($announcements) > 0)
-        <section class="max-w-7xl mx-auto px-6 py-12 relative z-20" x-data="{
+        <section class="max-w-7xl mx-auto px-6 py-12 relative" x-data="{
+                         activeAnnouncement: null,
                          scrollPrev() {
                              // Menggeser ke kiri seukuran lebar container
                              $refs.slider.scrollBy({ left: -$refs.slider.clientWidth, behavior: 'smooth' });
@@ -160,8 +161,16 @@
                          scrollNext() {
                              // Menggeser ke kanan seukuran lebar container
                              $refs.slider.scrollBy({ left: $refs.slider.clientWidth, behavior: 'smooth' });
+                         },
+                         openAnnouncementModal(item) {
+                             this.activeAnnouncement = item;
+                             document.body.classList.add('overflow-hidden');
+                         },
+                         closeAnnouncementModal() {
+                             this.activeAnnouncement = null;
+                             document.body.classList.remove('overflow-hidden');
                          }
-                     }">
+                     }" @keydown.escape.window="closeAnnouncementModal()">
 
             <!-- Header Section & Tombol Panah Navigasi (< >) -->
             <div class="flex items-center justify-between mb-6">
@@ -201,8 +210,17 @@
                                 - Tablet (md:w-[calc(50%-12px)]): tepat 2 kartu per layar (12px = setengah dari gap-6)
                                 - PC/Laptop (lg:w-[calc(33.333%-16px)]): tepat 3 kartu per layar
                             -->
-                    <div
-                        class="w-full md:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)] shrink-0 snap-start bg-white rounded-xl p-6 sm:p-7 border border-gray-200/80 shadow-sm flex flex-col justify-between gap-4 hover:border-[#E19404] transition">
+                    <button type="button" @click="openAnnouncementModal(@js([
+                        "badge" => $info->badge ?? "INFO",
+                        "title" => $info->title,
+                        "content" => $info->content,
+                        "created_at" => $info->created_at ? $info->created_at->format("d M Y") : "",
+                        "image_url" => $info->image_path ? asset("storage/" . $info->image_path) : null,
+                        "link_url" => $info->external_link,
+                        "attachment_url" => $info->attachment_path ? asset("storage/" . $info->attachment_path) : null,
+                        "attachment_name" => $info->attachment_name,
+                    ]))"
+                        class="w-full md:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)] shrink-0 snap-start bg-white rounded-xl p-6 sm:p-7 border border-gray-200/80 shadow-sm flex flex-col justify-between gap-4 hover:border-[#E19404] transition text-left cursor-pointer">
                         <div class="space-y-2">
                             <div
                                 class="inline-flex items-center gap-1.5 px-3 py-1 bg-[#FBE39D] text-[#E19404] text-[11px] font-black rounded-lg uppercase tracking-wider">
@@ -216,8 +234,51 @@
                             <span>BACT 2027 Official</span>
                             <span>{{ $info->created_at ? $info->created_at->format('d M Y') : '' }}</span>
                         </div>
-                    </div>
+                    </button>
                 @endforeach
+            </div>
+
+            <!-- Popup Detail Announcement -->
+            <div x-show="activeAnnouncement" x-transition.opacity
+                class="fixed inset-0 z-[80] bg-black/45 backdrop-blur-md p-4 flex items-center justify-center"
+                @click.self="closeAnnouncementModal()">
+                <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
+                    <div class="px-6 py-4 border-b border-[#E19404]/20 bg-[#FBE39D] flex items-center justify-between">
+                        <span class="font-extrabold text-gray-900 text-base" x-text="activeAnnouncement?.badge || 'INFO'"></span>
+                        <button type="button" @click="closeAnnouncementModal()" class="text-gray-500 hover:text-gray-800 text-xl leading-none">&times;</button>
+                    </div>
+
+                    <div class="px-6 py-5 space-y-4 max-h-[80vh] overflow-y-auto">
+                        <h3 class="text-xl font-black text-gray-900" x-text="activeAnnouncement?.title"></h3>
+
+                        <template x-if="activeAnnouncement?.image_url">
+                            <img :src="activeAnnouncement.image_url" alt="Gambar pengumuman" class="w-full rounded-xl border border-gray-200 object-cover max-h-80">
+                        </template>
+
+                        <p class="text-sm text-gray-700 leading-relaxed whitespace-pre-line" x-text="activeAnnouncement?.content"></p>
+
+                        <div class="space-y-2">
+                            <template x-if="activeAnnouncement?.link_url">
+                                <a :href="activeAnnouncement.link_url" target="_blank" rel="noopener noreferrer"
+                                    class="inline-flex items-center gap-2 text-sm font-bold text-[#E19404] hover:underline">
+                                    Kunjungi Link Terkait
+                                </a>
+                            </template>
+
+                            <template x-if="activeAnnouncement?.attachment_url">
+                                <a :href="activeAnnouncement.attachment_url" target="_blank" rel="noopener noreferrer"
+                                    class="inline-flex items-center gap-2 text-sm font-bold text-[#234661] hover:underline">
+                                    <span x-text="activeAnnouncement.attachment_name || 'Lihat Lampiran'"></span>
+                                </a>
+                            </template>
+                        </div>
+
+                        <div class="pt-3 border-t border-gray-100 text-xs text-gray-400 font-semibold flex items-center justify-between">
+                            <span>BACT 2027 Official</span>
+                            <span x-text="activeAnnouncement?.created_at"></span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
         </section>

@@ -132,6 +132,17 @@
                                     <td class="py-4 px-6">
                                         <div class="font-extrabold text-gray-900">{{ $info->title }}</div>
                                         <div class="text-xs text-gray-500 mt-1 leading-relaxed">{{ $info->content }}</div>
+                                        <div class="mt-2 flex flex-wrap gap-1.5 text-[10px] font-bold uppercase tracking-wide">
+                                            @if($info->image_path)
+                                                <span class="px-2 py-0.5 rounded bg-blue-50 text-blue-700">Ada Gambar</span>
+                                            @endif
+                                            @if($info->external_link)
+                                                <span class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700">Ada Link</span>
+                                            @endif
+                                            @if($info->attachment_path)
+                                                <span class="px-2 py-0.5 rounded bg-purple-50 text-purple-700">Ada Lampiran</span>
+                                            @endif
+                                        </div>
                                     </td>
                                     <td class="py-4 px-6 text-center">
                                         <form action="{{ route('admin.announcements.toggle', $info->id) }}" method="POST"
@@ -528,7 +539,7 @@
                 <button type="button" onclick="closeAddAnnouncementModal()"
                     class="text-gray-500 hover:text-gray-800">✕</button>
             </div>
-            <form action="{{ route('admin.announcements.store') }}" method="POST" class="p-6 space-y-4">
+            <form action="{{ route('admin.announcements.store') }}" method="POST" enctype="multipart/form-data" class="p-6 space-y-4">
                 @csrf
                 <div>
                     <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Label / Badge (Maks. 15
@@ -546,6 +557,21 @@
                     <textarea name="content" rows="4" required
                         placeholder="Tuliskan keterangan detail informasi di sini..."
                         class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404]"></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Gambar Pengumuman (Opsional, JPG/PNG/WEBP, Maks 3MB)</label>
+                    <input type="file" name="image" accept="image/*" data-max-size="3145728" data-max-label="gambar pengumuman"
+                        class="w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-[#FBE39D] file:text-[#E19404] hover:file:bg-orange-100 cursor-pointer border border-gray-300 rounded-xl">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Link Terkait (Opsional)</label>
+                    <input type="url" name="link" placeholder="Contoh: https://example.com"
+                        class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404]">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Lampiran (Opsional, PDF/DOC/XLS/PPT/ZIP, Maks 5MB)</label>
+                    <input type="file" name="attachment" data-max-size="5242880" data-max-label="lampiran pengumuman"
+                        class="w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-[#FBE39D] file:text-[#E19404] hover:file:bg-orange-100 cursor-pointer border border-gray-300 rounded-xl">
                 </div>
                 <div class="flex justify-end gap-2 pt-3 border-t border-gray-100">
                     <button type="button" onclick="closeAddAnnouncementModal()"
@@ -569,7 +595,7 @@
                 <button type="button" onclick="closeEditAnnouncementModal()"
                     class="text-gray-500 hover:text-gray-800">✕</button>
             </div>
-            <form id="editAnnouncementForm" method="POST" class="p-6 space-y-4">
+            <form id="editAnnouncementForm" method="POST" enctype="multipart/form-data" class="p-6 space-y-4">
                 @csrf
                 @method('PUT')
                 <div>
@@ -586,6 +612,39 @@
                     <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Isi Keterangan Lengkap</label>
                     <textarea name="content" id="edit_content" rows="4" required
                         class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404]"></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Ganti Gambar (Opsional)</label>
+                    <input type="file" name="image" accept="image/*" data-max-size="3145728" data-max-label="gambar pengumuman"
+                        class="w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-[#FBE39D] file:text-[#E19404] hover:file:bg-orange-100 cursor-pointer border border-gray-300 rounded-xl">
+                    <div id="edit_image_preview_wrap" class="mt-2 hidden text-xs text-gray-500">
+                        Gambar saat ini:
+                        <a id="edit_image_preview_link" href="#" target="_blank" rel="noopener noreferrer"
+                            class="text-[#E19404] hover:underline">Lihat gambar</a>
+                    </div>
+                    <label id="edit_remove_image_wrap" class="mt-2 hidden items-center gap-2 text-xs text-gray-600">
+                        <input type="checkbox" name="remove_image" value="1" class="rounded border-gray-300">
+                        Hapus gambar saat ini
+                    </label>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Link Terkait (Opsional)</label>
+                    <input type="url" name="link" id="edit_link" placeholder="Contoh: https://example.com"
+                        class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404]">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Ganti Lampiran (Opsional)</label>
+                    <input type="file" name="attachment" data-max-size="5242880" data-max-label="lampiran pengumuman"
+                        class="w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-[#FBE39D] file:text-[#E19404] hover:file:bg-orange-100 cursor-pointer border border-gray-300 rounded-xl">
+                    <div id="edit_attachment_preview_wrap" class="mt-2 hidden text-xs text-gray-500">
+                        Lampiran saat ini:
+                        <a id="edit_attachment_preview_link" href="#" target="_blank" rel="noopener noreferrer"
+                            class="text-[#E19404] hover:underline"></a>
+                    </div>
+                    <label id="edit_remove_attachment_wrap" class="mt-2 hidden items-center gap-2 text-xs text-gray-600">
+                        <input type="checkbox" name="remove_attachment" value="1" class="rounded border-gray-300">
+                        Hapus lampiran saat ini
+                    </label>
                 </div>
                 <div class="flex justify-end gap-2 pt-3 border-t border-gray-100">
                     <button type="button" onclick="closeEditAnnouncementModal()"
@@ -955,7 +1014,44 @@
             document.getElementById('edit_badge').value = item.badge;
             document.getElementById('edit_title').value = item.title;
             document.getElementById('edit_content').value = item.content;
+            document.getElementById('edit_link').value = item.external_link || '';
             document.getElementById('editAnnouncementForm').action = `/admin/content/announcements/${item.id}`;
+
+            const imageWrap = document.getElementById('edit_image_preview_wrap');
+            const imageLink = document.getElementById('edit_image_preview_link');
+            const removeImageWrap = document.getElementById('edit_remove_image_wrap');
+            const removeImageCheckbox = removeImageWrap.querySelector('input[name="remove_image"]');
+
+            if (item.image_path) {
+                imageLink.href = `/storage/${item.image_path}`;
+                imageWrap.classList.remove('hidden');
+                removeImageWrap.classList.remove('hidden');
+                removeImageWrap.classList.add('flex');
+            } else {
+                imageWrap.classList.add('hidden');
+                removeImageWrap.classList.add('hidden');
+                removeImageWrap.classList.remove('flex');
+            }
+            removeImageCheckbox.checked = false;
+
+            const attachmentWrap = document.getElementById('edit_attachment_preview_wrap');
+            const attachmentLink = document.getElementById('edit_attachment_preview_link');
+            const removeAttachmentWrap = document.getElementById('edit_remove_attachment_wrap');
+            const removeAttachmentCheckbox = removeAttachmentWrap.querySelector('input[name="remove_attachment"]');
+
+            if (item.attachment_path) {
+                attachmentLink.href = `/storage/${item.attachment_path}`;
+                attachmentLink.textContent = item.attachment_name || 'Lihat lampiran';
+                attachmentWrap.classList.remove('hidden');
+                removeAttachmentWrap.classList.remove('hidden');
+                removeAttachmentWrap.classList.add('flex');
+            } else {
+                attachmentWrap.classList.add('hidden');
+                removeAttachmentWrap.classList.add('hidden');
+                removeAttachmentWrap.classList.remove('flex');
+            }
+            removeAttachmentCheckbox.checked = false;
+
             document.getElementById('editAnnouncementModal').classList.remove('hidden');
         }
         function closeEditAnnouncementModal() {
