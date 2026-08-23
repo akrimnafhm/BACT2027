@@ -257,19 +257,40 @@
 
                         <p class="text-sm text-gray-700 leading-relaxed whitespace-pre-line" x-text="activeAnnouncement?.content"></p>
 
-                        <div class="space-y-2">
+                        <div class="space-y-3">
                             <template x-if="activeAnnouncement?.link_url">
-                                <a :href="activeAnnouncement.link_url" target="_blank" rel="noopener noreferrer"
-                                    class="inline-flex items-center gap-2 text-sm font-bold text-[#E19404] hover:underline">
-                                    Kunjungi Link Terkait
-                                </a>
+                                <div>
+                                    <a :href="activeAnnouncement.link_url" target="_blank" rel="noopener noreferrer"
+                                        class="inline-flex items-center gap-1.5 text-sm font-semibold text-[#E19404] underline underline-offset-2 decoration-2 hover:text-[#B87C03]">
+                                        Kunjungi Link Terkait
+                                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25">
+                                            </path>
+                                        </svg>
+                                    </a>
+                                </div>
                             </template>
 
                             <template x-if="activeAnnouncement?.attachment_url">
-                                <a :href="activeAnnouncement.attachment_url" target="_blank" rel="noopener noreferrer"
-                                    class="inline-flex items-center gap-2 text-sm font-bold text-[#234661] hover:underline">
-                                    <span x-text="activeAnnouncement.attachment_name || 'Lihat Lampiran'"></span>
-                                </a>
+                                <div>
+                                    <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Lampiran</p>
+                                    <a :href="activeAnnouncement.attachment_url" download
+                                        class="inline-flex items-center gap-3 w-full max-w-xs bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 hover:bg-gray-100 hover:border-gray-300 transition group">
+                                        <svg class="w-6 h-6 text-[#234661] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                                d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z">
+                                            </path>
+                                        </svg>
+                                        <span class="text-sm font-semibold text-[#234661] truncate flex-1 min-w-0"
+                                            x-text="activeAnnouncement.attachment_name || 'Lampiran'"></span>
+                                        <svg class="w-5 h-5 text-gray-400 shrink-0 group-hover:text-[#234661] transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3">
+                                            </path>
+                                        </svg>
+                                    </a>
+                                </div>
                             </template>
                         </div>
 
