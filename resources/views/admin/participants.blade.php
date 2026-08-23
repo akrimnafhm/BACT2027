@@ -460,51 +460,87 @@
     </div>
 
     <!-- =========================================================
-         MODAL EDIT STATUS, DATA & CATATAN (HANYA DI DATA ALL)
+         MODAL EDIT DATA PESERTA (HANYA DI DATA ALL)
          ========================================================= -->
     <div id="editModal" class="fixed inset-0 z-50 hidden overflow-y-auto bg-gray-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full border border-gray-200 overflow-hidden">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full border border-gray-200 overflow-hidden max-h-[90vh] overflow-y-auto">
             <div class="bg-[#FBE39D] px-6 py-4 border-b border-[#E19404]/20 flex justify-between items-center">
-                <h3 class="font-extrabold text-gray-900 text-base">Edit Status & Data Peserta</h3>
+                <h3 class="font-extrabold text-gray-900 text-lg">Edit Data Peserta</h3>
                 <button type="button" onclick="closeEditModal()" class="text-gray-500 hover:text-gray-800">✕</button>
             </div>
             <form id="editForm" method="POST" class="p-6 space-y-4">
                 @csrf
-                <div id="edit_ticket_row" class="hidden">
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Tiket (Kategori & Gelombang)</label>
-                    <select name="ticket_id" id="edit_ticket_id" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl">
-                        <option value="">-- Pilih Jenis & Gelombang Tiket --</option>
-                        @foreach($allTickets as $tItem)
-                            <option value="{{ $tItem->id }}">
-                                {{ $tItem->ticket_category ?? 'Umum' }} — {{ $tItem->ticket_name ?? 'Tiket' }} (Rp{{ number_format($tItem->price, 0, ',', '.') }})
-                            </option>
-                        @endforeach
-                    </select>
-                    <p class="text-[10px] text-gray-400 mt-1">Khusus peserta manual yang belum dikonfirmasi. Nominal pembayaran ikut menyesuaikan harga tiket terpilih.</p>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Pilih Tiket</label>
+                    <input type="text" id="edit_ticket_display" readonly class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl bg-gray-100 text-gray-600 cursor-not-allowed">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Status Pembayaran</label>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Status Pembayaran <span class="text-red-500">*</span></label>
                     <select name="status" id="edit_status" required class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl">
                         <option value="paid">Lunas (Paid)</option>
                         <option value="pending">Tertunda (Pending)</option>
                         <option value="cancelled">Dibatalkan</option>
                     </select>
                 </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Nama Lengkap (KTP)</label>
-                    <input type="text" name="full_name" id="edit_full_name" required class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Nama Lengkap (KTP) <span class="text-red-500">*</span></label>
+                        <input type="text" name="full_name" id="edit_full_name" required placeholder="Contoh: Budi Santoso" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Nama & Gelar <span class="text-red-500">*</span></label>
+                        <input type="text" name="name_with_title" id="edit_name_with_title" required placeholder="Contoh: dr. Budi Santoso, Sp.PK" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl">
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Email <span class="text-red-500">*</span></label>
+                        <input type="email" name="gmail_account" id="edit_gmail_account" required placeholder="email@gmail.com" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">No WhatsApp <span class="text-red-500">*</span></label>
+                        <input type="text" name="whatsapp_number" id="edit_whatsapp_number" required placeholder="08123456789" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl">
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">NIK (16 Digit) <span class="text-red-500">*</span></label>
+                        <input type="text" name="nik" id="edit_nik" required maxlength="16" placeholder="34040..." class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Profesi Medis <span class="text-red-500">*</span></label>
+                        <input type="text" name="profession" id="edit_profession" required class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl">
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Instansi / RS <span class="text-red-500">*</span></label>
+                        <input type="text" name="institution_name" id="edit_institution_name" required placeholder="RSUD Dr. Soetomo" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Provinsi Instansi <span class="text-red-500">*</span></label>
+                        <select id="edit_provinsi" name="institution_province" required class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl bg-white cursor-pointer">
+                            <option value="">-- Pilih Provinsi --</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Kabupaten / Kota Instansi <span class="text-red-500">*</span></label>
+                        <select id="edit_kabupaten" name="institution_city" required disabled class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl bg-white cursor-pointer disabled:bg-gray-100 disabled:cursor-not-allowed">
+                            <option value="">-- Pilih Kabupaten --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Kecamatan Instansi <span class="text-red-500">*</span></label>
+                        <select id="edit_kecamatan" name="institution_district" required disabled class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl bg-white cursor-pointer disabled:bg-gray-100 disabled:cursor-not-allowed">
+                            <option value="">-- Pilih Kecamatan --</option>
+                        </select>
+                    </div>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Nama & Gelar Sertifikat</label>
-                    <input type="text" name="name_with_title" id="edit_name_with_title" required class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Nomor WhatsApp</label>
-                    <input type="text" name="whatsapp_number" id="edit_whatsapp_number" required class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Catatan <span class="text-gray-400 normal-case font-medium">(alasan ganti nama / pembatalan)</span></label>
-                    <textarea name="notes" id="edit_notes" rows="3" placeholder="cth: Diganti karena diwakilkan dr. Andi, dsb." class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl"></textarea>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Catatan <span class="text-gray-400 normal-case font-medium">(opsional)</span></label>
+                    <textarea name="notes" id="edit_notes" rows="2" placeholder="cth: Diganti karena diwakilkan dr. Andi, dsb." class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl"></textarea>
                     <p class="text-[10px] text-gray-400 mt-1" id="edit_notes_stamp"></p>
                 </div>
                 <div class="flex justify-end gap-2 pt-3 border-t border-gray-100">
@@ -750,22 +786,19 @@
 
         // ---------- MODAL EDIT ----------
         function openEditModal(item) {
-            const canChangeTicket = item.source === 'manual' && !item.confirmed_at;
-            const ticketRow = document.getElementById('edit_ticket_row');
-            const ticketSelect = document.getElementById('edit_ticket_id');
-            if (canChangeTicket) {
-                ticketRow.classList.remove('hidden');
-                ticketSelect.value = item.ticket_id || '';
-            } else {
-                ticketRow.classList.add('hidden');
-                ticketSelect.value = '';
-            }
+            const ticketDisplay = document.getElementById('edit_ticket_display');
+            ticketDisplay.value = `${item.ticket_category || 'Umum'} — ${item.ticket_name || 'Tiket'} (Rp${new Intl.NumberFormat('id-ID').format(item.amount || 0)})`;
             document.getElementById('edit_status').value = item.status;
             document.getElementById('edit_full_name').value = item.full_name;
             document.getElementById('edit_name_with_title').value = item.name_with_title || item.full_name;
+            document.getElementById('edit_gmail_account').value = item.gmail_account || '';
             document.getElementById('edit_whatsapp_number').value = item.whatsapp_number;
+            document.getElementById('edit_nik').value = item.nik || '';
+            document.getElementById('edit_profession').value = item.profession || '';
+            document.getElementById('edit_institution_name').value = item.institution_name || '';
             document.getElementById('edit_notes').value = item.notes || '';
             document.getElementById('edit_notes_stamp').textContent = item.notes_updated_at ? 'Catatan terakhir diubah: ' + item.notes_updated_at : '';
+            loadEditRegions(item);
             document.getElementById('editForm').action = `/admin/participants/${item.id}/update-status`;
             document.getElementById('editModal').classList.remove('hidden');
         }
@@ -782,6 +815,48 @@
         }
         function closeDeleteModal() {
             document.getElementById('deleteModal').classList.add('hidden');
+        }
+
+        async function loadEditRegions(item) {
+            const apiBase = 'https://www.emsifa.com/api-wilayah-indonesia/api';
+            const selProv = document.getElementById('edit_provinsi');
+            const selKab = document.getElementById('edit_kabupaten');
+            const selKec = document.getElementById('edit_kecamatan');
+            if (!selProv || !selKab || !selKec) return;
+
+            selProv.innerHTML = '<option value="">-- Pilih Provinsi --</option>';
+            selKab.innerHTML = '<option value="">-- Pilih Kabupaten --</option>';
+            selKec.innerHTML = '<option value="">-- Pilih Kecamatan --</option>';
+            selKab.disabled = true;
+            selKec.disabled = true;
+
+            try {
+                const provinces = await fetch(apiBase + '/provinces.json').then(response => response.json());
+                provinces.forEach(prov => {
+                    selProv.innerHTML += `<option value="${prov.name}" data-id="${prov.id}">${prov.name}</option>`;
+                });
+                selProv.value = item.institution_province || '';
+
+                const provinceId = selProv.selectedOptions[0]?.getAttribute('data-id');
+                if (!provinceId) return;
+                const regencies = await fetch(apiBase + '/regencies/' + provinceId + '.json').then(response => response.json());
+                regencies.forEach(kab => {
+                    selKab.innerHTML += `<option value="${kab.name}" data-id="${kab.id}">${kab.name}</option>`;
+                });
+                selKab.disabled = false;
+                selKab.value = item.institution_city || '';
+
+                const regencyId = selKab.selectedOptions[0]?.getAttribute('data-id');
+                if (!regencyId) return;
+                const districts = await fetch(apiBase + '/districts/' + regencyId + '.json').then(response => response.json());
+                districts.forEach(kec => {
+                    selKec.innerHTML += `<option value="${kec.name}">${kec.name}</option>`;
+                });
+                selKec.disabled = false;
+                selKec.value = item.institution_district || '';
+            } catch (error) {
+                console.error('Error fetching edit regions:', error);
+            }
         }
 
         // ---------- MODAL MANUAL ----------

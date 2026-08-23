@@ -684,8 +684,14 @@ class AdminController extends Controller
             'status' => 'required|in:paid,pending,cancelled',
             'full_name' => 'required|string|max:255',
             'name_with_title' => 'required|string|max:255',
+            'gmail_account' => 'required|email|max:255',
             'whatsapp_number' => 'required|string|max:25',
-            'ticket_id' => 'nullable|exists:tickets,id',
+            'nik' => 'required|string|max:20',
+            'profession' => 'required|string|max:100',
+            'institution_name' => 'required|string|max:255',
+            'institution_province' => 'required|string|max:255',
+            'institution_city' => 'required|string|max:255',
+            'institution_district' => 'required|string|max:255',
             'notes' => 'nullable|string|max:5000',
         ]);
 
@@ -695,24 +701,14 @@ class AdminController extends Controller
         $booking->status = $request->status;
         $booking->full_name = $request->full_name;
         $booking->name_with_title = $request->name_with_title;
+        $booking->gmail_account = $request->gmail_account;
         $booking->whatsapp_number = $request->whatsapp_number;
-
-        // Ganti tiket (kategori & gelombang) — HANYA untuk peserta manual yang BELUM dikonfirmasi.
-        // Nominal pembayaran ikut menyesuaikan harga tiket baru.
-        if (
-            $booking->source === 'manual'
-            && ! $booking->confirmed_at
-            && $request->filled('ticket_id')
-            && (int) $request->ticket_id !== (int) $booking->ticket_id
-        ) {
-            $newTicket = Ticket::find($request->ticket_id);
-            if ($newTicket) {
-                $booking->ticket_id = $newTicket->id;
-                $booking->ticket_name = $newTicket->ticket_name;
-                $booking->ticket_category = $newTicket->ticket_category;
-                $booking->amount = $newTicket->price ?? $booking->amount;
-            }
-        }
+        $booking->nik = $request->nik;
+        $booking->profession = $request->profession;
+        $booking->institution_name = $request->institution_name;
+        $booking->institution_province = $request->institution_province;
+        $booking->institution_city = $request->institution_city;
+        $booking->institution_district = $request->institution_district;
 
         // Catatan & waktu perubahan
         $booking->notes = trim($request->input('notes') ?? '') ?: null;
