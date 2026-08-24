@@ -254,11 +254,11 @@
             <form action="{{ route('admin.tickets.store') }}" method="POST" class="p-6 space-y-4">
                 @csrf
                 <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Nama Gelombang / Tiket</label>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Nama Gelombang</label>
                     <input type="text" name="ticket_name" required placeholder="Contoh: Early Bird / Regular" class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404]">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Kategori Course / Paket</label>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Kategori Tiket</label>
                     <select name="ticket_category" required class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] bg-white">
                         <option value="" disabled selected>-- Pilih Kategori --</option>
                         <option value="Basic">Basic</option>
@@ -266,6 +266,7 @@
                         <option value="Basic-Advanced">Basic-Advanced</option>
                         <option value="Online">Online</option>
                         <option value="Workshop">Workshop</option>
+                        <option value="Advanced-Workshop">Advanced-Workshop</option>
                         <option value="Basic-Advanced + Workshop">Basic-Advanced + Workshop</option>
                     </select>
                 </div>
@@ -321,6 +322,7 @@
                         <option value="Basic-Advanced">Basic-Advanced</option>
                         <option value="Online">Online</option>
                         <option value="Workshop">Workshop</option>
+                        <option value="Advanced-Workshop">Advanced-Workshop</option>
                         <option value="Basic-Advanced + Workshop">Basic-Advanced + Workshop</option>
                     </select>
                 </div>

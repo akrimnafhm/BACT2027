@@ -17,7 +17,7 @@
 
     @php
         $tab            = $tab ?? 'peserta';
-        $categoryOptions = ['Basic', 'Advanced', 'Basic-Advanced', 'Online', 'Workshop', 'Basic-Advanced + Workshop'];
+        $categoryOptions = ['Basic', 'Advanced', 'Basic-Advanced', 'Online', 'Workshop', 'Advanced-Workshop', 'Basic-Advanced + Workshop'];
         $baseQuery      = request()->query();
         unset($baseQuery['tab']);
     @endphp

@@ -30,6 +30,8 @@ class WaGroupLink extends Model
             'Basic - Advanced'          => 'Basic-Advanced',
             'Online'                    => 'Online',
             'Workshop'                  => 'Workshop',
+            'Advanced-Workshop'         => 'Advanced-Workshop',
+            'Advanced - Workshop'       => 'Advanced-Workshop',
             'Basic-Advance + Workshop'  => 'Basic-Advanced + Workshop',
             'Basic-Advanced + Workshop' => 'Basic-Advanced + Workshop',
             'Basic - Advance + Workshop'=> 'Basic-Advanced + Workshop',
@@ -60,9 +62,7 @@ class WaGroupLink extends Model
 
     /**
      * Daftar grup yang relevan untuk sebuah kategori tiket.
-     * Kategori tunggal -> 1 grup; kategori combo (Basic-Advanced, + Workshop)
-     * diperluas ke grup komponennya (Basic + Advanced / Basic + Advanced + Workshop)
-     * sehingga pembeli tetap mendapat tombol join untuk semua grup terkait.
+     * Setiap kategori tiket memiliki 1 grup WA sendiri.
      */
     public static function groupCategoriesFor(string $category): array
     {
@@ -71,8 +71,9 @@ class WaGroupLink extends Model
             'Advanced'                 => ['Advanced'],
             'Online'                   => ['Online'],
             'Workshop'                 => ['Workshop'],
-            'Basic-Advanced'           => ['Basic', 'Advanced'],
-            'Basic-Advanced + Workshop'=> ['Basic', 'Advanced', 'Workshop'],
+            'Advanced-Workshop'        => ['Advanced-Workshop'],
+            'Basic-Advanced'           => ['Basic-Advanced'],
+            'Basic-Advanced + Workshop'=> ['Basic-Advanced + Workshop'],
         ];
 
         $normalized = static::normalizeCategory($category);

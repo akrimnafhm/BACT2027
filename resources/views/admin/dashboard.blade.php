@@ -145,7 +145,7 @@
 
         </div>
 
-        <!-- B. REKAPITULASI 6 JENIS TIKET UTAMA -->
+        <!-- B. REKAPITULASI JENIS TIKET UTAMA -->
         <div class="space-y-6">
             <div class="flex justify-between items-center border-b border-gray-200 pb-4">
                 <div>
@@ -157,7 +157,7 @@
                 </a>
             </div>
 
-            <!-- Grid 6 Card Tiket -->
+            <!-- Grid Card Tiket -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 @foreach($categories as $categoryName => $data)
                     <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 flex flex-col justify-between hover:border-gray-300 transition">

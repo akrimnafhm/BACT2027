@@ -36,13 +36,14 @@ class AdminController extends Controller
         // Mode situs (normal / maintenance) untuk switch di dashboard.
         $siteMode = SiteSetting::value('site_mode', 'normal');
 
-        // 2. Siapkan 6 Kategori Tiket persis sesuai UI Dashboard
+        // 2. Siapkan kategori tiket persis sesuai UI Dashboard
         $categories = [
             'Basic' => ['paid' => 0, 'revenue' => 0],
             'Advanced' => ['paid' => 0, 'revenue' => 0],
             'Basic - Advanced' => ['paid' => 0, 'revenue' => 0],
             'Online' => ['paid' => 0, 'revenue' => 0],
             'Workshop' => ['paid' => 0, 'revenue' => 0],
+            'Advanced - Workshop' => ['paid' => 0, 'revenue' => 0],
             'Basic - Advanced + Workshop' => ['paid' => 0, 'revenue' => 0],
         ];
 
@@ -78,6 +79,9 @@ class AdminController extends Controller
             } elseif ($category === 'Workshop') {
                 $categories['Workshop']['paid'] += 1;
                 $categories['Workshop']['revenue'] += $amount;
+            } elseif ($category === 'Advanced-Workshop') {
+                $categories['Advanced - Workshop']['paid'] += 1;
+                $categories['Advanced - Workshop']['revenue'] += $amount;
             } elseif ($category === 'Basic-Advanced + Workshop') {
                 $categories['Basic - Advanced + Workshop']['paid'] += 1;
                 $categories['Basic - Advanced + Workshop']['revenue'] += $amount;
@@ -145,7 +149,7 @@ class AdminController extends Controller
     {
         $request->validate([
             'ticket_name' => 'required|string|max:100',
-            'ticket_category' => 'required|string|in:Basic,Advanced,Basic-Advanced,Online,Workshop,Basic-Advanced + Workshop',
+            'ticket_category' => 'required|string|in:Basic,Advanced,Basic-Advanced,Online,Workshop,Advanced-Workshop,Basic-Advanced + Workshop',
             'price' => 'required|numeric|min:0',
             'quota' => 'required|integer|min:1',
             'start_date' => 'nullable|date',
@@ -185,7 +189,7 @@ class AdminController extends Controller
     {
         $request->validate([
             'ticket_name' => 'required|string|max:100',
-            'ticket_category' => 'required|string|in:Basic,Advanced,Basic-Advanced,Online,Workshop,Basic-Advanced + Workshop',
+            'ticket_category' => 'required|string|in:Basic,Advanced,Basic-Advanced,Online,Workshop,Advanced-Workshop,Basic-Advanced + Workshop',
             'price' => 'required|numeric|min:0',
             'quota' => 'required|integer|min:0',
             'start_date' => 'nullable|date',
@@ -245,20 +249,12 @@ class AdminController extends Controller
      */
     public function groupLinks(): View
     {
-        // Hanya 4 grup yang dikelola: Basic, Advanced, Online, Workshop.
-        // Kategori combo (Basic-Advanced, Basic-Advanced + Workshop) tidak punya grup sendiri.
-        $allowedCategories = ['Basic', 'Advanced', 'Online', 'Workshop'];
-
-        $categories = Ticket::select('ticket_category')->distinct()->pluck('ticket_category');
+        $categories = collect(['Basic', 'Advanced', 'Basic-Advanced', 'Online', 'Workshop', 'Advanced-Workshop', 'Basic-Advanced + Workshop']);
         $links = WaGroupLink::pluck('wa_group_link', 'ticket_category');
 
         $groups = [];
         foreach ($categories as $category) {
             $normalized = WaGroupLink::normalizeCategory($category);
-
-            if (! in_array($normalized, $allowedCategories, true)) {
-                continue;
-            }
 
             $groups[$normalized] = [
                 'category' => $normalized,
@@ -908,8 +904,7 @@ class AdminController extends Controller
      * SCREENING KEANGGOTAAN GRUP WHATSAPP VIA FILE CSV.
      * Admin mengunggah file CSV berisi kolom "phone" (format 62...) lalu memilih
      * grup yang akan discan. Sistem menyamakan nomor (dinormalisasi ke format
-     * website 08...) dengan peserta LUNAS yang anggotanya grup tersebut — termasuk
-     * pembeli kategori combo (mis. Basic-Advanced ikut grup Basic dan Advanced).
+    * website 08...) dengan peserta LUNAS yang kategorinya sama dengan grup tersebut.
      * Peserta yang cocok diberi tanda WA; tanda dari scan grup yang sama pada
      * peserta yang kini tidak cocok akan dicabut; nomor asing diabaikan.
      */
