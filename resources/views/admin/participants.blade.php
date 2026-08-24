@@ -86,9 +86,9 @@
 
         <p class="text-xs text-gray-500 -mt-2">
             @if($tab === 'peserta')
-                Tab <b>Data Peserta</b> hanya menampilkan peserta yang sudah <b>Lunas / Fix</b>. Hapus tersedia di sini — data yang dihapus berpindah ke tab Data All dengan status <b>Dihapus</b>.
+                Tab <b>Data Peserta</b> hanya menampilkan peserta yang sudah <b>Lunas / Fix</b>. Edit dan hapus tersedia di sini — data yang dihapus berpindah ke tab Data All dengan status <b>Dihapus</b>.
             @else
-                Tab <b>Data All</b> menampilkan semua peserta — <b>Lunas</b>, <b>Tertunda</b>, <b>Dibatalkan</b>, maupun <b>Dihapus</b>. Edit dan tambah manual hanya tersedia di tab ini. Peserta <b>manual</b> perlu dikonfirmasi agar tercatat sebagai peserta (LUNAS).
+                Tab <b>Data All</b> menampilkan semua peserta — <b>Lunas</b>, <b>Tertunda</b>, <b>Dibatalkan</b>, maupun <b>Dihapus</b>. Edit tersedia di tab ini, dan tambah manual hanya tersedia di tab ini. Peserta <b>manual</b> perlu dikonfirmasi agar tercatat sebagai peserta (LUNAS).
             @endif
         </p>
 
@@ -375,7 +375,7 @@
                                             @endif
                                         </div>
                                     @else
-                                        <!-- DATA PESERTA: 1 baris (View + Hapus) -->
+                                        <!-- DATA PESERTA: 1 baris (View + Edit + Hapus) -->
                                         <div class="flex items-center justify-center gap-1.5">
                                             <button type="button" onclick="openViewModal({{ json_encode($item) }})"
                                                 class="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs font-bold rounded-lg transition">View</button>
@@ -412,6 +412,9 @@
                                                     @endif
                                                 @endif
                                                 --}}
+
+                                                <button type="button" onclick="openEditModal({{ json_encode($item) }})"
+                                                    class="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-[#E19404] text-xs font-bold rounded-lg transition">Edit</button>
 
                                                 <button type="button" onclick="openDeleteModal({{ $item->id }}, '{{ addslashes($item->name_with_title ?: $item->full_name) }}')"
                                                     class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-lg transition">Hapus</button>
