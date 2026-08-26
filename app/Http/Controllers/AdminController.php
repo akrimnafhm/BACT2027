@@ -249,7 +249,7 @@ class AdminController extends Controller
      */
     public function groupLinks(): View
     {
-        $categories = collect(['Basic', 'Advanced', 'Basic-Advanced', 'Online', 'Workshop', 'Advanced-Workshop', 'Basic-Advanced + Workshop']);
+        $categories = collect(WaGroupLink::allCategories());
         $links = WaGroupLink::pluck('wa_group_link', 'ticket_category');
 
         $groups = [];
@@ -534,7 +534,7 @@ class AdminController extends Controller
         $allTickets = Ticket::all();
 
         // Daftar grup WA yang terdaftar (untuk dropdown screening di tab Data Peserta)
-        $waGroups = WaGroupLink::orderBy('ticket_category')->pluck('ticket_category');
+        $waGroups = collect(WaGroupLink::allCategories());
 
         return view('admin.participants', compact(
             'participants', 'waves', 'allTickets', 'waGroups',
@@ -875,9 +875,10 @@ class AdminController extends Controller
     }
 
     /**
-     * KONFIRMASI MANUAL JOIN GRUP WHATSAPP (per orang).
+     * KONFIRMASI MANUAL JOIN GRUP WHATSAPP (per tiket).
      * Dipakai bila peserta sudah gabung grup tanpa menekan tombol di website:
-     * admin dapat menandai (wa_joined_at = sekarang) atau membatalkan tanda.
+     * admin dapat menandai join grup sesuai KATEGORI TIKET tersebut, atau membatalkannya.
+     * Karena status join kini per-grup, tiket lain milik user yang sama tidak terpengaruh.
      */
     public function toggleWaJoined(int $id): RedirectResponse
     {
@@ -889,22 +890,24 @@ class AdminController extends Controller
             return back()->with('error', 'Peserta "'.$participantName.'" tidak terhubung ke akun website, status WA tidak dapat diubah.');
         }
 
-        if ($user->wa_joined_at) {
-            $user->update(['wa_joined_at' => null, 'wa_joined_group' => null]);
+        $group = WaGroupLink::normalizeCategory((string) $booking->ticket_category);
 
-            return back()->with('success', 'Status WA "'.$participantName.'" dikosongkan kembali.');
+        if ($user->hasJoinedWaGroup($group)) {
+            $user->removeJoinedWaGroup($group);
+
+            return back()->with('success', 'Status WA "'.$participantName.'" untuk grup "'.$group.'" dikosongkan kembali.');
         }
 
-        $user->update(['wa_joined_at' => now(), 'wa_joined_group' => 'manual']);
+        $user->markJoinedWaGroup($group);
 
-        return back()->with('success', 'Peserta "'.$participantName.'" ditandai SUDAH JOIN grup WhatsApp.');
+        return back()->with('success', 'Peserta "'.$participantName.'" ditandai SUDAH JOIN grup WhatsApp "'.$group.'".');
     }
 
     /**
      * SCREENING KEANGGOTAAN GRUP WHATSAPP VIA FILE CSV.
      * Admin mengunggah file CSV berisi kolom "phone" (format 62...) lalu memilih
      * grup yang akan discan. Sistem menyamakan nomor (dinormalisasi ke format
-    * website 08...) dengan peserta LUNAS yang kategorinya sama dengan grup tersebut.
+     * website 08...) dengan peserta LUNAS yang kategorinya sama dengan grup tersebut.
      * Peserta yang cocok diberi tanda WA; tanda dari scan grup yang sama pada
      * peserta yang kini tidak cocok akan dicabut; nomor asing diabaikan.
      */
@@ -969,16 +972,23 @@ class AdminController extends Controller
         }
 
         // 2. Kumpulkan peserta lunas yang keanggotaannya mencakup grup terpilih
+        $matchingCategories = collect(WaGroupLink::allCategories())
+            ->filter(fn (string $cat) => WaGroupLink::normalizeCategory($cat) === $group)
+            ->values()
+            ->all();
+
+        if (empty($matchingCategories)) {
+            $matchingCategories = [$group];
+        }
+
         $bookings = TicketBooking::with('user')
             ->where('status', 'paid')
-            ->get()
-            ->filter(function (TicketBooking $booking) use ($group) {
-                $category = WaGroupLink::normalizeCategory((string) $booking->ticket_category);
+            ->whereIn('ticket_category', $matchingCategories)
+            ->get();
 
-                return $category !== '' && in_array($group, WaGroupLink::groupCategoriesFor($category), true);
-            });
-
-        // 3. Tandai yang cocok & cabut tanda lama milik grup sama yang tak cocok lagi
+        // 3. Tandai yang cocok & cabut tanda lama milik grup sama yang tak cocok lagi.
+        //    Status join kini per-grup (multi-grup), bukan satu slot per user.
+        //    Jadi tiket Basic dan Basic-Advanced milik user yang sama ditandai terpisah.
         $newMarked = 0;
         $alreadyMarked = 0;
         $clearedMarks = 0;
@@ -992,18 +1002,15 @@ class AdminController extends Controller
             $matched = isset($filePhones[static::normalizePhone($booking->whatsapp_number)]);
 
             if ($matched) {
-                if (is_null($user->wa_joined_at)) {
+                if (! $user->hasJoinedWaGroup($group)) {
                     $newMarked++;
                 } else {
                     $alreadyMarked++;
                 }
-                $user->fill([
-                    'wa_joined_at' => $user->wa_joined_at ?? now(),
-                    'wa_joined_group' => $group,
-                ])->save();
-            } elseif ($user->wa_joined_group === $group && ! is_null($user->wa_joined_at)) {
+                $user->markJoinedWaGroup($group);
+            } elseif ($user->hasJoinedWaGroup($group)) {
                 $clearedMarks++;
-                $user->fill(['wa_joined_at' => null, 'wa_joined_group' => null])->save();
+                $user->removeJoinedWaGroup($group);
             }
         }
 

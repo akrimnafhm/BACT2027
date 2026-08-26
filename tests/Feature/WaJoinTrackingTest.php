@@ -86,9 +86,8 @@ it('menandai peserta yang nomornya cocok di CSV meski formatnya 62 berbanding 08
         ])
         ->assertRedirect();
 
-    expect($cocok->fresh()->wa_joined_at)->not->toBeNull()
-        ->and($cocok->fresh()->wa_joined_group)->toBe('Basic')
-        ->and($tidakCocok->fresh()->wa_joined_at)->toBeNull()
+    expect($cocok->fresh()->hasJoinedWaGroup('Basic'))->toBeTrue()
+        ->and($tidakCocok->fresh()->hasJoinedWaGroup('Basic'))->toBeFalse()
         ->and(session('success'))->toContain('1 peserta baru ditandai')
         ->and(session('success'))->toContain('1 nomor di file tidak dikenali');
 });
@@ -106,7 +105,7 @@ it('mencabut tanda milik grup yang sama saat scan ulang tanpa nomor tersebut', f
         'csv_file' => waGroupsCsv("phone\n6281222333444\n"),
     ])->assertRedirect();
 
-    expect($user->fresh()->wa_joined_at)->not->toBeNull();
+    expect($user->fresh()->hasJoinedWaGroup('Advanced'))->toBeTrue();
 
     // Scan ulang: nomor sudah keluar dari grup -> tanda dicabut
     $this->actingAs($admin)->post(route('admin.participants.waScreen'), [
@@ -114,8 +113,7 @@ it('mencabut tanda milik grup yang sama saat scan ulang tanpa nomor tersebut', f
         'csv_file' => waGroupsCsv("phone\n628111111111\n"),
     ])->assertRedirect();
 
-    expect($user->fresh()->wa_joined_at)->toBeNull()
-        ->and($user->fresh()->wa_joined_group)->toBeNull();
+    expect($user->fresh()->hasJoinedWaGroup('Advanced'))->toBeFalse();
 });
 
 it('tidak menghapus tanda dari grup lain ketika memindai grup berbeda', function () {
@@ -139,26 +137,86 @@ it('tidak menghapus tanda dari grup lain ketika memindai grup berbeda', function
         'csv_file' => waGroupsCsv("phone\n628777666555\n"),
     ])->assertRedirect();
 
-    expect($user->fresh()->wa_joined_at)->not->toBeNull()
-        ->and($user->fresh()->wa_joined_group)->toBe('Basic');
+    expect($user->fresh()->hasJoinedWaGroup('Basic'))->toBeTrue()
+        ->and($user->fresh()->hasJoinedWaGroup('Advanced'))->toBeFalse();
 });
 
-it('ikut menandai pembeli kategori combo saat memindai grup komponennya', function () {
+it('tidak menandai pembeli kategori combo saat memindai grup komponennya — harus scan grup kategorinya sendiri', function () {
     $admin = waAdminUser();
     $user = waParticipantUser();
 
     WaGroupLink::create(['ticket_category' => 'Basic', 'wa_group_link' => 'https://chat.whatsapp.com/basic']);
+    WaGroupLink::create(['ticket_category' => 'Basic-Advanced', 'wa_group_link' => 'https://chat.whatsapp.com/basic-adv']);
 
-    // Pembeli Basic-Advanced adalah anggota grup Basic sekaligus Advanced
+    // Pembeli Basic-Advanced hanya masuk grup "Basic-Advanced", bukan "Basic"
     paidTicketBookingFor($user, ['ticket_category' => 'Basic-Advanced', 'whatsapp_number' => '085512345678']);
 
+    // Scan grup "Basic" → harusnya TIDAK menandai peserta Basic-Advanced
     $this->actingAs($admin)->post(route('admin.participants.waScreen'), [
         'group' => 'Basic',
         'csv_file' => waGroupsCsv("phone\n6285512345678\n"),
     ])->assertRedirect();
 
-    expect($user->fresh()->wa_joined_at)->not->toBeNull()
-        ->and($user->fresh()->wa_joined_group)->toBe('Basic');
+    expect($user->fresh()->hasJoinedWaGroup('Basic-Advanced'))->toBeFalse();
+
+    // Scan grup "Basic-Advanced" → baru ditandai
+    $this->actingAs($admin)->post(route('admin.participants.waScreen'), [
+        'group' => 'Basic-Advanced',
+        'csv_file' => waGroupsCsv("phone\n6285512345678\n"),
+    ])->assertRedirect();
+
+    expect($user->fresh()->hasJoinedWaGroup('Basic-Advanced'))->toBeTrue();
+});
+
+it('tidak menandai peserta dengan nomor HP sama jika kategori tiket berbeda dari grup yang di-scan', function () {
+    $admin = waAdminUser();
+    $userBasic = waParticipantUser('basic@test.com');
+    $userAdvanced = waParticipantUser('advanced@test.com');
+
+    WaGroupLink::create(['ticket_category' => 'Basic', 'wa_group_link' => 'https://chat.whatsapp.com/basic']);
+
+    // Dua peserta berbeda kategori, nomor HP sama
+    paidTicketBookingFor($userBasic, ['ticket_category' => 'Basic', 'whatsapp_number' => '081234567890']);
+    paidTicketBookingFor($userAdvanced, ['ticket_category' => 'Advanced', 'whatsapp_number' => '081234567890']);
+
+    // Scan grup "Basic" → hanya peserta Basic yang ditandai
+    $this->actingAs($admin)->post(route('admin.participants.waScreen'), [
+        'group' => 'Basic',
+        'csv_file' => waGroupsCsv("phone\n6281234567890\n"),
+    ])->assertRedirect();
+
+    expect($userBasic->fresh()->hasJoinedWaGroup('Basic'))->toBeTrue()
+        ->and($userAdvanced->fresh()->hasJoinedWaGroup('Basic'))->toBeFalse();
+});
+
+it('satu user dengan dua tiket kategori berbeda hanya ditandai pada grup yang di-scan', function () {
+    $admin = waAdminUser();
+    $user = waParticipantUser('dua-tiket@test.com');
+
+    WaGroupLink::create(['ticket_category' => 'Basic', 'wa_group_link' => 'https://chat.whatsapp.com/basic']);
+    WaGroupLink::create(['ticket_category' => 'Basic-Advanced', 'wa_group_link' => 'https://chat.whatsapp.com/basic-adv']);
+
+    // Satu user memiliki tiket "Basic" DAN "Basic-Advanced" dengan nomor HP sama.
+    paidTicketBookingFor($user, ['ticket_category' => 'Basic', 'whatsapp_number' => '081234567890']);
+    paidTicketBookingFor($user, ['ticket_category' => 'Basic-Advanced', 'whatsapp_number' => '081234567890']);
+
+    // Scan grup "Basic" → hanya grup Basic yang ditandai, Basic-Advanced tidak.
+    $this->actingAs($admin)->post(route('admin.participants.waScreen'), [
+        'group' => 'Basic',
+        'csv_file' => waGroupsCsv("phone\n6281234567890\n"),
+    ])->assertRedirect();
+
+    expect($user->fresh()->hasJoinedWaGroup('Basic'))->toBeTrue()
+        ->and($user->fresh()->hasJoinedWaGroup('Basic-Advanced'))->toBeFalse();
+
+    // Scan grup "Basic-Advanced" → kini keduanya ditandai di grupnya masing-masing.
+    $this->actingAs($admin)->post(route('admin.participants.waScreen'), [
+        'group' => 'Basic-Advanced',
+        'csv_file' => waGroupsCsv("phone\n6281234567890\n"),
+    ])->assertRedirect();
+
+    expect($user->fresh()->hasJoinedWaGroup('Basic'))->toBeTrue()
+        ->and($user->fresh()->hasJoinedWaGroup('Basic-Advanced'))->toBeTrue();
 });
 
 it('menolak grup tak terdaftar serta CSV tanpa kolom phone', function () {
@@ -189,19 +247,17 @@ it('tetap mendukung konfirmasi manual WA oleh admin', function () {
     WaGroupLink::create(['ticket_category' => 'Basic', 'wa_group_link' => 'https://chat.whatsapp.com/basic']);
     $booking = paidTicketBookingFor($user);
 
-    // Konfirmasi manual -> tercatat sudah join dengan sumber "manual"
+    // Konfirmasi manual -> tercatat sudah join grup sesuai kategori tiket
     $this->actingAs($admin)
         ->post(route('admin.participants.waToggle', $booking->id))
         ->assertRedirect();
 
-    expect($user->fresh()->wa_joined_at)->not->toBeNull()
-        ->and($user->fresh()->wa_joined_group)->toBe('manual');
+    expect($user->fresh()->hasJoinedWaGroup('Basic'))->toBeTrue();
 
     // Tekan lagi -> dikosongkan kembali
     $this->actingAs($admin)
         ->post(route('admin.participants.waToggle', $booking->id))
         ->assertRedirect();
 
-    expect($user->fresh()->wa_joined_at)->toBeNull()
-        ->and($user->fresh()->wa_joined_group)->toBeNull();
+    expect($user->fresh()->hasJoinedWaGroup('Basic'))->toBeFalse();
 });

@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -359,127 +360,168 @@ class BookingController extends Controller
                 ->with('error', 'Pemesanan otomatis dibatalkan karena melewati batas waktu pembayaran atau tiket sudah tidak berlaku. Silakan lakukan pemesanan ulang.');
         }
 
-        // REUSE: Jika link pembayaran DOKU sebelumnya masih valid, jangan buat pembayaran baru.
-        if ($booking->payment_url && $booking->payment_expired_at && $booking->payment_expired_at->gt(now())) {
-            $ticket = Ticket::find($booking->ticket_id);
-            $displayName = $booking->ticket_name.' - '.$booking->ticket_category;
-
-            return view('booking.checkout', compact('booking', 'ticket', 'displayName') + ['paymentUrl' => $booking->payment_url]);
-        }
-
         $ticket = Ticket::find($booking->ticket_id);
         $displayName = $booking->ticket_name.' - '.$booking->ticket_category;
 
-        // Buat Nomor Invoice unik (Contoh: INV-BACT-1-1785...)
-        $invoiceNumber = 'RC-BACT-'.$booking->id.'-'.time();
+        // Lock per booking_id: cegah dua request paralel membuat 2 payment DOKU.
+        $lock = Cache::lock('checkout_ticket_'.$booking->id, 30);
+        if (! $lock->block(5)) {
+            return back()->with('error', 'Pembayaran sedang diproses oleh tab/beranda lain. Silakan tunggu beberapa detik.');
+        }
 
-        // -------------------------------------------------------------
-        // PEMANGGILAN API DOKU CHECKOUT (DIRECT VIA LARAVEL HTTP CLIENT)
-        // -------------------------------------------------------------
-        $clientId = config('services.doku.client_id');
-        $secretKey = config('services.doku.secret_key');
-        $isProduction = filter_var(config('services.doku.is_production', false), FILTER_VALIDATE_BOOL);
+        try {
+            // Reload untuk mendapatkan state terbaru di bawah lock.
+            $booking->refresh();
 
-        $baseUrl = $isProduction
-            ? 'https://api.doku.com'
-            : 'https://api-sandbox.doku.com';
+            // REUSE: Jika link pembayaran DOKU sebelumnya masih valid, jangan buat pembayaran baru.
+            if ($booking->payment_url && $booking->payment_expired_at && $booking->payment_expired_at->gt(now())) {
+                return view('booking.checkout', compact('booking', 'ticket', 'displayName') + ['paymentUrl' => $booking->payment_url]);
+            }
 
-        // 1. Siapkan Data Pesanan untuk DOKU
-        $requestBody = [
-            'order' => [
-                'amount' => $booking->amount,
-                'invoice_number' => $invoiceNumber,
-                'currency' => 'IDR',
-                'callback_url' => route('booking.return', [
-                    'booking' => $booking->id,
+            // Jika sebelumnya sudah ada invoice_number dari checkout yang belum selesai
+            // (timeout/gagal sebelum payment_url tersimpan), jangan buat payment baru
+            // tanpa memverifikasi status terlebih dahulu.
+            if ($booking->invoice_number) {
+                return back()->with('error', 'Pembayaran sebelumnya sedang diproses atau belum selesai. Jika tidak berhasil dalam beberapa menit, silakan hubungi panitia.');
+            }
+
+            // Buat Nomor Invoice unik (Contoh: RC-BACT-1-1785...)
+            $invoiceNumber = 'RC-BACT-'.$booking->id.'-'.time();
+
+            // Simpan invoice_number SEBELUM request ke DOKU agar bisa dilacak
+            // meskipun request timeout/gagal sebelum response tersimpan.
+            $booking->update(['invoice_number' => $invoiceNumber]);
+
+            // -------------------------------------------------------------
+            // PEMANGGILAN API DOKU CHECKOUT (DIRECT VIA LARAVEL HTTP CLIENT)
+            // -------------------------------------------------------------
+            $clientId = config('services.doku.client_id');
+            $secretKey = config('services.doku.secret_key');
+            $isProduction = filter_var(config('services.doku.is_production', false), FILTER_VALIDATE_BOOL);
+
+            $baseUrl = $isProduction
+                ? 'https://api.doku.com'
+                : 'https://api-sandbox.doku.com';
+
+            // 1. Siapkan Data Pesanan untuk DOKU
+            $requestBody = [
+                'order' => [
+                    'amount' => $booking->amount,
                     'invoice_number' => $invoiceNumber,
-                    'simulated_paid' => 1,
-                ]),
-                'notification_url' => config('services.doku.notification_url', url('/api/doku/notification')),
-                'line_items' => [
-                    [
-                        'name' => ($booking->ticket_name ? $booking->ticket_name.' - ' : '').$booking->ticket_category,
-                        'quantity' => 1,
-                        'price' => (int) $booking->amount,
+                    'currency' => 'IDR',
+                    'callback_url' => route('booking.return', [
+                        'booking' => $booking->id,
+                        'invoice_number' => $invoiceNumber,
+                        'simulated_paid' => 1,
+                    ]),
+                    'notification_url' => config('services.doku.notification_url', url('/api/doku/notification')),
+                    'line_items' => [
+                        [
+                            'name' => ($booking->ticket_name ? $booking->ticket_name.' - ' : '').$booking->ticket_category,
+                            'quantity' => 1,
+                            'price' => (int) $booking->amount,
+                        ],
                     ],
                 ],
-            ],
-            'payment' => [
-                'payment_due_date' => 1440, // Expired VA/Link dalam menit (24 jam)
-            ],
-            'customer' => [
-                'id' => (string) $user->id,
-                'name' => $booking->full_name,
-                'email' => $booking->gmail_account,
-                'phone' => $booking->whatsapp_number,
-                'address' => $booking->institution_name.', '.$booking->institution_city,
-                'country' => 'ID',
-            ],
-        ];
+                'payment' => [
+                    'payment_due_date' => 1440, // Expired VA/Link dalam menit (24 jam)
+                ],
+                'customer' => [
+                    'id' => (string) $user->id,
+                    'name' => $booking->full_name,
+                    'email' => $booking->gmail_account,
+                    'phone' => $booking->whatsapp_number,
+                    'address' => $booking->institution_name.', '.$booking->institution_city,
+                    'country' => 'ID',
+                ],
+            ];
 
-        $jsonBody = json_encode($requestBody);
+            $jsonBody = json_encode($requestBody);
 
-        // 2. Buat Tanda Tangan Keamanan (HMAC-SHA256 Signature DOKU)
-        $requestId = (string) Str::uuid();
-        $requestTimestamp = gmdate("Y-m-d\TH:i:s\Z");
-        $requestTarget = '/checkout/v1/payment';
+            // 2. Buat Tanda Tangan Keamanan (HMAC-SHA256 Signature DOKU)
+            $requestId = (string) Str::uuid();
+            $requestTimestamp = gmdate("Y-m-d\TH:i:s\Z");
+            $requestTarget = '/checkout/v1/payment';
 
-        $digest = base64_encode(hash('sha256', $jsonBody, true));
-        $rawSignature = 'Client-Id:'.$clientId."\n"
-                      .'Request-Id:'.$requestId."\n"
-                      .'Request-Timestamp:'.$requestTimestamp."\n"
-                      .'Request-Target:'.$requestTarget."\n"
-                      .'Digest:'.$digest;
+            $digest = base64_encode(hash('sha256', $jsonBody, true));
+            $rawSignature = 'Client-Id:'.$clientId."\n"
+                          .'Request-Id:'.$requestId."\n"
+                          .'Request-Timestamp:'.$requestTimestamp."\n"
+                          .'Request-Target:'.$requestTarget."\n"
+                          .'Digest:'.$digest;
 
-        $signature = 'HMACSHA256='.base64_encode(hash_hmac('sha256', $rawSignature, $secretKey, true));
+            $signature = 'HMACSHA256='.base64_encode(hash_hmac('sha256', $rawSignature, $secretKey, true));
 
-        // 3. Tembak API DOKU
-        try {
-            $response = Http::withHeaders([
-                'Client-Id' => $clientId,
-                'Request-Id' => $requestId,
-                'Request-Timestamp' => $requestTimestamp,
-                'Signature' => $signature,
-                'Content-Type' => 'application/json',
-            ])->send('POST', $baseUrl.$requestTarget, [
-                'body' => $jsonBody,
-            ]);
-        } catch (\Throwable $e) {
-            Log::error('DOKU checkout request exception', [
+            Log::info('DOKU checkout initiated', [
                 'booking_id' => $booking->id,
+                'invoice_number' => $invoiceNumber,
+                'request_id' => $requestId,
+                'amount' => $booking->amount,
+                'notification_url' => $requestBody['order']['notification_url'],
+            ]);
+
+            // 3. Tembak API DOKU
+            try {
+                $response = Http::withHeaders([
+                    'Client-Id' => $clientId,
+                    'Request-Id' => $requestId,
+                    'Request-Timestamp' => $requestTimestamp,
+                    'Signature' => $signature,
+                    'Content-Type' => 'application/json',
+                ])->send('POST', $baseUrl.$requestTarget, [
+                    'body' => $jsonBody,
+                ]);
+            } catch (\Throwable $e) {
+                Log::error('DOKU checkout request exception', [
+                    'booking_id' => $booking->id,
+                    'invoice_number' => $invoiceNumber,
+                    'request_id' => $requestId,
+                    'base_url' => $baseUrl,
+                    'error' => $e->getMessage(),
+                ]);
+
+                return back()->with('error', 'Gagal memproses ke gerbang pembayaran DOKU. Silakan coba lagi.');
+            }
+
+            $dokuResult = $response->json();
+
+            Log::info('DOKU checkout response', [
+                'booking_id' => $booking->id,
+                'invoice_number' => $invoiceNumber,
+                'request_id' => $requestId,
+                'http_status' => $response->status(),
+                'success' => $response->successful(),
+            ]);
+
+            // Cek jika berhasil dapat link pembayaran (payment_url) dari DOKU
+            if ($response->successful() && isset($dokuResult['response']['payment']['url'])) {
+                $paymentUrl = $dokuResult['response']['payment']['url'];
+
+                // Simpan invoice_number, link, dan waktu expired link agar bisa di-reuse saat "Lanjutkan Pembayaran".
+                $paymentExpiredAt = $this->parsePaymentExpiredDate($dokuResult);
+                $booking->update([
+                    'invoice_number' => $invoiceNumber,
+                    'payment_url' => $paymentUrl,
+                    'payment_expired_at' => $paymentExpiredAt,
+                ]);
+
+                return view('booking.checkout', compact('booking', 'ticket', 'displayName', 'paymentUrl'));
+            }
+
+            // Jika gagal konek ke DOKU
+            Log::error('DOKU checkout failed', [
+                'booking_id' => $booking->id,
+                'invoice_number' => $invoiceNumber,
+                'request_id' => $requestId,
                 'base_url' => $baseUrl,
-                'error' => $e->getMessage(),
+                'http_status' => $response->status(),
+                'response' => $dokuResult,
             ]);
 
             return back()->with('error', 'Gagal memproses ke gerbang pembayaran DOKU. Silakan coba lagi.');
+        } finally {
+            $lock->release();
         }
-
-        $dokuResult = $response->json();
-
-        // Cek jika berhasil dapat link pembayaran (payment_url) dari DOKU
-        if ($response->successful() && isset($dokuResult['response']['payment']['url'])) {
-            $paymentUrl = $dokuResult['response']['payment']['url'];
-
-            // Simpan invoice_number, link, dan waktu expired link agar bisa di-reuse saat "Lanjutkan Pembayaran".
-            $paymentExpiredAt = $this->parsePaymentExpiredDate($dokuResult);
-            $booking->update([
-                'invoice_number' => $invoiceNumber,
-                'payment_url' => $paymentUrl,
-                'payment_expired_at' => $paymentExpiredAt,
-            ]);
-
-            return view('booking.checkout', compact('booking', 'ticket', 'displayName', 'paymentUrl'));
-        }
-
-        // Jika gagal konek ke DOKU
-        Log::error('DOKU checkout failed', [
-            'booking_id' => $booking->id,
-            'base_url' => $baseUrl,
-            'http_status' => $response->status(),
-            'response' => $dokuResult,
-        ]);
-
-        return back()->with('error', 'Gagal memproses ke gerbang pembayaran DOKU. Silakan coba lagi.');
     }
 
     /**
@@ -538,27 +580,11 @@ class BookingController extends Controller
             abort(403);
         }
 
-        $booking = $this->syncBookingFromCallback($request, $user, $booking);
+        // Return URL HANYA untuk UX redirect. Tidak mengubah status.
+        // Status hanya diubah oleh webhook DOKU (/api/doku/notification).
+        $booking->refresh();
 
-        $isProduction = filter_var(config('services.doku.is_production', false), FILTER_VALIDATE_BOOL);
-        $shouldAutoFinalize = ! $isProduction && ((int) $request->query('simulated_paid', 0) === 1 || $booking->status === 'pending');
-
-        if ($shouldAutoFinalize && $booking->status !== 'paid') {
-            $booking->update([
-                'status' => 'paid',
-                'paid_at' => $booking->paid_at ?? now(),
-            ]);
-            app(TicketNotificationService::class)->sendTicketPaid($booking);
-        }
-
-        return redirect()->route('booking.index', array_filter([
-            'transaction_status' => $request->query('transaction_status'),
-            'payment_status' => $request->query('payment_status'),
-            'status' => $request->query('status'),
-            'invoice_number' => $request->query('invoice_number') ?? $request->query('invoice_no') ?? $request->query('invoice'),
-            'order_id' => $request->query('order_id'),
-            'simulated_paid' => $request->query('simulated_paid'),
-        ], fn ($value) => $value !== null && $value !== ''));
+        return redirect()->route('booking.index');
     }
 
     private function isProfileComplete($user): bool
@@ -650,44 +676,23 @@ class BookingController extends Controller
 
     private function syncBookingFromCallback(Request $request, $user, ?TicketBooking $existingBooking): ?TicketBooking
     {
-        $incomingStatus = strtoupper((string) (
-            $request->query('transaction_status')
-            ?? $request->query('payment_status')
-            ?? $request->query('status')
-            ?? ''
-        ));
-
+        // Read-only: hanya mencari booking berdasarkan invoice_number dari URL.
+        // Tidak mengubah status — itu hanya dilakukan oleh webhook DOKU.
         $incomingInvoice = $request->query('invoice_number')
             ?? $request->query('invoice_no')
             ?? $request->query('invoice')
             ?? $request->query('order_id');
 
-        $isPaidCallback = in_array($incomingStatus, ['SUCCESS', 'PAID', 'COMPLETED', 'SETTLED', 'CAPTURED'], true);
-
-        if (! $isPaidCallback && ! $incomingInvoice) {
-            return $existingBooking;
-        }
-
-        $targetBooking = null;
-
         if ($incomingInvoice) {
-            $targetBooking = TicketBooking::where('user_id', $user->id)
+            $found = TicketBooking::where('user_id', $user->id)
                 ->where('invoice_number', $incomingInvoice)
                 ->first();
+
+            if ($found) {
+                return $found;
+            }
         }
 
-        if (! $targetBooking) {
-            $targetBooking = $existingBooking;
-        }
-
-        if ($targetBooking && $isPaidCallback && $targetBooking->status !== 'paid') {
-            $targetBooking->update([
-                'status' => 'paid',
-                'paid_at' => $targetBooking->paid_at ?? now(),
-            ]);
-            app(TicketNotificationService::class)->sendTicketPaid($targetBooking);
-        }
-
-        return $targetBooking ?: $existingBooking;
+        return $existingBooking;
     }
 }

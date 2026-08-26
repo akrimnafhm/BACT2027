@@ -15,6 +15,15 @@ class WaGroupLink extends Model
     ];
 
     /**
+     * Semua kategori tiket yang memiliki grup WhatsApp.
+     * Sumber tunggal untuk dropdown screening & halaman Grup WhatsApp.
+     */
+    public static function allCategories(): array
+    {
+        return ['Basic', 'Advanced', 'Basic-Advanced', 'Online', 'Workshop', 'Advanced-Workshop', 'Basic-Advanced + Workshop'];
+    }
+
+    /**
      * Kategori menjadi satu-satunya pembeda link grup WA.
      * Gelombang (Early Bird / Regular) dengan kategori sama tetap satu grup.
      */
@@ -60,24 +69,4 @@ class WaGroupLink extends Model
         return $row?->wa_group_link;
     }
 
-    /**
-     * Daftar grup yang relevan untuk sebuah kategori tiket.
-     * Setiap kategori tiket memiliki 1 grup WA sendiri.
-     */
-    public static function groupCategoriesFor(string $category): array
-    {
-        $map = [
-            'Basic'                    => ['Basic'],
-            'Advanced'                 => ['Advanced'],
-            'Online'                   => ['Online'],
-            'Workshop'                 => ['Workshop'],
-            'Advanced-Workshop'        => ['Advanced-Workshop'],
-            'Basic-Advanced'           => ['Basic-Advanced'],
-            'Basic-Advanced + Workshop'=> ['Basic-Advanced + Workshop'],
-        ];
-
-        $normalized = static::normalizeCategory($category);
-
-        return $map[$normalized] ?? [$normalized];
-    }
 }

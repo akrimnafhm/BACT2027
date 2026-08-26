@@ -15,22 +15,22 @@ class DokuWebhookController extends Controller
     public function handle(Request $request)
     {
         $payload = $request->all();
-        
+
         // 1. Catat seluruh data yang masuk ke storage/logs/laravel.log
         Log::info('DOKU Notification Received:', $payload);
 
-        // 2. Ambil status transaksi dari berbagai kemungkinan struktur DOKU
-        $status = $payload['transaction']['status'] 
+        // 2. Ambil field kunci untuk investigasi
+        $originalRequestId = $payload['transaction']['original_request_id'] ?? null;
+        $status = $payload['transaction']['status']
                   ?? $payload['transaction_status']
-                  ?? $payload['status'] 
-                  ?? $payload['service']['status'] 
+                  ?? $payload['status']
+                  ?? $payload['service']['status']
                   ?? $payload['payment']['status']
                   ?? null;
 
-        // 3. Ambil invoice_number dari berbagai kemungkinan struktur DOKU
-        $invoiceNumber = $payload['order']['invoice_number'] 
-                         ?? $payload['order']['invoice_no'] 
-                         ?? $payload['invoice_number'] 
+        $invoiceNumber = $payload['order']['invoice_number']
+                         ?? $payload['order']['invoice_no']
+                         ?? $payload['invoice_number']
                          ?? $payload['payment']['invoice_number']
                          ?? $payload['merchant_ref']
                          ?? $payload['reference_number']
@@ -42,10 +42,10 @@ class DokuWebhookController extends Controller
                       ?? $payload['customer']['customer_id']
                       ?? null;
 
-        // 3b. Susun label metode pembayaran spesifik dari channel & method DOKU
+        // 3. Susun label metode pembayaran spesifik dari channel & method DOKU
         $paymentMethod = $this->composePaymentMethod($payload);
 
-        Log::info("Parsed DOKU Data -> Invoice: {$invoiceNumber} | Customer: {$customerId} | Status: {$status} | Channel: {$paymentMethod}");
+        Log::info("Parsed DOKU Data -> Invoice: {$invoiceNumber} | Customer: {$customerId} | Status: {$status} | Channel: {$paymentMethod} | original_request_id: {$originalRequestId}");
 
         // 4. Jika status SUCCESS / BERHASIL / PAID / SETTLEMENT
         $normalizedStatus = strtoupper(trim((string) $status));
@@ -61,14 +61,21 @@ class DokuWebhookController extends Controller
                 $reservation = HotelReservation::where('invoice_number', $invoiceNumber)->first();
             }
 
-            if (!$booking && $customerId !== null) {
-                $booking = TicketBooking::where('user_id', $customerId)
-                    ->where('status', 'pending')
-                    ->latest()
-                    ->first();
-            }
+            // FALLBACK DIHAPUS: Pencarian berdasarkan user_id + status pending
+            // terlalu berisiko mencocokkan booking yang salah. Jika invoice_number
+            // tidak ditemukan, log warning dan abaikan notification ini.
 
             if ($booking) {
+                // Proteksi: jangan turunkan status dari PAID ke non-PAID.
+                if ($booking->status === 'paid') {
+                    Log::info("IGNORED: Booking ID {$booking->id} (Invoice: {$invoiceNumber}) sudah PAID. Notification {$normalizedStatus} dari {$paymentMethod} diabaikan.");
+
+                    return response()->json([
+                        'status' => 'IGNORED',
+                        'message' => 'Booking already paid'
+                    ], 200);
+                }
+
                 $paidAt = $this->extractTransactionDate($payload) ?? now();
 
                 $booking->update([
@@ -76,7 +83,7 @@ class DokuWebhookController extends Controller
                     'paid_at' => $paidAt,
                 ]);
 
-                Log::info("SUKSES: Booking ID {$booking->id} (Invoice: {$invoiceNumber}) berhasil diubah menjadi PAID.");
+                Log::info("SUKSES: Booking ID {$booking->id} (Invoice: {$invoiceNumber}) berhasil diubah menjadi PAID. original_request_id: {$originalRequestId} | Channel: {$paymentMethod}");
 
                 // Kirim notifikasi WA & Email ke peserta
                 app(TicketNotificationService::class)->sendTicketPaid($booking);
@@ -88,12 +95,22 @@ class DokuWebhookController extends Controller
             }
 
             if ($reservation) {
+                // Proteksi: jangan turunkan status dari PAID ke non-PAID.
+                if ($reservation->status === 'paid') {
+                    Log::info("IGNORED: Reservasi Hotel ID {$reservation->id} (Invoice: {$invoiceNumber}) sudah PAID. Notification {$normalizedStatus} dari {$paymentMethod} diabaikan.");
+
+                    return response()->json([
+                        'status' => 'IGNORED',
+                        'message' => 'Reservation already paid'
+                    ], 200);
+                }
+
                 $reservation->update([
                     'status' => 'paid',
                     'payment_method' => $paymentMethod ?: $reservation->payment_method,
                 ]);
 
-                Log::info("SUKSES: Reservasi Hotel ID {$reservation->id} (Invoice: {$invoiceNumber}) berhasil diubah menjadi PAID.");
+                Log::info("SUKSES: Reservasi Hotel ID {$reservation->id} (Invoice: {$invoiceNumber}) berhasil diubah menjadi PAID. original_request_id: {$originalRequestId} | Channel: {$paymentMethod}");
 
                 // Kirim notifikasi WA & Email ke pemesan hotel
                 app(HotelNotificationService::class)->sendHotelPaid($reservation);
@@ -104,7 +121,9 @@ class DokuWebhookController extends Controller
                 ], 200);
             }
 
-            Log::warning("GAGAL: Invoice {$invoiceNumber} / customer {$customerId} tidak ditemukan di tabel ticket_bookings / hotel_reservations.");
+            Log::warning("GAGAL: Invoice {$invoiceNumber} / customer {$customerId} tidak ditemukan di tabel ticket_bookings / hotel_reservations. original_request_id: {$originalRequestId} | Channel: {$paymentMethod} | Status: {$normalizedStatus}");
+        } else {
+            Log::info("DOKU non-paid notification: Invoice: {$invoiceNumber} | Status: {$normalizedStatus} | Channel: {$paymentMethod} | original_request_id: {$originalRequestId}");
         }
 
         return response()->json([
