@@ -455,7 +455,7 @@
          MODAL EDIT DATA PESERTA (HANYA DI DATA ALL)
          ========================================================= -->
     <div id="editModal" class="fixed inset-0 z-50 hidden overflow-y-auto bg-gray-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full border border-gray-200 overflow-hidden max-h-[90vh] overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full border border-gray-200 overflow-hidden max-h-[90vh] overflow-y-auto scrollbar-none">
             <div class="bg-[#FBE39D] px-6 py-4 border-b border-[#E19404]/20 flex justify-between items-center">
                 <h3 class="font-extrabold text-gray-900 text-lg">Edit Data Peserta</h3>
                 <button type="button" onclick="closeEditModal()" class="text-gray-500 hover:text-gray-800">✕</button>
@@ -575,7 +575,7 @@
          MODAL TAMBAH PESERTA MANUAL (HANYA DI DATA ALL)
          ========================================================= -->
     <div id="manualModal" class="fixed inset-0 z-50 hidden overflow-y-auto bg-gray-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full border border-gray-200 overflow-hidden max-h-[90vh] overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden max-h-[90vh] overflow-y-auto scrollbar-none">
             <div class="bg-[#FBE39D] px-6 py-4 border-b border-[#E19404]/20 flex justify-between items-center">
                 <h3 class="font-extrabold text-gray-900 text-lg">Tambah Peserta Manual</h3>
                 <button type="button" onclick="closeManualModal()" class="text-gray-500 hover:text-gray-800">✕</button>
@@ -629,36 +629,36 @@
                     <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Instansi / RS <span class="text-red-500">*</span></label>
                     <input type="text" name="institution_name" required placeholder="RSUD Dr. Soetomo" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl">
                 </div>
-                <div class="rounded-xl bg-amber-50 border border-amber-200 p-3 flex gap-2 items-start">
-                    <svg class="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    <p class="text-xs text-amber-800 leading-relaxed">Peserta manual disimpan dengan status <b>TERTUNDA</b> dan belum masuk tab
-                        <b>Data Peserta</b>. Setelah ditambahkan, klik tombol <b>Konfirmasi</b> pada barisnya untuk
-                        mencatatnya sebagai peserta <b>LUNAS</b>.</p>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Provinsi Instansi <span class="text-red-500">*</span></label>
+                    <select id="m_provinsi" name="institution_province" required class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl bg-white cursor-pointer">
+                        <option value="">-- Pilih Provinsi --</option>
+                    </select>
                 </div>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Provinsi Instansi <span class="text-red-500">*</span></label>
-                        <select id="m_provinsi" name="institution_province" required class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl bg-white cursor-pointer">
-                            <option value="">-- Pilih Provinsi --</option>
-                        </select>
-                    </div>
                     <div>
                         <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Kabupaten / Kota Instansi <span class="text-red-500">*</span></label>
                         <select id="m_kabupaten" name="institution_city" required disabled class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl bg-white cursor-pointer disabled:bg-gray-100 disabled:cursor-not-allowed">
                             <option value="">-- Pilih Kabupaten --</option>
                         </select>
                     </div>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Kecamatan Instansi <span class="text-red-500">*</span></label>
-                    <select id="m_kecamatan" name="institution_district" required disabled class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl bg-white cursor-pointer disabled:bg-gray-100 disabled:cursor-not-allowed">
-                        <option value="">-- Pilih Kecamatan --</option>
-                    </select>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Kecamatan Instansi <span class="text-red-500">*</span></label>
+                        <select id="m_kecamatan" name="institution_district" required disabled class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl bg-white cursor-pointer disabled:bg-gray-100 disabled:cursor-not-allowed">
+                            <option value="">-- Pilih Kecamatan --</option>
+                        </select>
+                    </div>
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Catatan Awal <span class="text-gray-400 normal-case font-medium">(opsional)</span></label>
                     <textarea name="notes" rows="2" placeholder="cth: Data titipan dari panitia" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl"></textarea>
+                </div>
+                <div class="rounded-xl bg-amber-50 border border-amber-200 p-3 flex gap-2 items-start">
+                    <svg class="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <p class="text-xs text-amber-800 leading-relaxed">Peserta manual disimpan dengan status <b>TERTUNDA</b> dan belum masuk tab
+                        <b>Data Peserta</b>. Setelah ditambahkan, klik tombol <b>Konfirmasi</b> pada barisnya untuk
+                        mencatatnya sebagai peserta <b>LUNAS</b>.</p>
                 </div>
                 <div class="flex justify-end gap-2 pt-3 border-t border-gray-100">
                     <button type="button" onclick="closeManualModal()" class="px-4 py-2 text-xs font-bold text-gray-600 bg-gray-100 rounded-xl">Batal</button>
