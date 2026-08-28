@@ -584,14 +584,15 @@
                 @csrf
                 <div>
                     <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Pilih Tiket <span class="text-red-500">*</span></label>
-                    <select name="ticket_id" required class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl">
+                    <select name="ticket_id" id="manualTicketSelect" required class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl">
                         <option value="">-- Pilih Jenis & Gelombang Tiket --</option>
                         @foreach($allTickets as $tItem)
-                            <option value="{{ $tItem->id }}">
+                            <option value="{{ $tItem->id }}" data-category="{{ $tItem->ticket_category ?? 'Umum' }}">
                                 {{ $tItem->ticket_category ?? 'Umum' }} — {{ $tItem->ticket_name ?? 'Tiket' }} (Rp{{ number_format($tItem->price, 0, ',', '.') }})
                             </option>
                         @endforeach
                     </select>
+                    <p id="manualOwnedWarning" class="hidden mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2"></p>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
@@ -858,6 +859,70 @@
         function closeManualModal() {
             document.getElementById('manualModal').classList.add('hidden');
         }
+
+        // ---------- CEK KATEGORI DIMILIKI OLEH EMAIL (AJAX) ----------
+        // Saat email diisi, cek kategori tiket yang sudah dimiliki oleh email tsb,
+        // lalu nonaktifkan opsi tiket pada dropdown agar kategori yang sama
+        // tidak bisa dipilih dua kali (aturan: 1 kategori = 1 tiket per email).
+        (function initManualOwnedCheck() {
+            const emailInput = document.querySelector('#manualModal input[name="gmail_account"]');
+            const ticketSelect = document.getElementById('manualTicketSelect');
+            const ownedWarning = document.getElementById('manualOwnedWarning');
+            const checkUrl = '{{ route("admin.participants.checkOwnedCategories") }}';
+            if (!emailInput || !ticketSelect || !ownedWarning || !checkUrl) return;
+
+            let debounceTimer = null;
+
+            function categoryFromOption(opt) {
+                return opt.getAttribute('data-category');
+            }
+
+            function applyOwnedCategories(owned) {
+                const ownedSet = new Set(owned || []);
+                let disabledAny = false;
+                Array.from(ticketSelect.options).forEach(opt => {
+                    if (opt.value === '') return;
+                    if (ownedSet.has(categoryFromOption(opt))) {
+                        opt.disabled = true;
+                        disabledAny = true;
+                    } else {
+                        opt.disabled = false;
+                    }
+                });
+                if (ticketSelect.selectedOptions[0] && ticketSelect.selectedOptions[0].disabled) {
+                    ticketSelect.value = '';
+                }
+                if (disabledAny) {
+                    const names = Array.from(ownedSet).map(c => '<b>' + c + '</b>').join(', ');
+                    ownedWarning.innerHTML = 'Email ini sudah memiliki tiket kategori ' + names +
+                        '. Opsi tiket kategori tersebut dinonaktifkan agar tidak bisa dipilih dua kali.';
+                    ownedWarning.classList.remove('hidden');
+                } else {
+                    ownedWarning.classList.add('hidden');
+                    ownedWarning.innerHTML = '';
+                }
+            }
+
+            emailInput.addEventListener('input', function () {
+                clearTimeout(debounceTimer);
+                const email = emailInput.value.trim();
+                if (!email) {
+                    applyOwnedCategories([]);
+                    return;
+                }
+                debounceTimer = setTimeout(function () {
+                    fetch(checkUrl + '?email=' + encodeURIComponent(email), {
+                        headers: { 'Accept': 'application/json' }
+                    })
+                    .then(res => {
+                        if (!res.ok) throw new Error('Gagal memuat data');
+                        return res.json();
+                    })
+                    .then(data => applyOwnedCategories(data.owned_categories))
+                    .catch(() => applyOwnedCategories([]));
+                }, 400);
+            });
+        })();
 
         // ---------- DROPDOWN WILAYAH BERJENJANG (EMSIFA) UNTUK MODAL PESERTA MANUAL ----------
         // Mirip dengan halaman peserta: Provinsi -> Kabupaten/Kota -> Kecamatan.

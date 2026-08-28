@@ -146,6 +146,7 @@ Route::middleware(['auth', IsAdmin::class])->prefix('admin')->group(function () 
     Route::get('/participants', [AdminController::class, 'participants'])->name('admin.participants');
     Route::get('/participants/export', [AdminController::class, 'exportParticipants'])->name('admin.participants.export');
     Route::post('/participants/store-manual', [AdminController::class, 'storeParticipantManual'])->name('admin.participants.storeManual');
+    Route::get('/participants/check-owned-categories', [AdminController::class, 'checkOwnedCategories'])->name('admin.participants.checkOwnedCategories');
     Route::post('/participants/{id}/update-status', [AdminController::class, 'updateParticipantStatus'])->name('admin.participants.updateStatus');
     Route::post('/participants/{id}/destroy', [AdminController::class, 'destroyBooking'])->name('admin.participants.destroy');
     Route::post('/participants/{id}/restore', [AdminController::class, 'restoreParticipant'])->name('admin.participants.restore');

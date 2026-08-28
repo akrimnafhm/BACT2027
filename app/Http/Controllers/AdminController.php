@@ -1116,6 +1116,16 @@ class AdminController extends Controller
         // user_id dibiarkan null — saat pemilik email mendaftar, tiket otomatis terhubung.
         $linkedUser = User::where('email', $request->gmail_account)->first();
 
+        // ATURAN: Satu kategori hanya boleh dimiliki satu tiket per email
+        // (sama seperti pembelian via web).
+        $existingCategories = TicketBooking::where('gmail_account', $request->gmail_account)
+            ->where('status', '!=', 'cancelled')
+            ->pluck('ticket_category')
+            ->all();
+        if (in_array($ticket->ticket_category, $existingCategories)) {
+            return back()->with('error', 'Email "'.$request->gmail_account.'" sudah memiliki tiket kategori "'.$ticket->ticket_category.'". Setiap kategori hanya dapat dimiliki satu tiket per email.');
+        }
+
         // Kunci kuota secara atomik — peserta manual juga mengonsumsi kuota seperti booking website.
         try {
             $booking = DB::transaction(function () use ($ticket, $request, $linkedUser) {
@@ -1157,6 +1167,25 @@ class AdminController extends Controller
         }
 
         return back()->with('success', 'Peserta manual baru berhasil ditambahkan. Status sementara TERTUNDA — gunakan tombol Konfirmasi untuk mencatatnya sebagai peserta LUNAS (menghubungkan dengan data peserta).');
+    }
+
+    /**
+     * CEK KATEGORI TIKET YANG SUDAH DIMILIKI OLEH EMAIL (AJAX).
+     * Digunakan di modal peserta manual untuk menonaktifkan dropdown tiket
+     * agar kategori yang sama tidak bisa dipilih dua kali.
+     */
+    public function checkOwnedCategories(Request $request)
+    {
+        $request->validate(['email' => 'required|email']);
+
+        $categories = TicketBooking::where('gmail_account', $request->email)
+            ->where('status', '!=', 'cancelled')
+            ->pluck('ticket_category')
+            ->unique()
+            ->values()
+            ->all();
+
+        return response()->json(['owned_categories' => $categories]);
     }
 
     // ==========================================
