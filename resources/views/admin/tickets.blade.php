@@ -332,8 +332,9 @@
                         <input type="number" name="price" id="edit_ticket_price" required min="0" class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404]">
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Kuota Tersedia (Slot)</label>
-                        <input type="number" name="quota" id="edit_ticket_quota" required min="0" class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404]">
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Sesuaikan Kuota Tiket (&plusmn;)</label>
+                        <input type="number" name="quota" id="edit_ticket_quota" placeholder="Contoh: -2 atau 3" class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404]">
+                        <p id="edit_ticket_quota_preview" class="text-[11px] font-bold text-gray-500 mt-1.5"></p>
                     </div>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -491,8 +492,11 @@
             document.getElementById('edit_ticket_name').value = ticket.ticket_name;
             document.getElementById('edit_ticket_category').value = ticket.ticket_category;
             document.getElementById('edit_ticket_price').value = ticket.price;
-            document.getElementById('edit_ticket_quota').value = ticket.quota;
-            
+            const quotaInput = document.getElementById('edit_ticket_quota');
+            quotaInput.value = '';
+            quotaInput.dataset.base = ticket.quota;
+            updateTicketQuotaPreview();
+
             if (ticket.start_date) {
                 document.getElementById('edit_ticket_start_date').value = ticket.start_date.substring(0, 16);
             } else {
@@ -509,6 +513,39 @@
         }
         function closeEditTicketModal() {
             document.getElementById('editTicketModal').classList.add('hidden');
+        }
+
+        // Preview penyesuaian kuota tiket (edit): input = selisih, tampilkan hasil akhir
+        function updateTicketQuotaPreview() {
+            const quotaInput = document.getElementById('edit_ticket_quota');
+            const previewEl = document.getElementById('edit_ticket_quota_preview');
+            if (!quotaInput || !previewEl) return;
+
+            const submitBtn = document.querySelector('#editTicketForm button[type="submit"]');
+            const baseQuota = parseInt(quotaInput.dataset.base || '0', 10);
+            const raw = quotaInput.value.trim();
+            previewEl.classList.remove('text-gray-500', 'text-green-700', 'text-amber-600', 'text-red-600');
+
+            if (raw === '' || isNaN(parseInt(raw, 10))) {
+                previewEl.textContent = 'Sisa kuota saat ini: ' + baseQuota + ' slot — biarkan kosong bila tidak ingin mengubah.';
+                previewEl.classList.add('text-gray-500');
+                if (submitBtn) submitBtn.disabled = false;
+                return;
+            }
+
+            const delta = parseInt(raw, 10);
+            const result = baseQuota + delta;
+
+            if (result < 0) {
+                previewEl.textContent = 'Tidak bisa disimpan: hasil ' + result + ' kurang dari 0. Sisa kuota saat ini hanya ' + baseQuota + ' slot.';
+                previewEl.classList.add('text-red-600');
+                if (submitBtn) submitBtn.disabled = true;
+                return;
+            }
+
+            previewEl.textContent = baseQuota + ' slot ' + (delta >= 0 ? '+ ' : '− ') + Math.abs(delta) + ' = ' + result + ' slot setelah disimpan.';
+            previewEl.classList.add(delta > 0 ? 'text-green-700' : (delta < 0 ? 'text-amber-600' : 'text-gray-500'));
+            if (submitBtn) submitBtn.disabled = false;
         }
 
         // --- 2. SCRIPT KELOLA MODAL KAMAR HOTEL + MANAJER FOTO ---
@@ -779,6 +816,9 @@
 
             document.getElementById('edit_quota').addEventListener('input', updateHotelQuotaPreview);
             document.getElementById('edit_quota').addEventListener('change', updateHotelQuotaPreview);
+
+            document.getElementById('edit_ticket_quota').addEventListener('input', updateTicketQuotaPreview);
+            document.getElementById('edit_ticket_quota').addEventListener('change', updateTicketQuotaPreview);
 
             document.getElementById('addHotelForm').addEventListener('submit', function (e) {
                 if (countManagedPhotos('add') === 0) {

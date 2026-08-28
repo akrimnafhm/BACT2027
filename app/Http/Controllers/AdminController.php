@@ -192,7 +192,8 @@ class AdminController extends Controller
             'ticket_name' => 'required|string|max:100',
             'ticket_category' => 'required|string|in:Basic,Advanced,Basic-Advanced,Online,Workshop,Advanced-Workshop,Basic-Advanced + Workshop',
             'price' => 'required|numeric|min:0',
-            'quota' => 'required|integer|min:0',
+            // Kuota di sini adalah SELISIH (bisa negatif, mis. -2). Kosong = tidak berubah.
+            'quota' => 'nullable|integer',
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
         ], [
@@ -200,14 +201,29 @@ class AdminController extends Controller
         ]);
 
         $ticket = Ticket::findOrFail($id);
+
+        // Validasi penyesuaian kuota: hasil akhir tidak boleh negatif
+        $quotaDelta = (int) $request->input('quota', 0);
+        if ($ticket->quota + $quotaDelta < 0) {
+            throw ValidationException::withMessages([
+                'quota' => "Penyesuaian kuota tidak valid: {$ticket->quota} slot (".($quotaDelta > 0 ? '+' : '').$quotaDelta.') menghasilkan angka negatif.',
+            ]);
+        }
+
         $ticket->update([
             'ticket_name' => $request->ticket_name,
             'ticket_category' => $request->ticket_category,
             'price' => $request->price,
-            'quota' => $request->quota,
             'start_date' => $request->start_date ?: null,
             'end_date' => $request->end_date ?: null,
         ]);
+
+        // Terapkan penyesuaian kuota secara atomik (aman dari pemesanan bersamaan)
+        if ($quotaDelta > 0) {
+            $ticket->increment('quota', $quotaDelta);
+        } elseif ($quotaDelta < 0) {
+            $ticket->decrement('quota', abs($quotaDelta));
+        }
 
         return redirect()->route('admin.tickets.index')
             ->with('success', 'Data tiket berhasil diperbarui!');
