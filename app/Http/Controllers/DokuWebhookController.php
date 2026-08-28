@@ -66,6 +66,14 @@ class DokuWebhookController extends Controller
             // tidak ditemukan, log warning dan abaikan notification ini.
 
             if ($booking) {
+                Log::info('WEBHOOK: Booking found', [
+                    'booking_id' => $booking->id,
+                    'invoice_number' => $invoiceNumber,
+                    'status_before' => $booking->status,
+                    'original_request_id' => $originalRequestId,
+                    'channel' => $paymentMethod,
+                ]);
+
                 // Proteksi: jangan turunkan status dari PAID ke non-PAID.
                 if ($booking->status === 'paid') {
                     Log::info("IGNORED: Booking ID {$booking->id} (Invoice: {$invoiceNumber}) sudah PAID. Notification {$normalizedStatus} dari {$paymentMethod} diabaikan.");
@@ -78,10 +86,28 @@ class DokuWebhookController extends Controller
 
                 $paidAt = $this->extractTransactionDate($payload) ?? now();
 
-                $booking->update([
-                    'status' => 'paid',
-                    'paid_at' => $paidAt,
-                ]);
+                try {
+                    $booking->update([
+                        'status' => 'paid',
+                        'paid_at' => $paidAt,
+                    ]);
+
+                    Log::info('WEBHOOK: DB update paid SUCCESS', [
+                        'booking_id' => $booking->id,
+                        'invoice_number' => $invoiceNumber,
+                        'status_after' => 'paid',
+                        'original_request_id' => $originalRequestId,
+                    ]);
+                } catch (\Throwable $e) {
+                    Log::error('WEBHOOK: DB update paid FAILED', [
+                        'booking_id' => $booking->id,
+                        'invoice_number' => $invoiceNumber,
+                        'original_request_id' => $originalRequestId,
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                    ]);
+                    throw $e;
+                }
 
                 Log::info("SUKSES: Booking ID {$booking->id} (Invoice: {$invoiceNumber}) berhasil diubah menjadi PAID. original_request_id: {$originalRequestId} | Channel: {$paymentMethod}");
 
@@ -95,6 +121,14 @@ class DokuWebhookController extends Controller
             }
 
             if ($reservation) {
+                Log::info('WEBHOOK: Reservation found', [
+                    'reservation_id' => $reservation->id,
+                    'invoice_number' => $invoiceNumber,
+                    'status_before' => $reservation->status,
+                    'original_request_id' => $originalRequestId,
+                    'channel' => $paymentMethod,
+                ]);
+
                 // Proteksi: jangan turunkan status dari PAID ke non-PAID.
                 if ($reservation->status === 'paid') {
                     Log::info("IGNORED: Reservasi Hotel ID {$reservation->id} (Invoice: {$invoiceNumber}) sudah PAID. Notification {$normalizedStatus} dari {$paymentMethod} diabaikan.");
@@ -105,10 +139,28 @@ class DokuWebhookController extends Controller
                     ], 200);
                 }
 
-                $reservation->update([
-                    'status' => 'paid',
-                    'payment_method' => $paymentMethod ?: $reservation->payment_method,
-                ]);
+                try {
+                    $reservation->update([
+                        'status' => 'paid',
+                        'payment_method' => $paymentMethod ?: $reservation->payment_method,
+                    ]);
+
+                    Log::info('WEBHOOK: DB update paid SUCCESS', [
+                        'reservation_id' => $reservation->id,
+                        'invoice_number' => $invoiceNumber,
+                        'status_after' => 'paid',
+                        'original_request_id' => $originalRequestId,
+                    ]);
+                } catch (\Throwable $e) {
+                    Log::error('WEBHOOK: DB update paid FAILED', [
+                        'reservation_id' => $reservation->id,
+                        'invoice_number' => $invoiceNumber,
+                        'original_request_id' => $originalRequestId,
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                    ]);
+                    throw $e;
+                }
 
                 Log::info("SUKSES: Reservasi Hotel ID {$reservation->id} (Invoice: {$invoiceNumber}) berhasil diubah menjadi PAID. original_request_id: {$originalRequestId} | Channel: {$paymentMethod}");
 

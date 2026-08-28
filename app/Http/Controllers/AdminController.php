@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\HotelReservation;
 use App\Models\HotelRoom;
 use App\Models\SiteSetting;
 use App\Models\Ticket;
@@ -233,11 +234,42 @@ class AdminController extends Controller
         $ticket->is_active = ! $ticket->is_active;
         $ticket->save();
 
+        // Saat tiket dinonaktifkan, batalkan semua booking pending pada tiket ini
+        // meskipun timer pembayaran masih panjang. Kuota dikembalikan agar tidak
+        // terkunci oleh pesanan yang tidak bisa lagi dilanjutkan.
+        if (! $ticket->is_active) {
+            $this->cancelPendingBookingsForTicket($ticket);
+        }
+
         return response()->json([
             'success' => true,
             'is_active' => $ticket->is_active,
             'message' => 'Status tiket berhasil diperbarui!',
         ]);
+    }
+
+    /**
+     * Batalkan semua booking berstatus pending pada sebuah tiket yang dinonaktifkan.
+     * Kuota tiket dikembalikan (+1 per booking) dan catatan alasan disimpan.
+     */
+    private function cancelPendingBookingsForTicket(Ticket $ticket): void
+    {
+        $bookings = TicketBooking::where('ticket_id', $ticket->id)
+            ->where('status', 'pending')
+            ->get();
+
+        foreach ($bookings as $booking) {
+            $noteLine = now()->format('d M Y H:i').' — Dibatalkan otomatis oleh sistem (tiket dinonaktifkan oleh admin)';
+            $booking->notes = trim(($booking->notes ? $booking->notes."\n" : '').$noteLine);
+            $booking->notes_updated_at = now();
+            $booking->cancelled_at = now();
+            $booking->status = 'cancelled';
+            $booking->save();
+        }
+
+        if ($bookings->isNotEmpty()) {
+            $ticket->increment('quota', $bookings->count());
+        }
     }
 
     // ==========================================
@@ -457,11 +489,41 @@ class AdminController extends Controller
         $hotel->is_active = ! $hotel->is_active;
         $hotel->save();
 
+        // Saat kamar dinonaktifkan, batalkan semua reservasi pending pada kamar ini
+        // meskipun timer pembayaran masih panjang. Kuota dikembalikan sesuai jumlah
+        // kamar yang dipesan agar tidak terkunci oleh reservasi yang tak bisa dilanjutkan.
+        if (! $hotel->is_active) {
+            $this->cancelPendingReservationsForRoom($hotel);
+        }
+
         return response()->json([
             'success' => true,
             'is_active' => $hotel->is_active,
             'message' => 'Status kamar hotel berhasil diperbarui!',
         ]);
+    }
+
+    /**
+     * Batalkan semua reservasi berstatus pending pada sebuah kamar yang dinonaktifkan.
+     * Kuota kamar dikembalikan sesuai jumlah kamar yang dipesan (quantity).
+     */
+    private function cancelPendingReservationsForRoom(HotelRoom $hotel): void
+    {
+        $reservations = HotelReservation::where('hotel_room_id', $hotel->id)
+            ->where('status', 'pending')
+            ->get();
+
+        $quotaToReturn = 0;
+        foreach ($reservations as $reservation) {
+            $quotaToReturn += max(1, (int) $reservation->quantity);
+            $reservation->cancelled_at = now();
+            $reservation->status = 'cancelled';
+            $reservation->save();
+        }
+
+        if ($quotaToReturn > 0) {
+            $hotel->increment('quota', $quotaToReturn);
+        }
     }
 
     // ==========================================
