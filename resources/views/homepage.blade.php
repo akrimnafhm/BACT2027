@@ -226,6 +226,10 @@
                                 class="inline-flex items-center gap-1.5 px-3 py-1 bg-[#FBE39D] text-[#E19404] text-[11px] font-black rounded-lg uppercase tracking-wider">
                                 <span>{{ $info->badge ?? 'INFO' }}</span>
                             </div>
+                            @if($info->image_path)
+                                <img src="{{ asset('storage/' . $info->image_path) }}" alt="{{ $info->title }}"
+                                    class="w-full h-44 object-cover rounded-xl border border-gray-200">
+                            @endif
                             <h3 class="text-lg font-black text-gray-900 leading-snug">{{ $info->title }}</h3>
                             <p class="text-sm text-gray-600 leading-relaxed">{{ $info->content }}</p>
                         </div>
