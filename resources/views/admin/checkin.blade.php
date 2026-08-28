@@ -302,6 +302,19 @@
             if (name !== 'scan') {
                 stopScanner();
             }
+
+            // Sinkronkan URL dengan tab aktif (tanpa reload) agar:
+            // - Pagination ("Peserta Sudah Check-in") tetap berada di tab yang sama
+            // - Refresh halaman tidak kembali ke tab scan.
+            const url = new URL(window.location.href);
+            if (name === 'checked') {
+                url.searchParams.set('tab', 'checked');
+                url.searchParams.delete('page');
+            } else {
+                url.searchParams.delete('tab');
+                url.searchParams.delete('page');
+            }
+            history.replaceState({}, '', url.toString());
         }
 
         async function startScanner() {

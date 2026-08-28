@@ -1328,7 +1328,7 @@ class AdminController extends Controller
     {
         return TicketBooking::with('ticket')
             ->whereNotNull('checked_in_at')
-            ->latest('checked_in_at')
+            ->orderByDesc('checked_in_at')
             ->paginate(50)
             ->withQueryString();
     }
