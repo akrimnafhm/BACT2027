@@ -232,34 +232,47 @@
                                 <table class="w-full text-sm">
                                     <thead>
                                         <tr class="bg-gray-50 text-left text-[11px] uppercase tracking-wider text-gray-500">
-                                            <th class="px-5 py-3.5 font-bold">Nama</th>
-                                            <th class="px-5 py-3.5 font-bold">Nama & Gelar</th>
-                                            <th class="px-5 py-3.5 font-bold">Email</th>
-                                            <th class="px-5 py-3.5 font-bold">WhatsApp</th>
-                                            <!-- <th class="px-5 py-3.5 font-bold">NIK</th> -->
-                                            <th class="px-5 py-3.5 font-bold">Instansi</th>
-                                            <th class="px-5 py-3.5 font-bold">Tiket</th>
                                             <th class="px-5 py-3.5 font-bold">Waktu Check-in</th>
+                                            <!-- <th class="px-5 py-3.5 font-bold">Nama</th> -->
+                                            <th class="px-5 py-3.5 font-bold">Tiket</th>
+                                            <th class="px-5 py-3.5 font-bold">Nama & Gelar</th>                                            
+                                            <th class="px-5 py-3.5 font-bold">Email & WhatsApp</th>
+                                            <!-- <th class="px-5 py-3.5 font-bold">WhatsApp</th> -->
+                                            <!-- <th class="px-5 py-3.5 font-bold">NIK</th> -->
+                                            <th class="px-5 py-3.5 font-bold">Instansi</th>                                            
                                         </tr>
                                     </thead>
                                     <tbody class="divide-y divide-gray-100">
                                         @foreach($checkedInParticipants as $p)
                                             <tr class="hover:bg-[#FFFDF5] transition">
-                                                <td class="px-5 py-3.5 font-bold text-gray-900 whitespace-nowrap">{{ $p->full_name }}</td>
-                                                <td class="px-5 py-3.5 text-gray-700 whitespace-nowrap">{{ $p->name_with_title }}</td>
-                                                <td class="px-5 py-3.5 text-gray-700 whitespace-nowrap">{{ $p->gmail_account }}</td>
-                                                <td class="px-5 py-3.5 text-gray-700 whitespace-nowrap">{{ $p->whatsapp_number }}</td>
-                                                <!-- <td class="px-5 py-3.5 text-gray-700 whitespace-nowrap">{{ $p->nik }}</td> -->
-                                                <td class="px-5 py-3.5 text-gray-700">
-                                                    {{ $p->institution_name }}<br>
-                                                    <span class="text-[11px] text-gray-400">{{ $p->institution_city }}, {{ $p->institution_province }}</span>
-                                                </td>
-                                                <td class="px-5 py-3.5 text-gray-700 whitespace-nowrap">{{ $p->ticket_name }} - {{ $p->ticket_category }}</td>
                                                 <td class="px-5 py-3.5 whitespace-nowrap">
                                                     <span class="inline-block bg-green-100 text-green-700 text-[11px] font-extrabold px-2.5 py-1 rounded-full">
                                                         {{ $p->checked_in_at->format('d M Y H:i') }}
                                                     </span>
                                                 </td>
+                                                <!-- <td class="px-5 py-3.5 font-bold text-gray-900 whitespace-nowrap">{{ $p->full_name }}</td> -->                                                
+                                                <td class="px-5 py-3.5 text-gray-700 whitespace-nowrap">
+                                                    <div class="flex flex-col items-start gap-2">
+                                                        <span>
+                                                            {{ $p->ticket_name }}
+                                                        </span>
+
+                                                        <span class="px-2.5 py-1 bg-[#FBE39D] text-[#E19404] font-bold text-xs rounded-lg whitespace-nowrap">
+                                                            {{ $p->ticket_category }}
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td class="px-5 py-3.5 text-gray-700 whitespace-nowrap">{{ $p->name_with_title }}</td>
+                                                <td class="px-5 py-3.5 text-gray-700 whitespace-nowrap">
+                                                    <div class=" text-gray-700">{{ $p->gmail_account }}</div>
+                                                    <div class="text-xs text-gray-500">{{ $p->whatsapp_number }}</div>
+                                                </td>
+                                                <!-- <td class="px-5 py-3.5 text-gray-700 whitespace-nowrap">{{ $p->whatsapp_number }}</td> -->
+                                                <!-- <td class="px-5 py-3.5 text-gray-700 whitespace-nowrap">{{ $p->nik }}</td> -->
+                                                <td class="px-5 py-3.5 text-gray-700">
+                                                    {{ $p->institution_name }}<br>
+                                                    <span class="text-[11px] text-gray-400">{{ $p->institution_city }}, {{ $p->institution_province }}</span>
+                                                </td>                                                
                                             </tr>
                                         @endforeach
                                     </tbody>
@@ -267,7 +280,7 @@
                             </div>
                         </div>
 
-                        <div class="flex justify-center">
+                        <div>
                             {{ $checkedInParticipants->links() }}
                         </div>
                     @endif
