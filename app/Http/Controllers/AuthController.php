@@ -12,6 +12,9 @@ use Illuminate\Support\Facades\Mail;
 
 class AuthController extends Controller
 {
+    // Cooldown kirim ulang kode reset (2 menit)
+    const RESET_COOLDOWN_SECONDS = 120;
+
     // Menampilkan halaman Login
     public function showLogin()
     {
@@ -95,7 +98,17 @@ class AuthController extends Controller
      */
     public function showForgotPassword()
     {
-        return view('forgot-password');
+        // Sisa waktu cooldown kirim ulang kode reset (agar countdown bertahan saat refresh)
+        $resetCodeRemaining = 0;
+        $email = session('reset_email');
+        if ($email) {
+            $user = User::where('email', $email)->first();
+            if ($user && $user->reset_code_sent_at) {
+                $resetCodeRemaining = max(0, self::RESET_COOLDOWN_SECONDS - $user->reset_code_sent_at->diffInSeconds(now()));
+            }
+        }
+
+        return view('forgot-password', compact('resetCodeRemaining'));
     }
 
     /**
@@ -118,10 +131,20 @@ class AuthController extends Controller
             return back()->with('success', 'Jika email terdaftar di sistem, kode reset telah dikirim.');
         }
 
+        // Cooldown kirim ulang: tolak jika belum lewat 2 menit sejak kiriman terakhir.
+        if ($user->reset_code_sent_at && $user->reset_code_sent_at->gt(now()->subSeconds(self::RESET_COOLDOWN_SECONDS))) {
+            $remaining = max(1, $user->reset_code_sent_at->addSeconds(self::RESET_COOLDOWN_SECONDS)->diffInSeconds(now()));
+
+            return back()->withErrors([
+                'code' => "Mohon tunggu {$remaining} detik lagi sebelum mengirim ulang kode.",
+            ]);
+        }
+
         // Buat & simpan kode 6 digit, berlaku 10 menit
         $code = str_pad((string) rand(0, 999999), 6, '0', STR_PAD_LEFT);
         $user->reset_code = $code;
         $user->reset_code_expires_at = now()->addMinutes(10);
+        $user->reset_code_sent_at = now();
         $user->save();
 
         // Simulasi pengiriman email (fallback: tercatat di log)

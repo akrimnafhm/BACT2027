@@ -40,6 +40,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'email_otp_expires_at' => 'datetime',
             'otp_sent_at' => 'datetime',
             'email_otp_sent_at' => 'datetime',
+            'reset_code_sent_at' => 'datetime',
             'wa_joined_groups' => 'array',
             'password' => 'hashed',
         ];

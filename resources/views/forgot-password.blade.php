@@ -89,10 +89,18 @@
             </form>
 
             <!-- Kirim Ulang Kode -->
-            <form action="{{ route('forgot-password.send') }}" method="POST" class="mt-4 text-center m-0">
+            <form action="{{ route('forgot-password.send') }}" method="POST" id="form-resend-code" class="mt-4 text-center m-0">
                 @csrf
                 <input type="hidden" name="email" value="{{ session('reset_email') }}">
-                <button type="submit" class="text-sm text-[#E19404] font-bold hover:underline">Kirim Ulang Kode</button>
+                <div class="text-sm">
+                    @if(isset($resetCodeRemaining) && $resetCodeRemaining > 0)
+                        <span class="text-gray-400 font-semibold" data-countdown="{{ $resetCodeRemaining }}">
+                            Kirim ulang kode dalam <b class="text-gray-500" data-countdown-display>00:00</b>
+                        </span>
+                    @else
+                        <button type="submit" class="text-sm text-[#E19404] font-bold hover:underline">Kirim Ulang Kode</button>
+                    @endif
+                </div>
             </form>
         @endif
 
@@ -121,5 +129,39 @@
             </form>
         @endif
     </div>
+
+    <script>
+        // COUNTDOWN KIRIM ULANG KODE RESET (bertahan saat halaman di-refresh karena sisa waktu dari server)
+        function formatCountdown(seconds) {
+            const m = Math.floor(seconds / 60);
+            const s = seconds % 60;
+            return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+        }
+
+        function initResetCountdown() {
+            document.querySelectorAll('[data-countdown]').forEach(el => {
+                let remaining = parseInt(el.dataset.countdown, 10);
+                const display = el.querySelector('[data-countdown-display]');
+                if (display) display.textContent = formatCountdown(remaining);
+
+                const timer = setInterval(() => {
+                    remaining -= 1;
+                    if (display) display.textContent = formatCountdown(Math.max(0, remaining));
+
+                    if (remaining <= 0) {
+                        clearInterval(timer);
+                        el.innerHTML = '';
+                        const button = document.createElement('button');
+                        button.type = 'submit';
+                        button.className = 'text-sm text-[#E19404] font-bold hover:underline';
+                        button.textContent = 'Kirim Ulang Kode';
+                        el.appendChild(button);
+                    }
+                }, 1000);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', initResetCountdown);
+    </script>
 </body>
 </html>
