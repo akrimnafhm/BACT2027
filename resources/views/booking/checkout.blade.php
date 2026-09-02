@@ -85,7 +85,12 @@
                         <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start py-3 px-5">
                             <span class="text-gray-500 font-medium sm:pt-0.5">Alamat Instansi</span>
                             <span class="font-bold text-gray-900 mt-0.5 sm:mt-0 sm:text-right">
-                                {{ $booking->institution_district }}, {{ $booking->institution_city }}<br>
+                                @if($booking->institution_district)
+                                    {{ $booking->institution_district }}, {{ $booking->institution_city }}
+                                @else
+                                    {{ $booking->institution_city }}
+                                @endif
+                                <br>
                                 <span class="text-xs font-semibold text-gray-500">{{ $booking->institution_province }}</span>
                             </span>
                         </div>

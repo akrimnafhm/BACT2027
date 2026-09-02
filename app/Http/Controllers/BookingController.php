@@ -241,7 +241,6 @@ class BookingController extends Controller
             'gmail_account' => 'required|email|max:255',
             'plataran_sehat_email' => 'required|email|max:255',
             'institution_name' => 'required|string|max:255',
-            'institution_district' => 'required|string|max:255',
             'institution_city' => 'required|string|max:255',
             'institution_province' => 'required|string|max:255',
         ]);
@@ -309,7 +308,7 @@ class BookingController extends Controller
                         'gmail_account' => $request->gmail_account,
                         'plataran_sehat_email' => $request->plataran_sehat_email,
                         'institution_name' => $request->institution_name,
-                        'institution_district' => $request->institution_district,
+                        'institution_district' => $request->institution_district ?? null,
                         'institution_city' => $request->institution_city,
                         'institution_province' => $request->institution_province,
                     ]

@@ -274,19 +274,12 @@
                             </div>
                         </div>
 
-                        <!-- 5. BARIS PALING BAWAH: KABUPATEN & KECAMATAN -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- 5. BARIS PALING BAWAH: KABUPATEN -->
+                        <div class="grid grid-cols-1 gap-6">
                             <div>
                                 <label class="block text-sm font-semibold text-gray-700 mb-2">Kabupaten / Kota Instansi <span class="text-red-500">*</span></label>
                                 <select id="kabupaten" name="institution_city" required disabled class="w-full text-sm px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] outline-none transition disabled:bg-gray-100 disabled:cursor-not-allowed bg-white cursor-pointer">
                                     <option value="">-- Pilih Kabupaten --</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label class="block text-sm font-semibold text-gray-700 mb-2">Kecamatan Instansi <span class="text-red-500">*</span></label>
-                                <select id="kecamatan" name="institution_district" required disabled class="w-full text-sm px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] outline-none transition disabled:bg-gray-100 disabled:cursor-not-allowed bg-white cursor-pointer">
-                                    <option value="">-- Pilih Kecamatan --</option>
                                 </select>
                             </div>
                         </div>
@@ -346,8 +339,7 @@
                     profession: bookingForm.querySelector('select[name="profession"]')?.value || '',
                     institution_name: bookingForm.querySelector('input[name="institution_name"]')?.value || '',
                     institution_province: document.getElementById('provinsi')?.value || '',
-                    institution_city: document.getElementById('kabupaten')?.value || '',
-                    institution_district: document.getElementById('kecamatan')?.value || ''
+                    institution_city: document.getElementById('kabupaten')?.value || ''
                 };
                 localStorage.setItem(DRAFT_KEY, JSON.stringify(draftData));
             }
@@ -405,15 +397,12 @@
             const apiBase = 'https://www.emsifa.com/api-wilayah-indonesia/api';
             const selectProv = document.getElementById('provinsi');
             const selectKab = document.getElementById('kabupaten');
-            const selectKec = document.getElementById('kecamatan');
 
             const dbCity = "{{ $existingBooking->institution_city ?? '' }}";
-            const dbDistrict = "{{ $existingBooking->institution_district ?? '' }}";
 
-            if (selectProv && selectKab && selectKec) {
+            if (selectProv && selectKab) {
                 selectProv.addEventListener('change', saveDraft);
                 selectKab.addEventListener('change', saveDraft);
-                selectKec.addEventListener('change', saveDraft);
 
                 // 1. Load Provinsi
                 fetch(`${apiBase}/provinces.json`)
@@ -437,9 +426,7 @@
                     const provId = selectedOption ? selectedOption.getAttribute('data-id') : null;
                     
                     selectKab.innerHTML = '<option value="">-- Pilih Kabupaten --</option>';
-                    selectKec.innerHTML = '<option value="">-- Pilih Kecamatan --</option>';
                     selectKab.disabled = true;
-                    selectKec.disabled = true;
 
                     if(provId) {
                         fetch(`${apiBase}/regencies/${provId}.json`)
@@ -456,36 +443,6 @@
                                     if(optionFound) {
                                         selectKab.value = targetKab;
                                         selectKab.dispatchEvent(new Event('change'));
-                                    }
-                                }
-                            });
-                    }
-                });
-
-                // 3. Load Kecamatan
-                selectKab.addEventListener('change', (e) => {
-                    if(e.target.selectedIndex < 0) return;
-                    
-                    const selectedOption = e.target.options[e.target.selectedIndex];
-                    const kabId = selectedOption ? selectedOption.getAttribute('data-id') : null;
-                    
-                    selectKec.innerHTML = '<option value="">-- Pilih Kecamatan --</option>';
-                    selectKec.disabled = true;
-
-                    if(kabId) {
-                        fetch(`${apiBase}/districts/${kabId}.json`)
-                            .then(response => response.json())
-                            .then(districts => {
-                                districts.forEach(kec => {
-                                    selectKec.innerHTML += `<option value="${kec.name}">${kec.name}</option>`;
-                                });
-                                selectKec.disabled = false;
-
-                                const targetKec = draft.institution_district || dbDistrict;
-                                if (targetKec) {
-                                    let optionFound = Array.from(selectKec.options).find(opt => opt.value === targetKec);
-                                    if(optionFound) {
-                                        selectKec.value = targetKec;
                                     }
                                 }
                             });

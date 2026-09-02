@@ -516,17 +516,11 @@
                         </select>
                     </div>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 gap-4">
                     <div>
                         <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Kabupaten / Kota Instansi <span class="text-red-500">*</span></label>
                         <select id="edit_kabupaten" name="institution_city" required disabled class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl bg-white cursor-pointer disabled:bg-gray-100 disabled:cursor-not-allowed">
                             <option value="">-- Pilih Kabupaten --</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Kecamatan Instansi <span class="text-red-500">*</span></label>
-                        <select id="edit_kecamatan" name="institution_district" required disabled class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl bg-white cursor-pointer disabled:bg-gray-100 disabled:cursor-not-allowed">
-                            <option value="">-- Pilih Kecamatan --</option>
                         </select>
                     </div>
                 </div>
@@ -636,17 +630,11 @@
                     </select>
                 </div>
             </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 gap-4">
                     <div>
                         <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Kabupaten / Kota Instansi <span class="text-red-500">*</span></label>
                         <select id="m_kabupaten" name="institution_city" required disabled class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl bg-white cursor-pointer disabled:bg-gray-100 disabled:cursor-not-allowed">
                             <option value="">-- Pilih Kabupaten --</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Kecamatan Instansi <span class="text-red-500">*</span></label>
-                        <select id="m_kecamatan" name="institution_district" required disabled class="w-full px-3 py-2 text-sm border border-gray-300 rounded-xl bg-white cursor-pointer disabled:bg-gray-100 disabled:cursor-not-allowed">
-                            <option value="">-- Pilih Kecamatan --</option>
                         </select>
                     </div>
                 </div>
@@ -709,6 +697,9 @@
                         <p class="whitespace-pre-line text-gray-700 mt-1">${item.notes.replace(/</g, '&lt;')}</p>
                         ${item.notes_updated_at ? `<p class="text-[10px] text-gray-400 mt-1">diubah ${item.notes_updated_at}</p>` : ''}
                    </div>` : '';
+            const paidAtText = item.paid_at
+                ? new Date(item.paid_at).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                : '-';
 
             document.getElementById('viewModalContent').innerHTML = `
                 <div class="border-b border-gray-100 pb-3 flex items-center justify-between gap-3">
@@ -757,6 +748,16 @@
                     <div>
                         <p class="text-xs text-gray-400 uppercase font-bold">Dibatalkan Pada</p>
                         <p class="font-semibold text-gray-800">${item.cancelled_at || '-'}</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3 border-b border-gray-100 pb-3">
+                    <div>
+                        <p class="text-xs text-gray-400 uppercase font-bold">Tanggal Pembayaran</p>
+                        <p class="font-semibold text-gray-800">${paidAtText}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-400 uppercase font-bold">No. Invoice</p>
+                        <p class="font-semibold text-gray-800">${item.invoice_number || '-'}</p>
                     </div>
                 </div>
                 ${item.confirmed_at ? `
@@ -814,14 +815,11 @@
             const apiBase = 'https://www.emsifa.com/api-wilayah-indonesia/api';
             const selProv = document.getElementById('edit_provinsi');
             const selKab = document.getElementById('edit_kabupaten');
-            const selKec = document.getElementById('edit_kecamatan');
-            if (!selProv || !selKab || !selKec) return;
+            if (!selProv || !selKab) return;
 
             selProv.innerHTML = '<option value="">-- Pilih Provinsi --</option>';
             selKab.innerHTML = '<option value="">-- Pilih Kabupaten --</option>';
-            selKec.innerHTML = '<option value="">-- Pilih Kecamatan --</option>';
             selKab.disabled = true;
-            selKec.disabled = true;
 
             try {
                 const provinces = await fetch(apiBase + '/provinces.json').then(response => response.json());
@@ -838,15 +836,6 @@
                 });
                 selKab.disabled = false;
                 selKab.value = item.institution_city || '';
-
-                const regencyId = selKab.selectedOptions[0]?.getAttribute('data-id');
-                if (!regencyId) return;
-                const districts = await fetch(apiBase + '/districts/' + regencyId + '.json').then(response => response.json());
-                districts.forEach(kec => {
-                    selKec.innerHTML += `<option value="${kec.name}">${kec.name}</option>`;
-                });
-                selKec.disabled = false;
-                selKec.value = item.institution_district || '';
             } catch (error) {
                 console.error('Error fetching edit regions:', error);
             }
@@ -925,13 +914,12 @@
         })();
 
         // ---------- DROPDOWN WILAYAH BERJENJANG (EMSIFA) UNTUK MODAL PESERTA MANUAL ----------
-        // Mirip dengan halaman peserta: Provinsi -> Kabupaten/Kota -> Kecamatan.
+        // Mirip dengan halaman peserta: Provinsi -> Kabupaten/Kota.
         (function initWilayahManual() {
             const apiBase = 'https://www.emsifa.com/api-wilayah-indonesia/api';
             const selProv = document.getElementById('m_provinsi');
             const selKab  = document.getElementById('m_kabupaten');
-            const selKec  = document.getElementById('m_kecamatan');
-            if (!selProv || !selKab || !selKec) return;
+            if (!selProv || !selKab) return;
 
             fetch(apiBase + '/provinces.json')
                 .then(response => response.json())
@@ -945,9 +933,7 @@
             selProv.addEventListener('change', (e) => {
                 const provId = e.target.selectedOptions[0] ? e.target.selectedOptions[0].getAttribute('data-id') : null;
                 selKab.innerHTML = '<option value="">-- Pilih Kabupaten --</option>';
-                selKec.innerHTML = '<option value="">-- Pilih Kecamatan --</option>';
                 selKab.disabled = true;
-                selKec.disabled = true;
                 if (provId) {
                     fetch(apiBase + '/regencies/' + provId + '.json')
                         .then(response => response.json())
@@ -956,22 +942,6 @@
                                 selKab.innerHTML += `<option value="${kab.name}" data-id="${kab.id}">${kab.name}</option>`;
                             });
                             selKab.disabled = false;
-                        });
-                }
-            });
-
-            selKab.addEventListener('change', (e) => {
-                const kabId = e.target.selectedOptions[0] ? e.target.selectedOptions[0].getAttribute('data-id') : null;
-                selKec.innerHTML = '<option value="">-- Pilih Kecamatan --</option>';
-                selKec.disabled = true;
-                if (kabId) {
-                    fetch(apiBase + '/districts/' + kabId + '.json')
-                        .then(response => response.json())
-                        .then(districts => {
-                            districts.forEach(kec => {
-                                selKec.innerHTML += `<option value="${kec.name}">${kec.name}</option>`;
-                            });
-                            selKec.disabled = false;
                         });
                 }
             });

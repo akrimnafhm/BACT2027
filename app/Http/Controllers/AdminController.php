@@ -765,7 +765,6 @@ class AdminController extends Controller
             'institution_name' => 'required|string|max:255',
             'institution_province' => 'required|string|max:255',
             'institution_city' => 'required|string|max:255',
-            'institution_district' => 'required|string|max:255',
             'notes' => 'nullable|string|max:5000',
         ]);
 
@@ -782,7 +781,7 @@ class AdminController extends Controller
         $booking->institution_name = $request->institution_name;
         $booking->institution_province = $request->institution_province;
         $booking->institution_city = $request->institution_city;
-        $booking->institution_district = $request->institution_district;
+        $booking->institution_district = $request->institution_district ?? null;
 
         // Catatan & waktu perubahan
         $booking->notes = trim($request->input('notes') ?? '') ?: null;
@@ -1183,7 +1182,6 @@ class AdminController extends Controller
             'institution_name' => 'required|string|max:255',
             'institution_province' => 'required|string|max:255',
             'institution_city' => 'required|string|max:255',
-            'institution_district' => 'required|string|max:255',
             'profession' => 'required|string|max:100',
             'notes' => 'nullable|string|max:5000',
         ]);
@@ -1231,7 +1229,7 @@ class AdminController extends Controller
                     'institution_name' => $request->institution_name,
                     'institution_city' => $request->institution_city,
                     'institution_province' => $request->institution_province,
-                    'institution_district' => $request->institution_district,
+                    'institution_district' => $request->institution_district ?? null,
                     'profession' => $request->profession,
                     'plataran_sehat_email' => $request->plataran_sehat_email ?? $request->gmail_account,
                     'notes' => isset($request->notes) && trim($request->notes) !== '' ? trim($request->notes) : null,
