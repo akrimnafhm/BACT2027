@@ -51,6 +51,9 @@ Route::middleware('auth')->group(function () {
     // Logout
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
+    // Live Streaming (hanya peserta tiket Online Lunas)
+    Route::get('/livestream', [HomeController::class, 'livestream'])->name('livestream');
+
     // Manajemen Profil
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::post('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -202,6 +205,10 @@ Route::middleware(['auth', IsAdmin::class])->prefix('admin')->group(function () 
     Route::post('/content/sponsors', [ContentController::class, 'storeSponsor'])->name('admin.sponsors.store');
     Route::put('/content/sponsors/{id}', [ContentController::class, 'updateSponsor'])->name('admin.sponsors.update');
     Route::delete('/content/sponsors/{id}', [ContentController::class, 'destroySponsor'])->name('admin.sponsors.destroy');
+
+    // --- RUTE CRUD TAB 6: LIVESTREAM YOUTUBE ---
+    Route::post('/content/livestream', [ContentController::class, 'updateLivestream'])->name('admin.livestream.update');
+    Route::post('/content/livestream/toggle', [ContentController::class, 'toggleLivestreamStatus'])->name('admin.livestream.toggle');
 
     // =========================================================
     // 7. BROADCAST WA

@@ -57,7 +57,7 @@
 
         <!-- TAB NAVIGASI KONTEN (1 BARIS FULL-WIDTH, SAMA RATA) -->
         <div
-            class="bg-white rounded-2xl border border-gray-200 shadow-sm p-1.5 grid grid-cols-2 md:grid-cols-5 gap-1.5 w-full">
+            class="bg-white rounded-2xl border border-gray-200 shadow-sm p-1.5 grid grid-cols-2 md:grid-cols-6 gap-1.5 w-full">
             <button @click="activeTab = 'announcements'"
                 :class="activeTab === 'announcements' ? 'bg-[#FBE39D] text-[#E19404] font-extrabold shadow-sm' : 'text-gray-600 hover:bg-gray-100 font-semibold'"
                 class="w-full py-3 px-3 rounded-xl text-xs transition text-center justify-center">
@@ -84,8 +84,14 @@
 
             <button @click="activeTab = 'sponsors'"
                 :class="activeTab === 'sponsors' ? 'bg-[#FBE39D] text-[#E19404] font-extrabold shadow-sm' : 'text-gray-600 hover:bg-gray-100 font-semibold'"
-                class="w-full py-3 px-3 rounded-xl text-xs transition text-center justify-center col-span-2 md:col-span-1">
+                class="w-full py-3 px-3 rounded-xl text-xs transition text-center justify-center">
                 Sponsor & Mitra
+            </button>
+
+            <button @click="activeTab = 'livestream'"
+                :class="activeTab === 'livestream' ? 'bg-[#FBE39D] text-[#E19404] font-extrabold shadow-sm' : 'text-gray-600 hover:bg-gray-100 font-semibold'"
+                class="w-full py-3 px-3 rounded-xl text-xs transition text-center justify-center">
+                Live Streaming
             </button>
         </div>
 
@@ -522,6 +528,82 @@
                             @endforelse
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- =========================================================
+             PANEL TAB 6: LIVESTREAM YOUTUBE
+             ========================================================= -->
+        <div x-show="activeTab === 'livestream'" class="space-y-4" x-transition:enter="transition ease-out duration-200">
+            <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                <div class="p-6 border-b border-gray-200">
+                    <h3 class="font-extrabold text-gray-900 text-base">Pengaturan Live Streaming YouTube</h3>
+                    <p class="text-xs text-gray-400 mt-0.5">Masukkan URL YouTube Live (format watch, live, youtu.be, embed, atau shorts).
+                        Section live streaming hanya akan tampil di beranda untuk peserta yang memiliki tiket <strong>Online</strong> dengan status <strong>Lunas</strong>.</p>
+                </div>
+
+                <div class="p-6 space-y-6">
+                    <form action="{{ route('admin.livestream.update') }}" method="POST" class="space-y-6">
+                        @csrf
+
+                        <!-- YouTube URL Input -->
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase mb-2">URL YouTube Live</label>
+                            <div class="relative">
+                                <input type="url"
+                                    name="youtube_url"
+                                    value="{{ $livestreamUrl }}"
+                                    placeholder="Contoh: https://www.youtube.com/watch?v=VIDEO_ID atau https://youtu.be/VIDEO_ID"
+                                    class="w-full px-4 py-3 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] bg-gray-50"
+                                    @error('youtube_url') class="border-red-300" @enderror>
+                            </div>
+                            @error('youtube_url')
+                                <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                            @enderror
+                            <p class="text-xs text-gray-400 mt-2">Format yang didukung: <code class="bg-gray-100 px-1.5 py-0.5 rounded text-[#E19404]">youtube.com/watch?v=...</code>, <code class="bg-gray-100 px-1.5 py-0.5 rounded text-[#E19404]">youtu.be/...</code>, <code class="bg-gray-100 px-1.5 py-0.5 rounded text-[#E19404]">youtube.com/live/...</code>, <code class="bg-gray-100 px-1.5 py-0.5 rounded text-[#E19404]">youtube.com/embed/...</code>, <code class="bg-gray-100 px-1.5 py-0.5 rounded text-[#E19404]">youtube.com/shorts/...</code></p>
+                        </div>
+
+                        <!-- Preview Video ID & Embed URL -->
+                        @if($livestreamVideoId)
+                            <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-xs font-bold text-blue-800">Video ID Terdeteksi</span>
+                                    <span class="text-xs font-mono bg-white px-2 py-1 rounded border border-blue-200">{{ $livestreamVideoId }}</span>
+                                </div>
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-xs font-bold text-blue-800">Embed URL</span>
+                                    <a href="{{ $livestreamEmbedUrl }}" target="_blank" class="text-xs text-[#E19404] hover:underline truncate max-w-md block" title="Buka embed di tab baru">{{ $livestreamEmbedUrl }}</a>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-bold text-blue-800">Thumbnail Preview</span>
+                                    <img src="https://img.youtube.com/vi/{{ $livestreamVideoId }}/maxresdefault.jpg" alt="Thumbnail" class="w-32 h-18 object-cover rounded border border-blue-200">
+                                </div>
+                            </div>
+                        @endif
+
+                        <!-- Status Aktif Checkbox (di form utama) -->
+                        <div class="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                            <input type="checkbox"
+                                name="is_active"
+                                id="livestream_is_active"
+                                value="1"
+                                {{ $livestreamIsActive ? 'checked' : '' }}
+                                class="w-5 h-5 text-[#E19404] border-gray-300 rounded focus:ring-2 focus:ring-[#FBE39D] focus:ring-offset-2 cursor-pointer">
+                            <label for="livestream_is_active" class="text-sm font-semibold text-gray-900 cursor-pointer">
+                                Aktifkan Live Streaming di halaman peserta
+                            </label>
+                            <span class="text-xs text-gray-500 ml-2">(Hanya tampil untuk peserta tiket Online yang Lunas)</span>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="flex justify-end gap-2 pt-4 border-t border-gray-100">
+                            <button type="submit"
+                                class="px-6 py-2.5 text-xs font-extrabold text-white bg-[#E19404] hover:bg-orange-600 rounded-xl shadow-sm transition">
+                                Simpan Perubahan
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>

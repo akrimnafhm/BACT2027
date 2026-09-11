@@ -8,6 +8,7 @@ use App\Models\Schedule;
 use App\Models\Gallery;
 use App\Models\Sponsor;
 use App\Models\SiteSetting;
+use App\Helpers\YouTubeHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -27,13 +28,23 @@ class ContentController extends Controller
         $sponsors      = Sponsor::oldest()->get();
         $scheduleVisible = SiteSetting::value('schedule_visible', '1') === '1';
 
+        // Livestream settings
+        $livestreamUrl = SiteSetting::value('livestream_youtube_url');
+        $livestreamVideoId = SiteSetting::value('livestream_video_id');
+        $livestreamEmbedUrl = SiteSetting::value('livestream_embed_url');
+        $livestreamIsActive = SiteSetting::value('livestream_is_active', '0') === '1';
+
         return view('admin.content', compact(
             'announcements',
             'speakers',
             'schedules',
             'galleries',
             'sponsors',
-            'scheduleVisible'
+            'scheduleVisible',
+            'livestreamUrl',
+            'livestreamVideoId',
+            'livestreamEmbedUrl',
+            'livestreamIsActive'
         ));
     }
 
@@ -554,5 +565,101 @@ class ContentController extends Controller
         $sponsor->delete();
 
         return back()->with('success', 'Logo sponsor berhasil dihapus!');
+    }
+
+    // ==========================================
+    // 6. LIVESTREAM YOUTUBE
+    // ==========================================
+
+    /**
+     * Simpan/Update URL Live Streaming YouTube
+     */
+    public function updateLivestream(Request $request)
+    {
+        $request->validate([
+            'youtube_url' => 'nullable|string|max:500',
+            'is_active'   => 'nullable|boolean',
+        ]);
+
+        $videoId = null;
+        $embedUrl = null;
+
+        if ($request->filled('youtube_url')) {
+            $videoId = YouTubeHelper::extractVideoId($request->youtube_url);
+
+            if (! $videoId) {
+                return back()->withErrors([
+                    'youtube_url' => 'URL YouTube tidak valid. Gunakan format watch?v=, youtu.be/, live/, embed/, atau shorts/.',
+                ])->withInput();
+            }
+
+            $origin = config('app.url');
+            $embedUrl = YouTubeHelper::getLiveEmbedUrl($videoId, false, $origin);
+        }
+
+        SiteSetting::updateOrCreate(
+            ['key' => 'livestream_youtube_url'],
+            ['value' => $request->youtube_url ?? '']
+        );
+
+        SiteSetting::updateOrCreate(
+            ['key' => 'livestream_video_id'],
+            ['value' => $videoId ?? '']
+        );
+
+        SiteSetting::updateOrCreate(
+            ['key' => 'livestream_embed_url'],
+            ['value' => $embedUrl ?? '']
+        );
+
+        if ($request->boolean('is_active')) {
+            SiteSetting::updateOrCreate(
+                ['key' => 'livestream_is_active'],
+                ['value' => '1']
+            );
+        } else {
+            SiteSetting::updateOrCreate(
+                ['key' => 'livestream_is_active'],
+                ['value' => '0']
+            );
+        }
+
+        return back()->with('success', 'Pengaturan Live Streaming YouTube berhasil disimpan!');
+    }
+
+    /**
+     * Toggle Status Aktif/Nonaktif Live Streaming (AJAX/quick toggle)
+     */
+    public function toggleLivestreamStatus(Request $request)
+    {
+        $setting = SiteSetting::firstOrCreate(
+            ['key' => 'livestream_is_active'],
+            ['value' => '0']
+        );
+
+        $newValue = $setting->value === '1' ? '0' : '1';
+        $setting->update(['value' => $newValue]);
+
+        // Jika diaktifkan tapi tidak ada URL/video ID, beri peringatan
+        if ($newValue === '1') {
+            $videoId = SiteSetting::value('livestream_video_id');
+            if (empty($videoId)) {
+                return back()->with('warning', 'Live Streaming diaktifkan, namun URL YouTube belum diisi. Section tidak akan tampil hingga URL diisi.');
+            }
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'is_active' => $newValue === '1',
+                'message' => $newValue === '1'
+                    ? 'Live Streaming YouTube kini AKTIF.'
+                    : 'Live Streaming YouTube kini DINONAKTIFKAN.',
+            ]);
+        }
+
+        return back()->with('success', $newValue === '1'
+            ? 'Live Streaming YouTube kini AKTIF.'
+            : 'Live Streaming YouTube kini DINONAKTIFKAN.');
     }
 }

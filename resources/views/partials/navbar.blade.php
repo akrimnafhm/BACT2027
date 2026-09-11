@@ -49,6 +49,23 @@
                         Panel Admin
                     </a>
                 @endif
+
+                {{-- Live Streaming link untuk peserta tiket Online Lunas --}}
+                @php
+                    $hasOnlinePaidTicket = \App\Models\TicketBooking::where('user_id', Auth::id())
+                        ->where('ticket_category', 'Online')
+                        ->where('status', 'paid')
+                        ->exists();
+                    $livestreamActive = \App\Models\SiteSetting::value('livestream_is_active', '0') === '1';
+                    $livestreamReady = $livestreamActive && \App\Models\SiteSetting::value('livestream_video_id') && \App\Models\SiteSetting::value('livestream_embed_url');
+                @endphp
+                @if($hasOnlinePaidTicket && $livestreamReady)
+                    <span class="text-gray-300">|</span>
+                    <a href="{{ route('livestream') }}" class="hover:text-[#E19404] transition text-[#E19404] font-bold flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 7.685 0 12 0 12s0 4.315.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 16.315 24 12 24 12s0-4.315-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"></path></svg>
+                        Live Streaming
+                    </a>
+                @endif
             @endauth
         </div>
 
@@ -124,6 +141,25 @@
         @endif
         <a href="{{ route('booking.index') }}" class="mobile-nav-link block px-4 py-3 text-sm font-bold {{ request()->routeIs('booking.*') || request()->is('booking*') || request()->is('checkout*') ? 'text-[#E19404] bg-[#FFF8E7]' : 'text-gray-700' }} rounded-xl hover:bg-[#FFF8E7] hover:text-[#E19404] transition">Pesan Tiket</a>
         <a href="/hotel" class="mobile-nav-link block px-4 py-3 text-sm font-bold {{ request()->is('hotel*') ? 'text-[#E19404] bg-[#FFF8E7]' : 'text-gray-700' }} rounded-xl hover:bg-[#FFF8E7] hover:text-[#E19404] transition">Pesan Hotel</a>
+
+        {{-- Live Streaming link untuk peserta tiket Online Lunas (Mobile) --}}
+        @auth
+            @php
+                $hasOnlinePaidTicket = \App\Models\TicketBooking::where('user_id', Auth::id())
+                    ->where('ticket_category', 'Online')
+                    ->where('status', 'paid')
+                    ->exists();
+                $livestreamActive = \App\Models\SiteSetting::value('livestream_is_active', '0') === '1';
+                $livestreamReady = $livestreamActive && \App\Models\SiteSetting::value('livestream_video_id') && \App\Models\SiteSetting::value('livestream_embed_url');
+            @endphp
+            @if($hasOnlinePaidTicket && $livestreamReady)
+                <a href="{{ route('livestream') }}" class="mobile-nav-link block px-4 py-3 text-sm font-bold text-[#E19404] rounded-xl hover:bg-[#FFF8E7] hover:text-[#E19404] transition flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 7.685 0 12 0 12s0 4.315.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 16.315 24 12 24 12s0-4.315-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"></path></svg>
+                    Live Streaming
+                </a>
+            @endif
+
+        @endauth
 
         <!-- Admin Link (jika admin) -->
         @auth

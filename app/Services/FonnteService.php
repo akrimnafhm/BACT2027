@@ -176,7 +176,9 @@ class FonnteService
      * Menggunakan parameter 'data' bulk JSON dari Fonnte
      *
      * @param array $recipients Array berisi list ['name' => '...', 'phone' => '...']
-     * @param string $templateMessage Pesan yang mengandung placeholder {nama}
+     * @param string $templateMessage Pesan yang mengandung placeholder tiket
+     *                                ({nama}, {jumlah_tiket}, {tiket}, {id_pesanan},
+     *                                {kode_tiket}, {invoice}, {harga}, {email}, {link_grup})
      * @param int $delay Jeda detik antar pengiriman
      * @return array|bool
      */
@@ -187,12 +189,7 @@ class FonnteService
         foreach ($recipients as $recipient) {
             $formattedPhone = $this->formatPhoneNumber($recipient['phone']);
 
-            // Ganti placeholder {nama} atau [nama] dengan nama asli peserta
-            $customMessage = str_replace(
-                ['{nama}', '{name}', '[nama]', '[name]'],
-                $recipient['name'] ?? 'Peserta',
-                $templateMessage
-            );
+            $customMessage = self::personalizeMessage($recipient, $templateMessage);
 
             $dataPayload[] = [
                 'target'  => $formattedPhone,
@@ -216,5 +213,48 @@ class FonnteService
             Log::error('Fonnte Bulk Broadcast Error: ' . $e->getMessage());
             return false;
         }
+    }
+
+    /**
+     * Ganti placeholder tiket per penerima (sama seperti template notifikasi).
+     * {qr} sengaja tidak diganti di broadcast (jalur bulk hanya teks);
+     * biarkan apa adanya agar admin sadar untuk menghapusnya.
+     *
+     * Memakai strtr (penggantian serentak) agar tidak ada placeholder
+     * yang tertimpa oleh penggantian sebelumnya.
+     */
+    public static function personalizeMessage(array $recipient, string $templateMessage): string
+    {
+        $name = $recipient['name'] ?? 'Peserta';
+
+        $message = strtr($templateMessage, [
+            '{nama}'         => $name,
+            '{name}'         => $name,
+            '[nama]'         => $name,
+            '[name]'         => $name,
+            '{jumlah_tiket}' => $recipient['jumlah_tiket'] ?? '-',
+            '{tiket}'        => $recipient['tiket'] ?? '-',
+            '{id_pesanan}'   => $recipient['id_pesanan'] ?? '-',
+            '{kode_tiket}'   => $recipient['kode_tiket'] ?? '-',
+            '{invoice}'      => $recipient['invoice'] ?? '-',
+            '{harga}'        => $recipient['harga'] ?? '-',
+            '{email}'        => $recipient['email'] ?? '-',
+            '{link_grup}'    => $recipient['link_grup'] ?? '-',
+        ]);
+
+        // Khusus penerima multi-tiket: daftar bernomor harus mulai di baris baru
+        // agar "1." tidak menempel di samping kalimat (mis. "tiket *1. ..."
+        // atau "- Tiket: 1. ..."). Berlaku untuk SEMUA kemunculan daftar.
+        // Caranya per kemunculan: lepas bold pembuka sebelum "1.", pastikan
+        // ada newline sebelum "1.", dan lepas sisa bold penutup setelah
+        // akhir daftar (bold WA tidak valid menutupi banyak baris).
+        $ticketCount = (int) ($recipient['jumlah_tiket'] ?? 1);
+        if ($ticketCount > 1) {
+            $message = preg_replace('/\*(?=\d+\.\s)/', '', $message);
+            $message = preg_replace('/(?<!\n)(\d+\.\s)/', "\n$1", $message);
+            $message = preg_replace('/\*([^\*\n]*)$/m', '$1', $message);
+        }
+
+        return $message;
     }
 }

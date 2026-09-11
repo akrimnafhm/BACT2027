@@ -69,7 +69,7 @@
                             <input type="radio" name="target_type" value="all" x-model="targetType" class="mt-0.5 text-[#E19404] focus:ring-[#FBE39D]">
                             <div>
                                 <span class="block text-sm font-extrabold text-gray-900">Semua Peserta Terdaftar</span>
-                                <span class="block text-xs text-gray-500 mt-0.5">Kirim ke total <strong class="text-[#E19404]">{{ $totalParticipants }}</strong> peserta di database.</span>
+                                <span class="block text-xs text-gray-500 mt-0.5">Kirim ke total <strong class="text-[#E19404]">{{ $totalParticipants }}</strong> nomor WhatsApp unik (tiket lunas) di database.</span>
                             </div>
                         </label>
 
@@ -103,14 +103,21 @@
                     <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
                         3. Isi Pesan Broadcast
                     </label>
-                    <textarea name="message" rows="6" required
-                        placeholder="Tulis pesan pengumuman di sini...&#10;&#10;Contoh:&#10;Halo *{nama}*,&#10;Mengingatkan bahwa simposium BACT 2027 akan dimulai besok pagi pukul 07.00 WIB.&#10;&#10;Salam,&#10;Panitia BACT 2027"
-                        class="w-full px-4 py-3 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404]"></textarea>
+                    <textarea name="message" rows="12" required
+                        placeholder="Tulis pesan pengumuman di sini..."
+                        class="w-full px-4 py-3 text-sm border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404]">{{ old('message', $templateBody ?? '') }}</textarea>
+                    <p class="text-[11px] text-gray-400 mt-1">Isi awal diambil dari template Notifikasi Tiket Lunas (WhatsApp). Silakan edit bebas sebelum dikirim.</p>
                     
-                    <!-- Keterangan Placeholder Anti-Spam -->
+                    <!-- Daftar Placeholder (sama seperti template notifikasi tiket) -->
                     <div class="mt-2.5 p-3 bg-[#FFF8E7] border border-[#E19404]/30 rounded-xl text-xs text-gray-700 space-y-1">
-                        <p class="font-bold text-[#E19404]">Fitur Anti-Spam & Personalisasi:</p>
-                        <p>Ketik <code class="bg-white px-1.5 py-0.5 rounded border font-bold text-gray-900">{nama}</code> di dalam teks pesan untuk memanggil nama asli peserta secara otomatis agar pesan tidak terdeteksi spam oleh WhatsApp.</p>
+                        <p class="font-bold text-[#E19404]">Placeholder yang didukung (sama seperti template notifikasi):</p>
+                        <div class="flex flex-wrap gap-1.5 pt-1">
+                            @foreach(['{nama}', '{jumlah_tiket}', '{tiket}', '{id_pesanan}', '{kode_tiket}', '{invoice}', '{harga}', '{email}', '{link_grup}'] as $ph)
+                                <code class="bg-white px-1.5 py-0.5 rounded border font-bold text-gray-900">{{ $ph }}</code>
+                            @endforeach
+                        </div>
+                        <p class="pt-1"><code class="bg-white px-1.5 py-0.5 rounded border font-bold text-gray-900">{nama}</code> memanggil nama asli peserta secara otomatis agar pesan tidak terdeteksi spam oleh WhatsApp. Satu nomor hanya menerima <strong>satu pesan</strong>: jika nomor tersebut punya 1 tiket lunas, <code class="bg-white px-1 py-0.5 rounded border font-bold text-gray-900">{tiket}</code> ditulis menyamping tanpa nomor; jika lebih dari 1 tiket, menjadi daftar bernomor multi-baris. <code class="bg-white px-1 py-0.5 rounded border font-bold text-gray-900">{harga}</code> menjadi total gabungan, <code class="bg-white px-1 py-0.5 rounded border font-bold text-gray-900">{jumlah_tiket}</code> menunjukkan banyaknya tiket lunas, dan <code class="bg-white px-1 py-0.5 rounded border font-bold text-gray-900">{link_grup}</code> menjadi satu baris berlabel per kategori (mis. <em>Link Grup Basic: ...</em>). Untuk <em>Input Manual</em>, nomor yang cocok dengan booking lunas ikut terisi datanya (format 08xx/628xx otomatis disamakan; duplikat digabung), nomor tak dikenal terisi <code class="bg-white px-1 py-0.5 rounded border font-bold text-gray-900">-</code>.</p>
+                        <p class="text-[11px] text-gray-500">Hindari memakai <code class="bg-white px-1 py-0.5 rounded border font-bold">{qr}</code> di broadcast — QR tidak dikirim via jalur broadcast (teks saja).</p>
                         <p class="text-[11px] text-gray-500 pt-0.5">Formatting WA: <code class="bg-white px-1 py-0.5 rounded font-bold">*teks tebal*</code>, <code class="bg-white px-1 py-0.5 rounded italic">_teks miring_</code>.</p>
                     </div>
                 </div>

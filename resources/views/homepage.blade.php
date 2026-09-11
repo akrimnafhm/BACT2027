@@ -531,6 +531,70 @@
     </section>
 
     <!-- =========================================================
+         5B. SEKSI LIVE STREAMING YOUTUBE (#livestream)
+         ========================================================= -->
+    @php
+        $showLivestream = $livestreamIsActive && !empty($livestreamVideoId) && !empty($livestreamEmbedUrl) && $hasOnlinePaidTicket;
+    @endphp
+
+    @if($showLivestream)
+    <section id="livestream" class="py-20 bg-[#234661] text-white">
+        <div class="max-w-5xl mx-auto px-6">
+            <div class="text-center max-w-2xl mx-auto mb-10">
+                <span class="text-xs font-extrabold text-[#FBE39D] uppercase tracking-widest">Live Streaming</span>
+                <h2 class="text-3xl sm:text-4xl font-extrabold mt-1">Live Streaming BACT 2027</h2>
+                <p class="text-sm text-gray-300 mt-2">Tonton live streaming simposium secara real-time. Khusus untuk peserta tiket <strong>Online</strong> yang sudah <strong>Lunas</strong>.</p>
+            </div>
+
+            <div class="aspect-video w-full max-w-4xl mx-auto rounded-2xl overflow-hidden border-2 border-[#E19404] bg-black shadow-2xl">
+                <iframe
+                    src="{{ $livestreamEmbedUrl }}"
+                    title="BACT 2027 Live Streaming"
+                    frameborder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowfullscreen
+                    class="w-full h-full"
+                    referrerpolicy="no-referrer-when-downgrade">
+                </iframe>
+            </div>
+
+            <div class="mt-6 text-center text-sm text-gray-400">
+                <p>Jika video tidak muncul, coba refresh halaman atau <a href="https://www.youtube.com/watch?v={{ $livestreamVideoId }}" target="_blank" rel="noopener noreferrer" class="text-[#FBE39D] hover:underline font-semibold">tonton langsung di YouTube</a>.</p>
+            </div>
+        </div>
+    </section>
+    @elseif($livestreamIsActive && !empty($livestreamVideoId) && !empty($livestreamEmbedUrl) && !$hasOnlinePaidTicket)
+    <!-- Placeholder untuk user yang login tapi tidak punya tiket Online Lunas -->
+    @auth
+    <section id="livestream" class="py-20 bg-gray-50 border-y border-gray-100">
+        <div class="max-w-5xl mx-auto px-6 text-center">
+            <div class="bg-white rounded-2xl border border-gray-200 p-12 shadow-sm">
+                <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                </svg>
+                <h3 class="text-xl font-extrabold text-gray-900 mb-2">Live Streaming Tersedia</h3>
+                <p class="text-gray-600 mb-6 max-w-xl mx-auto">
+                    Live streaming BACT 2027 sedang tersedia untuk peserta tiket <strong class="text-[#E19404]">Online</strong> yang telah melunasi pembayaran.
+                </p>
+                @if(Auth::check())
+                    <a href="{{ route('booking.index') }}" class="inline-flex items-center gap-2 bg-[#E19404] hover:bg-orange-600 text-white text-sm font-bold py-3 px-6 rounded-xl transition shadow-md">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.102 1.101m-.758 4.899a4 4 0 00-5.656 0l-4-4a4 4 0 015.656-5.656l1.102-1.101m-.758-4.899a4 4 0 015.656 0l4 4a4 4 0 01-5.656 5.656l-1.102 1.101"></path></svg>
+                        Beli Tiket Online
+                    </a>
+                @else
+                    <a href="{{ route('login') }}" class="inline-flex items-center gap-2 bg-[#E19404] hover:bg-orange-600 text-white text-sm font-bold py-3 px-6 rounded-xl transition shadow-md">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path></svg>
+                        Login untuk Akses Live Streaming
+                    </a>
+                @endif
+            </div>
+        </div>
+    </section>
+    @endauth
+    @endif
+
+    <!-- =========================================================
          6. SEKSI LOKASI VENUE (#lokasi)
          ========================================================= -->
     <section id="lokasi" class="py-20 max-w-7xl mx-auto px-6">
