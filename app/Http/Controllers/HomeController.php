@@ -32,6 +32,14 @@ class HomeController extends Controller
         $livestreamEmbedUrl = SiteSetting::value('livestream_embed_url');
         $livestreamUrl = SiteSetting::value('livestream_youtube_url');
 
+        // Homepage video settings
+        $hpVideoIsActive = SiteSetting::value('hp_video_is_active', '0') === '1';
+        $hpVideoVideoId = SiteSetting::value('hp_video_video_id');
+        $hpVideoEmbedUrl = SiteSetting::value('hp_video_embed_url');
+        $hpVideoYoutubeUrl = SiteSetting::value('hp_video_youtube_url');
+        $hpVideoTitle = SiteSetting::value('hp_video_title');
+        $hpVideoDescription = SiteSetting::value('hp_video_description');
+
         // Cek apakah user memiliki tiket Online yang sudah Lunas
         $hasOnlinePaidTicket = false;
         if (Auth::check()) {
@@ -53,7 +61,13 @@ class HomeController extends Controller
             'livestreamVideoId',
             'livestreamEmbedUrl',
             'livestreamUrl',
-            'hasOnlinePaidTicket'
+            'hasOnlinePaidTicket',
+            'hpVideoIsActive',
+            'hpVideoVideoId',
+            'hpVideoEmbedUrl',
+            'hpVideoYoutubeUrl',
+            'hpVideoTitle',
+            'hpVideoDescription'
         ));
     }
 

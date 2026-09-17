@@ -34,6 +34,14 @@ class ContentController extends Controller
         $livestreamEmbedUrl = SiteSetting::value('livestream_embed_url');
         $livestreamIsActive = SiteSetting::value('livestream_is_active', '0') === '1';
 
+        // Homepage video settings
+        $hpVideoYoutubeUrl = SiteSetting::value('hp_video_youtube_url');
+        $hpVideoVideoId = SiteSetting::value('hp_video_video_id');
+        $hpVideoEmbedUrl = SiteSetting::value('hp_video_embed_url');
+        $hpVideoTitle = SiteSetting::value('hp_video_title');
+        $hpVideoDescription = SiteSetting::value('hp_video_description');
+        $hpVideoIsActive = SiteSetting::value('hp_video_is_active', '0') === '1';
+
         return view('admin.content', compact(
             'announcements',
             'speakers',
@@ -44,7 +52,13 @@ class ContentController extends Controller
             'livestreamUrl',
             'livestreamVideoId',
             'livestreamEmbedUrl',
-            'livestreamIsActive'
+            'livestreamIsActive',
+            'hpVideoYoutubeUrl',
+            'hpVideoVideoId',
+            'hpVideoEmbedUrl',
+            'hpVideoTitle',
+            'hpVideoDescription',
+            'hpVideoIsActive'
         ));
     }
 
@@ -625,6 +639,70 @@ class ContentController extends Controller
         }
 
         return back()->with('success', 'Pengaturan Live Streaming YouTube berhasil disimpan!');
+    }
+
+    // ==========================================
+    // 6B. VIDEO PROMOSI BERANDA
+    // ==========================================
+
+    /**
+     * Simpan/Update Video YouTube di Beranda (link YT, judul & deskripsi)
+     */
+    public function updateHomepageVideo(Request $request)
+    {
+        $request->validate([
+            'youtube_url' => 'nullable|string|max:500',
+            'title'       => 'nullable|string|max:255',
+            'description' => 'nullable|string',
+            'is_active'   => 'nullable|boolean',
+        ]);
+
+        $videoId = null;
+        $embedUrl = null;
+
+        if ($request->filled('youtube_url')) {
+            $videoId = YouTubeHelper::extractVideoId($request->youtube_url);
+
+            if (! $videoId) {
+                return back()->withErrors([
+                    'youtube_url' => 'URL YouTube tidak valid. Gunakan format watch?v=, youtu.be/, embed/, atau shorts/.',
+                ])->withInput();
+            }
+
+            $embedUrl = YouTubeHelper::getEmbedUrl($videoId);
+        }
+
+        SiteSetting::updateOrCreate(
+            ['key' => 'hp_video_youtube_url'],
+            ['value' => $request->youtube_url ?? '']
+        );
+
+        SiteSetting::updateOrCreate(
+            ['key' => 'hp_video_video_id'],
+            ['value' => $videoId ?? '']
+        );
+
+        SiteSetting::updateOrCreate(
+            ['key' => 'hp_video_embed_url'],
+            ['value' => $embedUrl ?? '']
+        );
+
+        SiteSetting::updateOrCreate(
+            ['key' => 'hp_video_title'],
+            ['value' => $request->title ?? '']
+        );
+
+        SiteSetting::updateOrCreate(
+            ['key' => 'hp_video_description'],
+            ['value' => $request->description ?? '']
+        );
+
+        SiteSetting::updateOrCreate(
+            ['key' => 'hp_video_is_active'],
+            ['value' => $request->boolean('is_active') ? '1' : '0']
+        );
+
+        return back()->with('success', 'Pengaturan Video Beranda berhasil disimpan!');
     }
 
     /**

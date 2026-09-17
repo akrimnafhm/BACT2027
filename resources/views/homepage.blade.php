@@ -149,7 +149,57 @@
     </header>
 
     <!-- =========================================================
-         3. INFO TERKINI / ANNOUNCEMENTS (Slider Rapi + Tombol Panah < >)
+         3. VIDEO PROMOSI BERANDA (#video) - Video + Judul & Deskripsi
+         ========================================================= -->
+    @php
+        $showHomepageVideo = $hpVideoIsActive && !empty($hpVideoVideoId) && !empty($hpVideoEmbedUrl);
+    @endphp
+
+    @if($showHomepageVideo)
+        <section id="video" class="py-16 max-w-7xl mx-auto px-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+
+                <!-- Embed Video YouTube -->
+                <div class="aspect-video w-full rounded-2xl overflow-hidden border border-gray-200 shadow-lg bg-black">
+                    <iframe
+                        src="{{ $hpVideoEmbedUrl }}"
+                        title="{{ $hpVideoTitle ?? 'Video BACT 2027' }}"
+                        frameborder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowfullscreen
+                        class="w-full h-full"
+                        referrerpolicy="no-referrer-when-downgrade">
+                    </iframe>
+                </div>
+
+                <!-- Judul & Deskripsi -->
+                <div class="space-y-4">
+                    <span class="text-xs font-extrabold text-[#E19404] uppercase tracking-widest">Video</span>
+                    <h2 class="text-3xl sm:text-4xl font-extrabold text-[#234661]">
+                        {{ $hpVideoTitle ?? 'Video BACT 2027' }}
+                    </h2>
+                    @if(!empty($hpVideoDescription))
+                        <p class="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{{ $hpVideoDescription }}</p>
+                    @endif
+                    @if(!empty($hpVideoYoutubeUrl))
+                        <div class="pt-2">
+                            <a href="{{ $hpVideoYoutubeUrl }}" target="_blank" rel="noopener noreferrer"
+                                class="inline-flex items-center gap-2 px-6 py-3 bg-[#E19404] hover:bg-orange-600 text-white text-xs font-extrabold rounded-full shadow-md transition">
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0C.488 3.45.029 5.804 0 12c.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0C23.512 20.55 23.971 18.196 24 12c-.029-6.185-.484-8.549-4.385-8.816zM9 16V8l8 4-8 4z"/>
+                                </svg>
+                                Tonton di YouTube
+                            </a>
+                        </div>
+                    @endif
+                </div>
+
+            </div>
+        </section>
+    @endif
+
+    <!-- =========================================================
+         4. INFO TERKINI / ANNOUNCEMENTS (Slider Rapi + Tombol Panah < >)
          ========================================================= -->
     @if(!empty($announcements) && count($announcements) > 0)
         <section class="max-w-7xl mx-auto px-6 py-12 relative" x-data="{

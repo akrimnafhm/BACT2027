@@ -210,6 +210,9 @@ Route::middleware(['auth', IsAdmin::class])->prefix('admin')->group(function () 
     Route::post('/content/livestream', [ContentController::class, 'updateLivestream'])->name('admin.livestream.update');
     Route::post('/content/livestream/toggle', [ContentController::class, 'toggleLivestreamStatus'])->name('admin.livestream.toggle');
 
+    // --- RUTE CRUD TAB 6B: VIDEO BERANDA ---
+    Route::post('/content/homepage-video', [ContentController::class, 'updateHomepageVideo'])->name('admin.homepage-video.update');
+
     // =========================================================
     // 7. BROADCAST WA
     // 7. BROADCAST WA & 8. QR CHECK-IN
