@@ -16,6 +16,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -1188,10 +1189,6 @@ class AdminController extends Controller
 
         $ticket = Ticket::findOrFail($request->ticket_id);
 
-        // Hubungkan ke akun user jika email sudah terdaftar. Jika belum terdaftar,
-        // user_id dibiarkan null — saat pemilik email mendaftar, tiket otomatis terhubung.
-        $linkedUser = User::where('email', $request->gmail_account)->first();
-
         // ATURAN: Satu kategori hanya boleh dimiliki satu tiket per email
         // (sama seperti pembelian via web).
         $existingCategories = TicketBooking::where('gmail_account', $request->gmail_account)
@@ -1204,7 +1201,26 @@ class AdminController extends Controller
 
         // Kunci kuota secara atomik — peserta manual juga mengonsumsi kuota seperti booking website.
         try {
-            $booking = DB::transaction(function () use ($ticket, $request, $linkedUser) {
+            $booking = DB::transaction(function () use ($ticket, $request) {
+                // Selalu pastikan ada akun User pendamping agar tombol Konfirmasi WA
+                // tersedia untuk peserta manual baru. Akun yang sudah ada dipakai
+                // apa adanya (tidak diubah); akun baru dibuat dengan password awal
+                // = NIK agar pemilik bisa login / reset mandiri. Dibuat di dalam
+                // transaksi yang sama agar tidak ada akun yatim jika kuota habis.
+                // Data booking lama tidak disentuh.
+                $linkedUser = User::where('email', $request->gmail_account)->first();
+
+                if (! $linkedUser) {
+                    $nikTaken = $request->filled('nik') && User::where('nik', $request->nik)->exists();
+                    $linkedUser = User::create([
+                        'name' => $request->full_name,
+                        'email' => $request->gmail_account,
+                        'phone_number' => $request->whatsapp_number,
+                        'password' => Hash::make($request->nik),
+                        'nik' => $nikTaken ? null : $request->nik,
+                    ]);
+                }
+
                 $reserved = Ticket::where('id', $ticket->id)
                     ->where('quota', '>', 0)
                     ->decrement('quota');
@@ -1214,7 +1230,7 @@ class AdminController extends Controller
                 }
 
                 return TicketBooking::create([
-                    'user_id' => $linkedUser ? $linkedUser->id : null,
+                    'user_id' => $linkedUser->id,
                     'ticket_id' => $ticket->id,
                     'ticket_name' => $ticket->ticket_name,
                     'ticket_category' => $ticket->ticket_category,

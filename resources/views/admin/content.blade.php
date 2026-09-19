@@ -621,7 +621,6 @@
             <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
                 <div class="p-6 border-b border-gray-200">
                     <h3 class="font-extrabold text-gray-900 text-base">Pengaturan Video Beranda</h3>
-                    <p class="text-xs text-gray-400 mt-0.5">Atur video YouTube yang tampil di halaman utama (di bawah banner dan di atas Info & Update Terkini), lengkap dengan judul dan deskripsi.</p>
                 </div>
 
                 <div class="p-6 space-y-6">
