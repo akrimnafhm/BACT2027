@@ -248,8 +248,8 @@
                                 <!-- Gelombang -->
                                 <td class="py-3.5 px-5 font-bold text-gray-800 whitespace-nowrap">
                                     <div class="flex flex-col items-start gap-2">
-                                        <span>
-                                            {{ $item->ticket->ticket_name ?? 'Tiket BACT' }}
+                                        <span class="cursor-default" title="{{ $item->ticket->ticket_name ?? 'Tiket BACT' }}">
+                                            {{ \Illuminate\Support\Str::words($item->ticket->ticket_name ?? 'Tiket BACT', 2, '...') }}
                                         </span>
 
                                         <span class="px-2.5 py-1 bg-[#FBE39D] text-[#E19404] font-bold text-xs rounded-lg whitespace-nowrap">
