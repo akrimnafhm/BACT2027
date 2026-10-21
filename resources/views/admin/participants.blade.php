@@ -691,21 +691,26 @@
                 : item.status === 'pending'
                     ? '<span class="font-extrabold uppercase text-orange-500">Tertunda</span>'
                     : '<span class="font-extrabold uppercase text-red-600">Dibatalkan</span>';
+            const formatDateTime = (value) => value
+                ? new Date(value).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                : '-';
             const notesBlock = item.notes
                 ? `<div class="border-b border-gray-100 pb-3">
                         <p class="text-xs text-gray-400 uppercase font-bold">Catatan</p>
                         <p class="whitespace-pre-line text-gray-700 mt-1">${item.notes.replace(/</g, '&lt;')}</p>
-                        ${item.notes_updated_at ? `<p class="text-[10px] text-gray-400 mt-1">diubah ${item.notes_updated_at}</p>` : ''}
+                        ${item.notes_updated_at ? `<p class="text-[10px] text-gray-400 mt-1">diubah ${formatDateTime(item.notes_updated_at)}</p>` : ''}
                    </div>` : '';
-            const paidAtText = item.paid_at
-                ? new Date(item.paid_at).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-                : '-';
+            const paidAtText = formatDateTime(item.paid_at);
+            const createdAtText = formatDateTime(item.created_at);
 
             document.getElementById('viewModalContent').innerHTML = `
                 <div class="border-b border-gray-100 pb-3 flex items-center justify-between gap-3">
                     <div>
                         <p class="text-xs text-gray-400 uppercase font-bold">Sumber Pendaftaran</p>
-                        ${sourceChip}
+                        <div class="flex items-center gap-2">
+                            ${sourceChip}
+                            <p class="text-[11px] font-normal text-gray-500">Dipesan: ${createdAtText}</p>
+                        </div>
                     </div>
                     <div class="text-right">
                         <p class="text-xs text-gray-400 uppercase font-bold">Status Pesanan</p>
@@ -747,7 +752,7 @@
                     </div>
                     <div>
                         <p class="text-xs text-gray-400 uppercase font-bold">Dibatalkan Pada</p>
-                        <p class="font-semibold text-gray-800">${item.cancelled_at || '-'}</p>
+                        <p class="font-semibold text-gray-800">${formatDateTime(item.cancelled_at)}</p>
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-3 border-b border-gray-100 pb-3">
@@ -756,19 +761,19 @@
                         <p class="font-semibold text-gray-800">${paidAtText}</p>
                     </div>
                     <div>
-                        <p class="text-xs text-gray-400 uppercase font-bold">No. Invoice</p>
+                        <p class="text-xs text-gray-400 uppercase font-bold">No. Receipt</p>
                         <p class="font-semibold text-gray-800">${item.invoice_number || '-'}</p>
                     </div>
                 </div>
                 ${item.confirmed_at ? `
                     <div class="border-b border-gray-100 pb-3">
                         <p class="text-xs text-gray-400 uppercase font-bold">Dikonfirmasi Pada (Peserta Manual)</p>
-                        <p class="font-bold text-green-700">${item.confirmed_at}</p>
+                        <p class="font-bold text-green-700">${formatDateTime(item.confirmed_at)}</p>
                     </div>` : ''}
                 ${item.deleted_at ? `
                     <div class="border-b border-gray-100 pb-3">
                         <p class="text-xs text-gray-400 uppercase font-bold">Dihapus Pada</p>
-                        <p class="font-bold text-gray-700">${item.deleted_at}</p>
+                        <p class="font-bold text-gray-700">${formatDateTime(item.deleted_at)}</p>
                     </div>` : ''}
                 ${notesBlock}
             `;
