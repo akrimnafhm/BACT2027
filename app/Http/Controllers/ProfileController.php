@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\Rule;
 
 class ProfileController extends Controller
 {
@@ -46,20 +47,31 @@ class ProfileController extends Controller
         return view('profile.edit', compact('user') + [
             'emailOtpRemaining' => $emailOtpRemaining,
             'paidTickets' => $paidTickets,
+            'personalDataLocked' => $user->isPersonalDataLocked(),
         ]);
     }
 
     public function update(Request $request)
     {
         $user = Auth::user();
+        $personalDataLocked = $user->isPersonalDataLocked();
 
         // 1. Aturan validasi ketat (tanpa address & tanpa gelar)
         $rules = [
-            'name' => 'required|string|max:255',
             'phone_number' => 'required|string|max:20',
-            'nik' => 'required|string|size:16', // Wajib persis 16 digit NIK
-            'gender' => 'required|in:Laki-laki,Perempuan', // Wajib pilih
         ];
+
+        // Data pribadi hanya divalidasi & diubah selama belum dikunci.
+        if (! $personalDataLocked) {
+            $rules['name'] = 'required|string|max:255';
+            $rules['nik'] = [
+                'required',
+                'string',
+                'size:16',
+                Rule::unique('users', 'nik')->ignore($user->id),
+            ];
+            $rules['gender'] = 'required|in:Laki-laki,Perempuan';
+        }
 
         // 2. Jika user mengisi kolom password baru, tambahkan validasi password
         if ($request->filled('new_password')) {
@@ -72,6 +84,7 @@ class ProfileController extends Controller
             'phone_number.required' => 'Nomor WhatsApp wajib diisi.',
             'nik.required' => 'NIK wajib diisi.',
             'nik.size' => 'NIK harus berjumlah persis 16 digit angka.',
+            'nik.unique' => 'NIK ini sudah terdaftar pada akun lain.',
             'gender.required' => 'Silakan pilih jenis kelamin Anda.',
             'current_password.required' => 'Mohon masukkan password saat ini untuk keamanan.',
             'current_password.current_password' => 'Password saat ini yang Anda masukkan tidak sesuai.',
@@ -84,17 +97,26 @@ class ProfileController extends Controller
             $user->phone_verified_at = null;
         }
 
-        // 4. Update data profil ke database (Tanpa Address)
-        $user->name = $request->name;
+        // 4. Update data profil ke database (tanpa address). Nama KTP, NIK, dan
+        //    jenis kelamin hanya boleh diisi sekali, lalu dikunci permanen.
+        if (! $personalDataLocked) {
+            $user->name = $request->name;
+            $user->nik = $request->nik;
+            $user->gender = $request->gender;
+            $user->personal_data_locked_at = now();
+        }
+
         $user->phone_number = $request->phone_number;
-        $user->nik = $request->nik;
-        $user->gender = $request->gender;
 
         if ($request->filled('new_password')) {
             $user->password = Hash::make($request->new_password);
         }
 
         $user->save();
+
+        if (! $personalDataLocked) {
+            return back()->with('success', 'Data pribadi berhasil disimpan dan dikunci permanen.');
+        }
 
         return back()->with('success', 'Profil dan keamanan akun berhasil diperbarui!');
     }
