@@ -42,8 +42,17 @@ class User extends Authenticatable implements MustVerifyEmail
             'email_otp_sent_at' => 'datetime',
             'reset_code_sent_at' => 'datetime',
             'wa_joined_groups' => 'array',
+            'personal_data_locked_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * Cek apakah nama KTP, NIK, dan jenis kelamin sudah dikunci permanen.
+     */
+    public function isPersonalDataLocked(): bool
+    {
+        return $this->personal_data_locked_at !== null;
     }
 
     /**

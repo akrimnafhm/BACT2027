@@ -75,7 +75,7 @@
         </div>
 
         <!-- FORM EDIT DATA PROFIL -->
-        <form action="{{ route('profile.update') }}" method="POST" class="space-y-6">
+        <form id="profile-form" action="{{ route('profile.update') }}" method="POST" class="space-y-6">
             @csrf
 
             <!-- BOX 1: INFORMASI AKUN -->
@@ -128,25 +128,40 @@
 
             <!-- BOX 2: DATA PRIBADI -->
             <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-8">
-                <h2 class="text-lg font-extrabold text-[#234661] mb-6">Data Pribadi</h2>
+                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
+                    <div>
+                        <h2 class="text-lg font-extrabold text-[#234661]">Data Pribadi</h2>
+                        @if($personalDataLocked)
+                            <p class="text-xs text-gray-500 mt-1">Data pribadi Anda sudah dikunci permanen dan tidak dapat diubah lagi. Hubungi panitia jika terdapat kekeliruan.</p>
+                        @else
+                            <p class="text-xs text-gray-500 mt-1">Pastikan data pribadi sudah sesuai dengan KTP karena nama lengkap, NIK, dan jenis kelamin hanya dapat diisi <b>satu kali</b>. Setelah disimpan, data tidak dapat diubah lagi.</p>
+                        @endif
+                    </div>
+                    @if($personalDataLocked)
+                        <span class="inline-flex items-center gap-1 text-[11px] font-bold px-3 py-1 bg-gray-100 text-gray-600 rounded-full whitespace-nowrap self-start">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0-1.105.895-2 2-2s2 .895 2 2v2m-9 4h10a2 2 0 002-2v-5a2 2 0 00-2-2H7a2 2 0 00-2 2v5a2 2 0 002 2zm5-12V6a4 4 0 00-8 0v1"></path></svg>
+                            Terkunci Permanen
+                        </span>
+                    @endif
+                </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <!-- Nama Lengkap -->
                     <div class="md:col-span-2">
                         <label class="block text-sm font-semibold text-gray-700 mb-1.5">Nama Lengkap (Sesuai KTP) <span class="text-red-500">*</span></label>
-                        <input type="text" name="name" value="{{ $user->name }}" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] outline-none transition text-sm font-medium text-gray-800">
+                        <input type="text" name="name" value="{{ $user->name }}" @if($personalDataLocked) readonly @else required @endif class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] outline-none transition text-sm font-medium text-gray-800 {{ $personalDataLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : '' }}">
                     </div>
 
                     <!-- NIK -->
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-1.5">NIK (Nomor Induk Kependudukan)</label>
-                        <input type="text" name="nik" value="{{ $user->nik }}" placeholder="16 Digit NIK" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] outline-none transition text-sm font-medium text-gray-800">
+                        <input type="text" name="nik" value="{{ $user->nik }}" placeholder="16 Digit NIK" @if($personalDataLocked) readonly @else required @endif class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] outline-none transition text-sm font-medium text-gray-800 {{ $personalDataLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : '' }}">
                     </div>
 
                     <!-- Jenis Kelamin -->
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-1.5">Jenis Kelamin</label>
-                        <select name="gender" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] outline-none transition bg-white text-sm font-medium text-gray-800">
+                        <select name="gender" @if($personalDataLocked) disabled @else required @endif class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] outline-none transition bg-white text-sm font-medium text-gray-800 {{ $personalDataLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : '' }}">
                             <option value="">Pilih Jenis Kelamin</option>
                             <option value="Laki-laki" {{ $user->gender == 'Laki-laki' ? 'selected' : '' }}>Laki-laki</option>
                             <option value="Perempuan" {{ $user->gender == 'Perempuan' ? 'selected' : '' }}>Perempuan</option>
@@ -182,12 +197,41 @@
             </div>
 
             <!-- TOMBOL SIMPAN -->
-            <div class="flex justify-end pt-2">
-                <button type="submit" class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-3 px-8 rounded-lg shadow-sm transition transform active:scale-95 text-sm">
-                    Simpan Perubahan
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3 pt-2">
+                @if(! $personalDataLocked)
+                    <p class="text-xs text-gray-500 sm:mr-auto">Pastikan nama lengkap, NIK, dan jenis kelamin sudah benar dan sesuai dengan KTP. Data pribadi tidak dapat diubah setelah disimpan.</p>
+                @endif
+                <button type="submit" class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-3 px-8 rounded-lg shadow-sm transition transform active:scale-95 text-sm whitespace-nowrap">
+                    {{ $personalDataLocked ? 'Simpan Perubahan' : 'Simpan Data Pribadi' }}
                 </button>
             </div>
         </form>
+
+        @if(! $personalDataLocked)
+            <!-- MODAL KONFIRMASI KUNCI DATA PRIBADI -->
+            <div id="personal-data-lock-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+                <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 sm:p-8">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center flex-shrink-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"></path></svg>
+                        </div>
+                        <h3 class="text-lg font-extrabold text-[#234661]">Perhatian!</h3>
+                    </div>
+                    <p class="text-sm text-gray-600 mt-3">Nama lengkap sesuai KTP, NIK, dan jenis kelamin hanya dapat diisi <b>satu kali</b>. Setelah Anda menekan tombol simpan, data pribadi tersebut <b>tidak dapat diubah lagi</b>.</p>
+                    <div class="mt-3 bg-red-50 border-l-4 border-red-500 rounded-r-lg px-4 py-3">
+                        <p class="flex items-start gap-2 text-sm font-bold text-red-700">
+                            <svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <span>1 akun hanya untuk pembelian tiket <b>1 orang</b>. Jangan gunakan akun ini untuk membeli tiket bagi orang lain.</span>
+                        </p>
+                    </div>
+                    <p class="text-sm text-gray-600 mt-3">Pastikan seluruh data sudah benar sebelum melanjutkan.</p>
+                    <div class="flex flex-col-reverse sm:flex-row justify-center gap-3 mt-6">
+                        <button type="button" id="cancel-personal-data-lock" class="px-5 py-2.5 rounded-lg border border-gray-300 text-gray-700 text-sm font-bold hover:bg-gray-50 transition">Periksa Kembali</button>
+                        <button type="button" id="confirm-personal-data-lock" class="px-5 py-2.5 rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-sm font-bold shadow-sm transition">Ya, Simpan &amp; Kunci</button>
+                    </div>
+                </div>
+            </div>
+        @endif
 
         <!-- BOX 4: TIKET SAYA -->
         <div class="mt-6 bg-white border border-gray-200 rounded-2xl shadow-sm p-8">
@@ -294,6 +338,39 @@
         }
 
         document.addEventListener('DOMContentLoaded', initOtpCountdowns);
+
+        @if(! $personalDataLocked)
+            // KONFIRMASI SEBELUM MENGUNCI DATA PRIBADI
+            document.addEventListener('DOMContentLoaded', function () {
+                const form = document.getElementById('profile-form');
+                const modal = document.getElementById('personal-data-lock-modal');
+                const confirmButton = document.getElementById('confirm-personal-data-lock');
+                const cancelButton = document.getElementById('cancel-personal-data-lock');
+                let confirmed = false;
+
+                if (!form || !modal || !confirmButton || !cancelButton) return;
+
+                form.addEventListener('submit', function (event) {
+                    if (confirmed) return;
+                    event.preventDefault();
+                    modal.classList.remove('hidden');
+                });
+
+                confirmButton.addEventListener('click', function () {
+                    confirmed = true;
+                    modal.classList.add('hidden');
+                    form.requestSubmit();
+                });
+
+                cancelButton.addEventListener('click', function () {
+                    modal.classList.add('hidden');
+                });
+
+                modal.addEventListener('click', function (event) {
+                    if (event.target === modal) modal.classList.add('hidden');
+                });
+            });
+        @endif
     </script>
 </body>
 </html>
