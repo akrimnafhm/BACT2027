@@ -14,13 +14,24 @@ class TicketNotificationService
 {
     /**
      * Kirim notifikasi WA & Email saat tiket dinyatakan lunas.
-     * Dedup memakai kolom notified_at agar tidak terkirim dua kali.
+     *
+     * Klaim atomik memakai kolom `notified_at` yang sudah ada (tanpa perubahan skema):
+     * hanya proses yang berhasil mengisi `notified_at` dari NULL yang mengirim, sehingga
+     * pemanggilan ganda / bersamaan (webhook, rekonsiliasi, admin) tidak menghasilkan
+     * notifikasi ganda. Konsekuensinya bersifat at-most-once: bila proses gagal di tengah
+     * setelah klaim, pengiriman berikutnya tidak diulang otomatis.
      */
     public function sendTicketPaid(TicketBooking $booking): void
     {
-        if ($booking->notified_at) {
+        $claimed = TicketBooking::whereKey($booking->getKey())
+            ->whereNull('notified_at')
+            ->update(['notified_at' => now()]);
+
+        if ($claimed === 0) {
             return;
         }
+
+        $booking->notified_at = now();
 
         // Pastikan token QR tersedia (QR check-in)
         if (empty($booking->checkin_token)) {
@@ -91,9 +102,6 @@ class TicketNotificationService
         if ($qrPath) {
             app(QrService::class)->delete($qrPath);
         }
-
-        // Tandai sudah dinotifikasi agar tidak terkirim ulang
-        $booking->update(['notified_at' => now()]);
     }
 
     /**

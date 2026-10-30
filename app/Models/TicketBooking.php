@@ -26,6 +26,11 @@ class TicketBooking extends Model
         'invoice_number',
         'payment_url',
         'payment_expired_at',
+        // Status DOKU terakhir yang tercatat (opsional, butuh migrasi
+        // 2026_10_15_000001; hanya label tampilan, bukan penentu status lokal).
+        'last_doku_transaction_status',
+        'last_doku_order_status',
+        'last_doku_checked_at',
         'full_name',
         'name_with_title',
         'nik',
@@ -51,6 +56,7 @@ class TicketBooking extends Model
         'deleted_at'       => 'datetime',
         'paid_at'          => 'datetime',
         'payment_expired_at' => 'datetime',
+        'last_doku_checked_at' => 'datetime',
     ];
 
     public function user()

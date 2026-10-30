@@ -9,6 +9,7 @@ use App\Models\Ticket;
 use App\Models\TicketBooking;
 use App\Models\User;
 use App\Models\WaGroupLink;
+use App\Services\DokuCancelService;
 use App\Services\TicketNotificationService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -17,6 +18,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -282,11 +284,44 @@ class AdminController extends Controller
             $booking->cancelled_at = now();
             $booking->status = 'cancelled';
             $booking->save();
+
+            $this->cancelDokuOrderBestEffort(
+                $booking,
+                'Booking tiket dibatalkan otomatis karena tiket dinonaktifkan admin',
+                'Ticket admin bulk cancel: hasil DOKU Cancel Order (best-effort)'
+            );
         }
 
         if ($bookings->isNotEmpty()) {
             $ticket->increment('quota', $bookings->count());
         }
+    }
+
+    /**
+     * Best-effort membatalkan order DOKU untuk booking tiket yang sudah dibatalkan lokal.
+     * Tidak pernah menggagalkan pembatalan lokal; hasilnya hanya dicatat di log.
+     */
+    private function cancelDokuOrderBestEffort(TicketBooking $booking, string $note, string $logMessage): void
+    {
+        if (! $booking->invoice_number) {
+            return;
+        }
+
+        $result = app(DokuCancelService::class)->cancelInvoiceBestEffort(
+            $booking->invoice_number,
+            null,
+            $note
+        );
+
+        Log::info($logMessage, [
+            'booking_id' => $booking->id,
+            'invoice_number' => $booking->invoice_number,
+            'attempted' => $result['attempted'],
+            'success' => $result['success'],
+            'reason' => $result['reason'],
+            'confirmed' => $result['confirmed'],
+            'http_status' => $result['http_status'],
+        ]);
     }
 
     // ==========================================
@@ -803,6 +838,14 @@ class AdminController extends Controller
         }
 
         $booking->save();
+
+        if ($oldStatus !== 'cancelled' && $booking->status === 'cancelled') {
+            $this->cancelDokuOrderBestEffort(
+                $booking,
+                'Booking tiket dibatalkan oleh panitia',
+                'Ticket admin cancel: hasil DOKU Cancel Order (best-effort)'
+            );
+        }
 
         // Invariant: peserta manual hanya boleh LUNAS setelah memiliki tanda konfirmasi.
         // (Jalur resmi: tombol Konfirmasi; jalur edit ini sekadar menjaga konsistensi.)

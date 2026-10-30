@@ -4,7 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\HotelReservation;
 use App\Models\HotelRoom;
+use App\Services\BookingCancellationService;
+use App\Services\DokuCancelService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class HotelController extends Controller
@@ -246,25 +250,67 @@ class HotelController extends Controller
             'status' => 'required|in:pending,paid,cancelled',
         ]);
 
-        $reservation = HotelReservation::findOrFail($id);
-        $oldStatus = $reservation->status;
         $newStatus = $request->input('status');
 
-        // Jika dibatalkan (cancelled), kembalikan kuota kamar sebanyak jumlah kamar yang dipesan
-        if ($oldStatus !== 'cancelled' && $newStatus === 'cancelled') {
-            if ($reservation->hotelRoom) {
-                $reservation->hotelRoom->increment('quota', max(1, (int) $reservation->quantity));
-            }
-        }
+        // Transisi status + penyesuaian kuota dijalankan ATOMIK (baris dikunci)
+        // agar tidak ada pengembalian/pengurangan kuota ganda saat submit berulang.
+        [$reservation, $oldStatus] = DB::transaction(function () use ($id, $newStatus) {
+            $reservation = HotelReservation::whereKey($id)->lockForUpdate()->firstOrFail();
+            $oldStatus = $reservation->status;
 
-        // Jika sebelumnya cancelled lalu diaktifkan lagi (paid/pending), kurangi kuota sebanyak jumlah kamar
-        if ($oldStatus === 'cancelled' && $newStatus !== 'cancelled') {
-            if ($reservation->hotelRoom && $reservation->hotelRoom->quota >= max(1, (int) $reservation->quantity)) {
-                $reservation->hotelRoom->decrement('quota', max(1, (int) $reservation->quantity));
+            if ($oldStatus === $newStatus) {
+                return [$reservation, $oldStatus];
             }
-        }
 
-        $reservation->update(['status' => $newStatus]);
+            if ($newStatus === 'cancelled') {
+                if ($oldStatus === 'pending') {
+                    // Idempoten + atomik: kuota dikembalikan tepat sekali, cancelled_at diisi.
+                    app(BookingCancellationService::class)->cancelHotel($reservation, 'Dibatalkan oleh panitia');
+                } else {
+                    // paid -> cancelled: pertahankan kebijakan lama (kuota dikembalikan).
+                    if ($reservation->hotelRoom) {
+                        $reservation->hotelRoom->increment('quota', max(1, (int) $reservation->quantity));
+                    }
+                    $reservation->cancelled_at = now();
+                    $reservation->status = 'cancelled';
+                    $reservation->save();
+                }
+
+                return [$reservation->fresh(), $oldStatus];
+            }
+
+            // newStatus = pending/paid (termasuk reaktivasi dari cancelled).
+            if ($oldStatus === 'cancelled') {
+                if ($reservation->hotelRoom && $reservation->hotelRoom->quota >= max(1, (int) $reservation->quantity)) {
+                    $reservation->hotelRoom->decrement('quota', max(1, (int) $reservation->quantity));
+                }
+            }
+
+            $reservation->status = $newStatus;
+            $reservation->save();
+
+            return [$reservation->fresh(), $oldStatus];
+        });
+
+        // Best-effort: bila panitia membatalkan reservasi yang masih pending dan sudah
+        // punya invoice DOKU, coba batalkan order-nya agar link tidak bisa dibayar.
+        if ($oldStatus === 'pending' && $newStatus === 'cancelled' && $reservation->invoice_number) {
+            $cancelResult = app(DokuCancelService::class)->cancelInvoiceBestEffort(
+                $reservation->invoice_number,
+                null,
+                'Reservasi hotel dibatalkan oleh panitia'
+            );
+
+            Log::info('Hotel admin cancel: hasil DOKU Cancel Order (best-effort)', [
+                'reservation_id' => $reservation->id,
+                'invoice_number' => $reservation->invoice_number,
+                'attempted' => $cancelResult['attempted'],
+                'success' => $cancelResult['success'],
+                'reason' => $cancelResult['reason'],
+                'confirmed' => $cancelResult['confirmed'],
+                'http_status' => $cancelResult['http_status'],
+            ]);
+        }
 
         return back()->with('success', 'Status reservasi hotel berhasil diperbarui!');
     }

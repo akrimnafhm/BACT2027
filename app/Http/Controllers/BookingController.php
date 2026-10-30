@@ -6,14 +6,17 @@ use App\Models\HotelRoom;
 use App\Models\Ticket;
 use App\Models\TicketBooking;
 use App\Models\WaGroupLink;
-use App\Services\TicketNotificationService;
+use App\Services\BookingCancellationService;
+use App\Services\DokuCancelService;
+use App\Services\DokuExpiry;
+use App\Services\DokuReconciliationService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -58,12 +61,25 @@ class BookingController extends Controller
 
         // Pesanan yang masih menunggu pembayaran (paling banyak satu).
         $pendingBooking = $bookings->firstWhere('status', 'pending');
+        $paymentDeadlinePassed = false;
 
-        // Jaga konsistensi: batalkan otomatis bila sudah melewati 24 jam / tiket kedaluwarsa
-        // (defense-in-depth, cron rutin menjalankan hal yang sama).
+        // Jaga konsistensi: rekonsiliasi dengan DOKU bila timer habis / tiket kedaluwarsa.
+        // Booking hanya dibatalkan bila DOKU mengonfirmasi kedaluwarsa; selain itu ditahan.
         if ($pendingBooking && $this->isBookingExpired($pendingBooking)) {
-            $this->cancelExpiredBooking($pendingBooking);
-            $pendingBooking = null;
+            app(DokuReconciliationService::class)->reconcileTicket($pendingBooking);
+            $pendingBooking->refresh();
+
+            if ($pendingBooking->status === 'paid') {
+                $this->ensureCheckinToken($pendingBooking);
+                $paidBookings = $paidBookings->push($pendingBooking);
+                $pendingBooking = null;
+            } elseif ($pendingBooking->status !== 'pending') {
+                $pendingBooking = null;
+            } else {
+                // Masih pending setelah rekonsiliasi: DOKU belum memberi status final.
+                // Jangan tawarkan pembayaran lagi; tampilkan status pemeriksaan.
+                $paymentDeadlinePassed = true;
+            }
         }
 
         // Tampilkan e-ticket + (jika ada) kartu lanjut pembayaran.
@@ -84,6 +100,7 @@ class BookingController extends Controller
                 'user' => $user,
                 'paidBookings' => $paidBookings,
                 'pendingBooking' => $pendingBooking,
+                'paymentDeadlinePassed' => $paymentDeadlinePassed,
             ]);
         }
 
@@ -134,17 +151,40 @@ class BookingController extends Controller
             return back()->with('error', 'Pemesanan hanya dapat dibatalkan sebelum pembayaran. Untuk tiket yang sudah lunas, silakan hubungi panitia untuk proses refund.');
         }
 
-        // Kembalikan kuota tiket
-        if ($booking->ticket_id) {
-            Ticket::where('id', $booking->ticket_id)->increment('quota');
+        // Kembalikan kuota tiket + transisi status aman race (idempoten).
+        $cancelled = app(BookingCancellationService::class)->cancelTicket($booking, 'Dibatalkan oleh user');
+
+        if (! $cancelled) {
+            return back()->with('error', 'Pemesanan tidak dapat dibatalkan karena statusnya sudah berubah. Silakan muat ulang halaman.');
         }
 
-        $noteLine = now()->format('d M Y H:i').' — Dibatalkan oleh user';
-        $booking->notes = trim(($booking->notes ? $booking->notes."\n" : '').$noteLine);
-        $booking->notes_updated_at = now();
-        $booking->cancelled_at = now();
-        $booking->status = 'cancelled';
-        $booking->save();
+        // Jejak eksplisit: pembatalan manual tidak melewati rekonsiliasi DOKU,
+        // jadi baris ini satu-satunya penanda di log (tanpa kredensial).
+        Log::info('Booking tiket dibatalkan manual oleh user', [
+            'booking_id' => $booking->id,
+            'invoice_number' => $booking->invoice_number,
+        ]);
+
+        // Best-effort: batalkan order DOKU yang masih pending agar link tidak bisa dibayar.
+        // Tidak mensyaratkan channel sudah dipilih; DOKU yang menentukan apakah order masih
+        // dapat dibatalkan. Kegagalan remote tidak menggagalkan pembatalan lokal (sudah commit).
+        if ($booking->invoice_number) {
+            $cancelResult = app(DokuCancelService::class)->cancelInvoiceBestEffort(
+                $booking->invoice_number,
+                null,
+                'Booking tiket dibatalkan oleh peserta'
+            );
+
+            Log::info('Ticket cancel: hasil DOKU Cancel Order (best-effort)', [
+                'booking_id' => $booking->id,
+                'invoice_number' => $booking->invoice_number,
+                'attempted' => $cancelResult['attempted'],
+                'success' => $cancelResult['success'],
+                'reason' => $cancelResult['reason'],
+                'confirmed' => $cancelResult['confirmed'],
+                'http_status' => $cancelResult['http_status'],
+            ]);
+        }
 
         return back()->with('success', 'Pemesanan berhasil dibatalkan. Kuota tiket telah dikembalikan.');
     }
@@ -174,15 +214,18 @@ class BookingController extends Controller
             ->where('status', 'pending')
             ->exists();
 
-        // Jika pending sudah kedaluwarsa, batalkan otomatis agar user bisa langsung booking ulang.
+        // Jika pending sudah kedaluwarsa, rekonsiliasi dengan DOKU agar user bisa
+        // langsung booking ulang. Bila status DOKU belum final, booking tetap ditahan.
         if ($hasPendingBooking) {
             $stalePending = TicketBooking::where('user_id', $user->id)
                 ->where('status', 'pending')
                 ->latest()
                 ->first();
             if ($stalePending && $this->isBookingExpired($stalePending)) {
-                $this->cancelExpiredBooking($stalePending);
-                $hasPendingBooking = false;
+                app(DokuReconciliationService::class)->reconcileTicket($stalePending);
+                $hasPendingBooking = TicketBooking::where('user_id', $user->id)
+                    ->where('status', 'pending')
+                    ->exists();
             }
         }
 
@@ -351,12 +394,39 @@ class BookingController extends Controller
                 ->with('error', 'Tiket peserta manual dikonfirmasi oleh panitia, tidak perlu melakukan pembayaran online.');
         }
 
-        // Batalkan otomatis bila melewati batas waktu pembayaran atau tiket sudah tidak berlaku.
+        // Rekonsiliasi dengan DOKU bila timer habis / tiket tidak berlaku.
+        // Booking hanya dibatalkan bila DOKU mengonfirmasi kedaluwarsa.
         if ($this->isBookingExpired($booking)) {
-            $this->cancelExpiredBooking($booking);
+            app(DokuReconciliationService::class)->reconcileTicket($booking);
+            $booking->refresh();
+
+            if ($booking->status === 'paid') {
+                return redirect()->route('booking.index')
+                    ->with('success', 'Tiket ini sudah lunas.');
+            }
+
+            if ($booking->status !== 'pending') {
+                return redirect()->route('booking.index')
+                    ->with('error', 'Pemesanan otomatis dibatalkan karena melewati batas waktu pembayaran atau tiket sudah tidak berlaku. Silakan lakukan pemesanan ulang.');
+            }
+
+            // HOLD tanpa batas waktu membuat user menunggu tanpa akhir (kasus
+            // invoice 141: PENDING + ORDER_GENERATED tanpa channel). Bila masa
+            // tenggang lewat, beri tahu user secara eksplisit bahwa ia bisa
+            // membatalkan lalu memesan ulang. BUKAN auto-cancel: status lokal
+            // hanya berubah lewat DokuStatus atau aksi eksplisit user.
+            if (app(DokuExpiry::class)->heldBeyondGrace($booking)) {
+                Log::info('DOKU held_beyond_grace', [
+                    'booking_id' => $booking->id,
+                    'invoice_number' => $booking->invoice_number,
+                ]);
+
+                return redirect()->route('booking.index')
+                    ->with('error', 'Batas waktu pembayaran sudah lama lewat namun status DOKU belum final (tanpa channel pembayaran yang dipilih). Anda dapat membatalkan pesanan ini lalu membuat pesanan baru, atau menunggu notifikasi DOKU.');
+            }
 
             return redirect()->route('booking.index')
-                ->with('error', 'Pemesanan otomatis dibatalkan karena melewati batas waktu pembayaran atau tiket sudah tidak berlaku. Silakan lakukan pemesanan ulang.');
+                ->with('error', 'Waktu pembayaran telah berakhir. Kami sedang memeriksa status pembayaran ke DOKU. Silakan perbarui status beberapa saat lagi.');
         }
 
         $ticket = Ticket::find($booking->ticket_id);
@@ -372,8 +442,9 @@ class BookingController extends Controller
             // Reload untuk mendapatkan state terbaru di bawah lock.
             $booking->refresh();
 
-            // REUSE: Jika link pembayaran DOKU sebelumnya masih valid, jangan buat pembayaran baru.
-            if ($booking->payment_url && $booking->payment_expired_at && $booking->payment_expired_at->gt(now())) {
+            // REUSE: Jika link pembayaran DOKU sebelumnya masih berlaku (expiry resmi
+            // DOKU, atau fallback lokal bila DOKU tidak mengirim expiry), pakai ulang.
+            if ($booking->payment_url && app(DokuExpiry::class)->effectiveExpiry($booking)?->gt(now())) {
                 return view('booking.checkout', compact('booking', 'ticket', 'displayName') + ['paymentUrl' => $booking->payment_url]);
             }
 
@@ -423,7 +494,7 @@ class BookingController extends Controller
                     ],
                 ],
                 'payment' => [
-                    'payment_due_date' => 1440, // Expired VA/Link dalam menit (24 jam)
+                    'payment_due_date' => app(DokuExpiry::class)->paymentDueDateMinutes(),
                 ],
                 'customer' => [
                     'id' => (string) $user->id,
@@ -490,6 +561,9 @@ class BookingController extends Controller
                 'request_id' => $requestId,
                 'http_status' => $response->status(),
                 'success' => $response->successful(),
+                'payment_due_date_minutes' => app(DokuExpiry::class)->paymentDueDateMinutes(),
+                'doku_expired_at' => optional(app(DokuExpiry::class)->parse($dokuResult))->toIso8601String(),
+                'payment_method_types' => $dokuResult['response']['payment']['payment_method_types'] ?? null,
             ]);
 
             // Cek jika berhasil dapat link pembayaran (payment_url) dari DOKU
@@ -507,14 +581,15 @@ class BookingController extends Controller
                 return view('booking.checkout', compact('booking', 'ticket', 'displayName', 'paymentUrl'));
             }
 
-            // Jika gagal konek ke DOKU
+            // Jika gagal konek ke DOKU (jangan log body penuh agar tidak membocorkan token).
             Log::error('DOKU checkout failed', [
                 'booking_id' => $booking->id,
                 'invoice_number' => $invoiceNumber,
                 'request_id' => $requestId,
                 'base_url' => $baseUrl,
                 'http_status' => $response->status(),
-                'response' => $dokuResult,
+                'error_code' => $dokuResult['error']['code'] ?? $dokuResult['error_code'] ?? null,
+                'error_message' => $dokuResult['error']['message'] ?? $dokuResult['message'] ?? null,
             ]);
 
             return back()->with('error', 'Gagal memproses ke gerbang pembayaran DOKU. Silakan coba lagi.');
@@ -601,14 +676,17 @@ class BookingController extends Controller
      */
     private function isBookingExpired(TicketBooking $booking): bool
     {
+        // 1. Expiry RESMI dari DOKU (bila ada) — jangan campur dengan fallback.
         if ($booking->payment_expired_at) {
             return $booking->payment_expired_at->lte(now());
         }
 
-        if ($booking->created_at && $booking->created_at->lt(now()->subHours(24))) {
+        // 2. Fallback lokal eksplisit (created_at + jam konfigurasi).
+        if (app(DokuExpiry::class)->isExpired($booking)) {
             return true;
         }
 
+        // 3. Tiket sudah tidak berlaku (hanya relevan bila tidak ada timer pembayaran).
         $ticket = $booking->ticket;
         if ($ticket && $ticket->end_date && $ticket->end_date->lt(now())) {
             return true;
@@ -618,44 +696,14 @@ class BookingController extends Controller
     }
 
     /**
-     * Batalkan booking pending secara otomatis dan kembalikan kuota tiket.
+     * Ambil waktu expired LINK PEMBAYARAN dari respons DOKU.
+     *
+     * Mengembalikan null bila DOKU tidak menyertakan expiry (jangan mengarang
+     * nilai fallback di sini). Fallback lokal ditangani terpisah oleh DokuExpiry.
      */
-    private function cancelExpiredBooking(TicketBooking $booking): void
+    private function parsePaymentExpiredDate(array $dokuResult): ?Carbon
     {
-        if ($booking->ticket_id) {
-            Ticket::where('id', $booking->ticket_id)->increment('quota');
-        }
-
-        $noteLine = now()->format('d M Y H:i').' — Dibatalkan otomatis oleh sistem (melewati batas waktu pembayaran / tiket kedaluwarsa)';
-        $booking->notes = trim(($booking->notes ? $booking->notes."\n" : '').$noteLine);
-        $booking->notes_updated_at = now();
-        $booking->cancelled_at = now();
-        $booking->status = 'cancelled';
-        $booking->save();
-    }
-
-    /**
-     * Ambil waktu expired link pembayaran dari respons DOKU. Jika tidak tersedia,
-     * gunakan fallback 24 jam sejak sekarang.
-     */
-    private function parsePaymentExpiredDate(array $dokuResult): Carbon
-    {
-        $raw = $dokuResult['response']['payment']['expired_datetime']
-            ?? $dokuResult['response']['payment']['expired_date']
-            ?? $dokuResult['response']['payment']['expiredDate']
-            ?? null;
-
-        if ($raw) {
-            try {
-                // Simpan dalam zona waktu aplikasi agar konsisten dengan created_at
-                // (Eloquent menyimpan wall-clock, bukan UTC).
-                return Carbon::parse($raw)->setTimezone(config('app.timezone'));
-            } catch (\Throwable $e) {
-                // ignore, fallback di bawah
-            }
-        }
-
-        return now()->addHours(24);
+        return app(DokuExpiry::class)->parse($dokuResult);
     }
 
     /**

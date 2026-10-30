@@ -4,7 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\HotelReservation;
 use App\Models\HotelRoom;
-use App\Services\HotelNotificationService;
+use App\Services\BookingCancellationService;
+use App\Services\DokuCancelService;
+use App\Services\DokuExpiry;
+use App\Services\DokuReconciliationService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -47,11 +50,11 @@ class HotelBookingController extends Controller
 
         $this->syncReservationFromCallback($request, $user, $latestReservation);
 
-        // Jaga konsistensi: batalkan otomatis bila timer pembayaran sudah habis
-        // (defense-in-depth, cron rutin menjalankan hal yang sama).
+        // Jaga konsistensi: rekonsiliasi dengan DOKU bila timer pembayaran sudah habis.
+        // Reservasi hanya dibatalkan bila DOKU mengonfirmasi kedaluwarsa; selain itu ditahan.
         $reservations->where('status', 'pending')->each(function ($reservation) {
             if ($this->isReservationExpired($reservation)) {
-                $this->cancelExpiredReservation($reservation);
+                app(DokuReconciliationService::class)->reconcileHotel($reservation);
             }
         });
 
@@ -89,13 +92,14 @@ class HotelBookingController extends Controller
             ]);
         }
 
-        // Batalkan otomatis pending yang kedaluwarsa agar kuota di katalog akurat.
+        // Rekonsiliasi pending yang kedaluwarsa dengan DOKU agar kuota di katalog akurat.
+        // Hanya dibatalkan bila DOKU mengonfirmasi kedaluwarsa.
         HotelReservation::where('user_id', $user->id)
             ->where('status', 'pending')
             ->get()
             ->each(function ($reservation) {
                 if ($this->isReservationExpired($reservation)) {
-                    $this->cancelExpiredReservation($reservation);
+                    app(DokuReconciliationService::class)->reconcileHotel($reservation);
                 }
             });
 
@@ -144,13 +148,14 @@ class HotelBookingController extends Controller
         $room = HotelRoom::where('is_active', true)->findOrFail($id);
         $quantity = (int) $request->input('quantity', 1);
 
-        // Auto-cancel reservasi pending yang sudah expired (defense-in-depth)
+        // Rekonsiliasi reservasi pending yang sudah expired (defense-in-depth).
+        // Hanya dibatalkan bila DOKU mengonfirmasi kedaluwarsa.
         HotelReservation::where('user_id', $user->id)
             ->where('status', 'pending')
             ->get()
             ->each(function ($reservation) {
                 if ($this->isReservationExpired($reservation)) {
-                    $this->cancelExpiredReservation($reservation);
+                    app(DokuReconciliationService::class)->reconcileHotel($reservation);
                 }
             });
 
@@ -237,14 +242,39 @@ class HotelBookingController extends Controller
             return back()->with('error', 'Reservasi hanya dapat dibatalkan sebelum pembayaran. Untuk yang sudah lunas, silakan hubungi panitia.');
         }
 
-        // Kembalikan kuota kamar sebanyak jumlah kamar yang dipesan
-        if ($reservation->hotelRoom) {
-            $reservation->hotelRoom->increment('quota', max(1, (int) $reservation->quantity));
+        // Kembalikan kuota kamar + transisi status aman race (idempoten).
+        $cancelled = app(BookingCancellationService::class)->cancelHotel($reservation, 'Dibatalkan oleh user');
+
+        if (! $cancelled) {
+            return back()->with('error', 'Reservasi tidak dapat dibatalkan karena statusnya sudah berubah. Silakan muat ulang halaman.');
         }
 
-        $reservation->cancelled_at = now();
-        $reservation->status = 'cancelled';
-        $reservation->save();
+        // Jejak eksplisit pembatalan manual (satu-satunya penanda di log).
+        Log::info('Reservasi hotel dibatalkan manual oleh user', [
+            'reservation_id' => $reservation->id,
+            'invoice_number' => $reservation->invoice_number,
+        ]);
+
+        // Best-effort: batalkan order DOKU yang masih pending agar link tidak bisa dibayar.
+        // Kegagalan TIDAK menggagalkan pembatalan lokal (sudah commit) dan tidak mengubah
+        // status/kembalikan kuota lagi — hanya dicatat untuk tindak lanjut.
+        if ($reservation->invoice_number) {
+            $cancelResult = app(DokuCancelService::class)->cancelInvoiceBestEffort(
+                $reservation->invoice_number,
+                null,
+                'Reservasi hotel dibatalkan oleh peserta'
+            );
+
+            Log::info('Hotel cancel: hasil DOKU Cancel Order (best-effort)', [
+                'reservation_id' => $reservation->id,
+                'invoice_number' => $reservation->invoice_number,
+                'attempted' => $cancelResult['attempted'],
+                'success' => $cancelResult['success'],
+                'reason' => $cancelResult['reason'],
+                'confirmed' => $cancelResult['confirmed'],
+                'http_status' => $cancelResult['http_status'],
+            ]);
+        }
 
         return redirect()->route('hotels.index')
             ->with('success', 'Reservasi berhasil dibatalkan. Anda bisa memesan ulang.');
@@ -277,19 +307,44 @@ class HotelBookingController extends Controller
         try {
             $reservation->refresh();
 
-            // REUSE: Jika link pembayaran DOKU sebelumnya masih valid, jangan buat pembayaran baru.
-            if ($reservation->payment_url && $reservation->payment_expired_at && $reservation->payment_expired_at->gt(now())) {
+            // REUSE: Jika link pembayaran DOKU sebelumnya masih berlaku (expiry resmi
+            // DOKU, atau fallback lokal bila DOKU tidak mengirim expiry), pakai ulang.
+            if ($reservation->payment_url && app(DokuExpiry::class)->effectiveExpiry($reservation)?->gt(now())) {
                 $paymentUrl = $reservation->payment_url;
 
                 return view('hotels.checkout', compact('reservation', 'room', 'paymentUrl'));
             }
 
-            // Timer sudah habis -> batalkan otomatis, user harus reservasi ulang.
-            if ($reservation->payment_expired_at && $reservation->payment_expired_at->lte(now())) {
-                $this->cancelExpiredReservation($reservation);
+            // Timer sudah habis -> rekonsiliasi dengan DOKU. Reservasi hanya dibatalkan
+            // bila DOKU mengonfirmasi kedaluwarsa; bila belum final, ditahan.
+            if ($this->isReservationExpired($reservation)) {
+                app(DokuReconciliationService::class)->reconcileHotel($reservation);
+                $reservation->refresh();
+
+                if ($reservation->status === 'paid') {
+                    return redirect()->route('hotels.index')
+                        ->with('success', 'Reservasi hotel ini sudah lunas.');
+                }
+
+                if ($reservation->status !== 'pending') {
+                    return redirect()->route('hotels.index')
+                        ->with('error', 'Timer pembayaran sudah habis, reservasi dibatalkan otomatis. Silakan pesan ulang.');
+                }
+
+                // Sama seperti tiket: HOLD tanpa batas membuat user menunggu
+                // tanpa akhir. BUKAN auto-cancel; arahkan ke pembatalan manual.
+                if (app(DokuExpiry::class)->heldBeyondGrace($reservation)) {
+                    Log::info('DOKU held_beyond_grace', [
+                        'reservation_id' => $reservation->id,
+                        'invoice_number' => $reservation->invoice_number,
+                    ]);
+
+                    return redirect()->route('hotels.index')
+                        ->with('error', 'Batas waktu pembayaran sudah lama lewat namun status DOKU belum final (tanpa channel pembayaran yang dipilih). Anda dapat membatalkan reservasi ini lalu memesan ulang, atau menunggu notifikasi DOKU.');
+                }
 
                 return redirect()->route('hotels.index')
-                    ->with('error', 'Timer pembayaran sudah habis, reservasi dibatalkan otomatis. Silakan pesan ulang.');
+                    ->with('error', 'Status pembayaran Anda sedang diverifikasi. Silakan muat ulang halaman beberapa saat lagi.');
             }
 
             // Jika sebelumnya sudah ada invoice_number dari checkout yang belum selesai
@@ -344,7 +399,7 @@ class HotelBookingController extends Controller
                     'line_items' => $lineItems,
                 ],
                 'payment' => [
-                    'payment_due_date' => 1440, // Expired VA/Link dalam menit (24 jam)
+                    'payment_due_date' => app(DokuExpiry::class)->paymentDueDateMinutes(),
                 ],
                 'customer' => [
                     'id' => (string) $user->id,
@@ -410,6 +465,9 @@ class HotelBookingController extends Controller
                 'request_id' => $requestId,
                 'http_status' => $response->status(),
                 'success' => $response->successful(),
+                'payment_due_date_minutes' => app(DokuExpiry::class)->paymentDueDateMinutes(),
+                'doku_expired_at' => optional(app(DokuExpiry::class)->parse($dokuResult))->toIso8601String(),
+                'payment_method_types' => $dokuResult['response']['payment']['payment_method_types'] ?? null,
             ]);
 
             // Cek jika berhasil dapat link pembayaran (payment_url) dari DOKU
@@ -427,14 +485,15 @@ class HotelBookingController extends Controller
                 return view('hotels.checkout', compact('reservation', 'room', 'paymentUrl'));
             }
 
-            // Jika gagal konek ke DOKU
+            // Jika gagal konek ke DOKU (jangan log body penuh agar tidak membocorkan token).
             Log::error('DOKU hotel checkout failed', [
                 'reservation_id' => $reservation->id,
                 'invoice_number' => $invoiceNumber,
                 'request_id' => $requestId,
                 'base_url' => $baseUrl,
                 'http_status' => $response->status(),
-                'response' => $dokuResult,
+                'error_code' => $dokuResult['error']['code'] ?? $dokuResult['error_code'] ?? null,
+                'error_message' => $dokuResult['error']['message'] ?? $dokuResult['message'] ?? null,
             ]);
 
             return back()->with('error', 'Gagal memproses ke gerbang pembayaran DOKU. Silakan coba lagi.');
@@ -534,47 +593,18 @@ class HotelBookingController extends Controller
      */
     private function isReservationExpired(HotelReservation $reservation): bool
     {
-        if ($reservation->payment_expired_at) {
-            return $reservation->payment_expired_at->lte(now());
-        }
-
-        return $reservation->created_at && $reservation->created_at->lte(now()->subHours(24));
+        // Expiry resmi DOKU bila ada, selain itu fallback lokal dari created_at.
+        return app(DokuExpiry::class)->isExpired($reservation);
     }
 
     /**
-     * Batalkan reservasi pending secara otomatis dan kembalikan kuota kamar.
+     * Ambil waktu expired LINK PEMBAYARAN dari respons DOKU.
+     *
+     * Mengembalikan null bila DOKU tidak menyertakan expiry (jangan mengarang
+     * nilai fallback di sini). Fallback lokal ditangani terpisah oleh DokuExpiry.
      */
-    private function cancelExpiredReservation(HotelReservation $reservation): void
+    private function parsePaymentExpiredDate(array $dokuResult): ?Carbon
     {
-        if ($reservation->hotelRoom) {
-            $reservation->hotelRoom->increment('quota', max(1, (int) $reservation->quantity));
-        }
-
-        $reservation->cancelled_at = now();
-        $reservation->status = 'cancelled';
-        $reservation->save();
-    }
-
-    /**
-     * Ambil waktu expired link pembayaran dari respons DOKU. Jika tidak tersedia,
-     * gunakan fallback 24 jam sejak sekarang.
-     */
-    private function parsePaymentExpiredDate(array $dokuResult): Carbon
-    {
-        $raw = $dokuResult['response']['payment']['expired_date']
-            ?? $dokuResult['response']['payment']['expiredDate']
-            ?? null;
-
-        if ($raw) {
-            try {
-                // Simpan dalam zona waktu aplikasi agar konsisten dengan created_at
-                // (Eloquent menyimpan wall-clock, bukan UTC).
-                return Carbon::parse($raw)->setTimezone(config('app.timezone'));
-            } catch (\Throwable $e) {
-                // ignore, fallback di bawah
-            }
-        }
-
-        return now()->addHours(24);
+        return app(DokuExpiry::class)->parse($dokuResult);
     }
 }

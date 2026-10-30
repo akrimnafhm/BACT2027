@@ -12,13 +12,23 @@ class HotelNotificationService
 {
     /**
      * Kirim notifikasi WA & Email saat reservasi hotel dinyatakan lunas.
-     * Dedup memakai kolom notified_at agar tidak terkirim dua kali.
+     *
+     * Klaim atomik memakai kolom `notified_at` yang sudah ada (tanpa perubahan skema):
+     * hanya proses yang berhasil mengisi `notified_at` dari NULL yang mengirim, sehingga
+     * pemanggilan ganda / bersamaan tidak menghasilkan notifikasi ganda. Konsekuensinya
+     * bersifat at-most-once: bila proses gagal setelah klaim, tidak diulang otomatis.
      */
     public function sendHotelPaid(HotelReservation $reservation): void
     {
-        if ($reservation->notified_at) {
+        $claimed = HotelReservation::whereKey($reservation->getKey())
+            ->whereNull('notified_at')
+            ->update(['notified_at' => now()]);
+
+        if ($claimed === 0) {
             return;
         }
+
+        $reservation->notified_at = now();
 
         $waTemplate = NotificationTemplate::where('key', 'hotel_paid_wa')->first();
         $emailTemplate = NotificationTemplate::where('key', 'hotel_paid_email')->first();
@@ -65,9 +75,6 @@ class HotelNotificationService
                 Log::error('Gagal kirim notifikasi email hotel: '.$e->getMessage());
             }
         }
-
-        // Tandai sudah dinotifikasi agar tidak terkirim ulang
-        $reservation->update(['notified_at' => now()]);
     }
 
     /**

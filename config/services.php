@@ -45,10 +45,33 @@ return [
     ],
 
     'doku' => [
-        'client_id'        => env('DOKU_CLIENT_ID'),
-        'secret_key'       => env('DOKU_SECRET_KEY'),
-        'is_production'    => env('DOKU_IS_PRODUCTION', false),
+        'client_id' => env('DOKU_CLIENT_ID'),
+        'secret_key' => env('DOKU_SECRET_KEY'),
+        'is_production' => env('DOKU_IS_PRODUCTION', false),
         'notification_url' => env('DOKU_NOTIFICATION_URL'),
+        // Throttle Check Status API agar scheduler tidak menghantam DOKU tiap menit.
+        // Set 0 untuk menonaktifkan cache (dipakai saat pengujian).
+        'check_status_cache_seconds' => env('DOKU_CHECK_STATUS_CACHE_SECONDS', 120),
+        // Durasi kedaluwarsa link/VA DOKU (MENIT) yang dikirim ke create-order.
+        // Default 1440 menit (24 jam). Jangan diisi nilai pendek di luar pengujian.
+        'payment_due_date_minutes' => env('DOKU_PAYMENT_DUE_DATE_MINUTES', 1440),
+        // Fallback LOKAL (jam) bila respons DOKU tidak menyertakan waktu expired.
+        // Dipisahkan dari expiry resmi DOKU agar tidak dianggap expiry sesungguhnya.
+        'local_expiry_fallback_hours' => env('DOKU_LOCAL_EXPIRY_FALLBACK_HOURS', 24),
+        // Masa tenggang HOLD (menit) setelah payment_expired_at lewat: bila DOKU
+        // masih PENDING/GENERATED tanpa channel, user diberi pesan eksplisit +
+        // tombol batalkan (bukan menunggu tanpa akhir). TIDAK auto-cancel.
+        'hold_grace_minutes' => env('DOKU_HOLD_GRACE_MINUTES', 15),
+        // Buffer (detik) setelah payment_expired_at untuk keputusan eksplisit
+        // "checkout_lapsed_no_channel": order TANPA channel yang timer-nya
+        // habis + buffer dan Check Status tetap PENDING/tanpa status dibatalkan
+        // lokal. Keputusan di luar DokuStatus::outcome() (tetap HOLD).
+        'lapse_buffer_seconds' => env('DOKU_LAPSE_BUFFER_SECONDS', 90),
+        // Cancel Order API DOKU Checkout (POST /checkout/v3/cancellations).
+        // Memerlukan aktivasi di Dashboard DOKU (Settings > Checkout Appearance >
+        // System Settings > Order Settings > "Activate cancellation of unpaid orders").
+        // Default nonaktif agar tidak ada pemanggilan yang gagal bila belum diaktifkan.
+        'cancel_order_enabled' => env('DOKU_CANCEL_ORDER_ENABLED', false),
     ],
 
 ];

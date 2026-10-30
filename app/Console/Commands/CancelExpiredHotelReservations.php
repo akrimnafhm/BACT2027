@@ -3,25 +3,28 @@
 namespace App\Console\Commands;
 
 use App\Models\HotelReservation;
+use App\Services\DokuReconciliationService;
 use Illuminate\Console\Command;
 
 class CancelExpiredHotelReservations extends Command
 {
     /**
-     * Batalkan otomatis reservasi hotel pending yang melewati batas waktu
-     * pembayaran (payment_expired_at dari DOKU), atau fallback 24 jam sejak dibuat.
-     * Kuota kamar dikembalikan sehingga user bisa reservasi ulang.
+     * Rekonsiliasi reservasi hotel pending yang melewati batas waktu pembayaran
+     * dengan DOKU Check Status API. Reservasi hanya dibatalkan bila DOKU
+     * mengonfirmasi kedaluwarsa; selain itu DITAHAN untuk pemeriksaan ulang.
      *
      * @var string
      */
     protected $signature = 'hotel-reservations:cancel-expired';
 
-    protected $description = 'Batalkan reservasi hotel pending yang melewati batas waktu pembayaran, lalu kembalikan kuota';
+    protected $description = 'Rekonsiliasi reservasi hotel pending dengan DOKU, batalkan hanya yang benar-benar kedaluwarsa, lalu kembalikan kuota';
 
-    public function handle(): int
+    public function handle(DokuReconciliationService $reconciler): int
     {
-        $deadline = now()->subHours(24);
+        $deadline = now()->subHours((int) config('services.doku.local_expiry_fallback_hours', 24));
         $cancelled = 0;
+        $paid = 0;
+        $held = 0;
 
         HotelReservation::where('status', 'pending')
             ->where(function ($query) use ($deadline) {
@@ -31,22 +34,26 @@ class CancelExpiredHotelReservations extends Command
                             ->where('created_at', '<=', $deadline);
                     });
             })
-            ->chunkById(100, function ($reservations) use (&$cancelled) {
+            ->chunkById(100, function ($reservations) use (&$cancelled, &$paid, &$held, $reconciler) {
                 foreach ($reservations as $reservation) {
-                    if ($reservation->hotelRoom) {
-                        $reservation->hotelRoom->increment('quota', max(1, (int) $reservation->quantity));
+                    $action = $reconciler->reconcileHotel($reservation);
+
+                    if ($action === DokuReconciliationService::ACTION_CANCELLED
+                        || $action === DokuReconciliationService::ACTION_CANCELLED_LAPSED) {
+                        $cancelled++;
+                        $lapsed = $action === DokuReconciliationService::ACTION_CANCELLED_LAPSED ? ' (lapsed tanpa channel)' : '';
+                        $this->info("Reservasi hotel #{$reservation->id} dibatalkan otomatis{$lapsed}.");
+                    } elseif ($action === DokuReconciliationService::ACTION_PAID) {
+                        $paid++;
+                        $this->info("Reservasi hotel #{$reservation->id} ditandai PAID dari rekonsiliasi DOKU.");
+                    } elseif ($action === DokuReconciliationService::ACTION_HELD) {
+                        $held++;
+                        $this->info("Reservasi hotel #{$reservation->id} DITAHAN (status DOKU belum final).");
                     }
-
-                    $reservation->cancelled_at = now();
-                    $reservation->status = 'cancelled';
-                    $reservation->save();
-
-                    $cancelled++;
-                    $this->info("Reservasi hotel #{$reservation->id} dibatalkan otomatis.");
                 }
             });
 
-        $this->info("Selesai. {$cancelled} reservasi hotel dibatalkan.");
+        $this->info("Selesai. {$cancelled} dibatalkan, {$paid} ditandai lunas, {$held} ditahan (menunggu status final DOKU).");
 
         return self::SUCCESS;
     }
