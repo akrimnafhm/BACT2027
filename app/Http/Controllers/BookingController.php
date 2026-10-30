@@ -276,21 +276,35 @@ class BookingController extends Controller
     {
         $request->validate([
             'ticket_id' => 'required|exists:tickets,id',
-            'full_name' => 'required|string|max:255',
-            'name_with_title' => 'required|string|max:255',
-            'nik' => 'required|digits:16',
             'profession' => 'required|string|max:255',
-            'whatsapp_number' => 'required|string|max:20',
-            'gmail_account' => 'required|email|max:255',
             'plataran_sehat_email' => 'required|email|max:255',
             'institution_name' => 'required|string|max:255',
             'institution_city' => 'required|string|max:255',
             'institution_province' => 'required|string|max:255',
+            'gelar_depan' => 'nullable|string|max:100',
+            'gelar_belakang' => 'nullable|string|max:150',
         ]);
 
         $user = Auth::user();
         $ticket = Ticket::findOrFail($request->ticket_id);
         $now = Carbon::now();
+
+        // Identitas peserta SELALU diambil dari profil akun, bukan dari input form,
+        // agar satu akun tidak bisa dipakai membeli tiket untuk orang lain.
+        $gelarDepan = trim((string) $request->input('gelar_depan'));
+        $gelarBelakang = trim((string) $request->input('gelar_belakang'));
+        $nameWithTitle = $user->name;
+
+        if ($gelarDepan !== '') {
+            $nameWithTitle = rtrim($gelarDepan, '.').'. '.$nameWithTitle;
+        }
+        if ($gelarBelakang !== '') {
+            $nameWithTitle .= ', '.$gelarBelakang;
+        }
+
+        if (! $this->isProfileComplete($user)) {
+            return back()->with('error', 'Mohon lengkapi profil terlebih dahulu sebelum memesan tiket.');
+        }
 
         // Validasi keamanan tiket
         if (! $ticket->is_active) {
@@ -326,7 +340,7 @@ class BookingController extends Controller
         // condition saat kuota menipis & banyak user memesan bersamaan. Jika gagal,
         // seluruh transaksi di-rollback sehingga kuota tidak berkurang tanpa booking.
         try {
-            $booking = DB::transaction(function () use ($ticket, $request, $user) {
+            $booking = DB::transaction(function () use ($ticket, $request, $user, $nameWithTitle) {
                 $reserved = Ticket::where('id', $ticket->id)
                     ->where('quota', '>', 0)
                     ->decrement('quota');
@@ -343,12 +357,12 @@ class BookingController extends Controller
                         'ticket_name' => $ticket->ticket_name,       // Lock Nama Tiket
                         'ticket_category' => $ticket->ticket_category,   // Lock Kategori
                         'amount' => $ticket->price,             // Lock Harga Beli
-                        'full_name' => $request->full_name,
-                        'name_with_title' => $request->name_with_title,
-                        'nik' => $request->nik,
+                        'full_name' => $user->name,
+                        'name_with_title' => $nameWithTitle,
+                        'nik' => $user->nik,
                         'profession' => $request->profession,
-                        'whatsapp_number' => $request->whatsapp_number,
-                        'gmail_account' => $request->gmail_account,
+                        'whatsapp_number' => $user->phone_number,
+                        'gmail_account' => $user->email,
                         'plataran_sehat_email' => $request->plataran_sehat_email,
                         'institution_name' => $request->institution_name,
                         'institution_district' => $request->institution_district ?? null,
