@@ -1,7 +1,10 @@
 <?php
 
+use App\Models\Ticket;
+use App\Models\TicketBooking;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
 
@@ -81,4 +84,59 @@ it('menampilkan pop-up peringatan hanya saat data pribadi belum terkunci', funct
         ->assertOk()
         ->assertSee('Terkunci Permanen')
         ->assertDontSee('personal-data-lock-modal');
+});
+
+it('mengunci pemilik tiket tetapi mengizinkan pengisian field kosong', function () {
+    $user = profileLockUser([
+        'nik' => '3201010101010005',
+        'gender' => null,
+        'personal_data_locked_at' => null,
+    ]);
+
+    $ticket = Ticket::create([
+        'ticket_name' => 'Basic',
+        'ticket_category' => 'Basic',
+        'price' => 100000,
+        'quota' => 1,
+        'is_active' => true,
+    ]);
+
+    TicketBooking::create([
+        'user_id' => $user->id,
+        'ticket_id' => $ticket->id,
+        'status' => 'paid',
+        'source' => 'website',
+        'ticket_name' => $ticket->ticket_name,
+        'ticket_category' => $ticket->ticket_category,
+        'amount' => $ticket->price,
+        'invoice_number' => 'RC-LOCK-'.Str::random(8),
+        'full_name' => $user->name,
+        'name_with_title' => $user->name,
+        'nik' => $user->nik,
+        'profession' => 'Dokter',
+        'whatsapp_number' => $user->phone_number,
+        'gmail_account' => $user->email,
+        'plataran_sehat_email' => $user->email,
+        'institution_name' => 'RS Test',
+        'institution_city' => 'Bandung',
+        'institution_province' => 'Jawa Barat',
+    ]);
+
+    expect($user->fresh()->isPersonalDataLocked())->toBeTrue();
+
+    $this->actingAs($user)
+        ->post(route('profile.update'), [
+            'name' => 'Nama Diganti',
+            'nik' => '3201010101019998',
+            'gender' => 'Perempuan',
+            'phone_number' => '081234567890',
+        ])
+        ->assertRedirect();
+
+    $user->refresh();
+
+    expect($user->name)->toBe('Nama Awal')
+        ->and($user->nik)->toBe('3201010101010005')
+        ->and($user->gender)->toBe('Perempuan')
+        ->and($user->personal_data_locked_at)->not->toBeNull();
 });

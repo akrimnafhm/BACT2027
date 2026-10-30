@@ -132,36 +132,40 @@
                     <div>
                         <h2 class="text-lg font-extrabold text-[#234661]">Data Pribadi</h2>
                         @if($personalDataLocked)
-                            <p class="text-xs text-gray-500 mt-1">Data pribadi Anda sudah dikunci permanen dan tidak dapat diubah lagi. Hubungi panitia jika terdapat kekeliruan.</p>
+                            @if($hasEditablePersonalData)
+                                <p class="text-xs text-gray-500 mt-1">Sebagian data pribadi Anda sudah dikunci permanen. Silakan lengkapi data yang masih kosong; setelah disimpan, data tersebut ikut terkunci permanen.</p>
+                            @else
+                                <p class="text-xs text-gray-500 mt-1">Data pribadi Anda sudah dikunci permanen dan tidak dapat diubah lagi. Hubungi panitia jika terdapat kekeliruan.</p>
+                            @endif
                         @else
                             <p class="text-xs text-gray-500 mt-1">Pastikan data pribadi sudah sesuai dengan KTP karena nama lengkap, NIK, dan jenis kelamin hanya dapat diisi <b>satu kali</b>. Setelah disimpan, data tidak dapat diubah lagi.</p>
                         @endif
                     </div>
-                    @if($personalDataLocked)
+                    <!-- @if($personalDataLocked)
                         <span class="inline-flex items-center gap-1 text-[11px] font-bold px-3 py-1 bg-gray-100 text-gray-600 rounded-full whitespace-nowrap self-start">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0-1.105.895-2 2-2s2 .895 2 2v2m-9 4h10a2 2 0 002-2v-5a2 2 0 00-2-2H7a2 2 0 00-2 2v5a2 2 0 002 2zm5-12V6a4 4 0 00-8 0v1"></path></svg>
-                            Terkunci Permanen
+                            
                         </span>
-                    @endif
+                    @endif -->
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <!-- Nama Lengkap -->
                     <div class="md:col-span-2">
                         <label class="block text-sm font-semibold text-gray-700 mb-1.5">Nama Lengkap (Sesuai KTP) <span class="text-red-500">*</span></label>
-                        <input type="text" name="name" value="{{ $user->name }}" @if($personalDataLocked) readonly @else required @endif class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] outline-none transition text-sm font-medium text-gray-800 {{ $personalDataLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : '' }}">
+                        <input type="text" name="name" value="{{ $user->name }}" @if(! $personalDataEdit['name']) readonly @else required @endif class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] outline-none transition text-sm font-medium text-gray-800 {{ $personalDataEdit['name'] ? '' : 'bg-gray-100 text-gray-500 cursor-not-allowed' }}">
                     </div>
 
                     <!-- NIK -->
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-1.5">NIK (Nomor Induk Kependudukan)</label>
-                        <input type="text" name="nik" value="{{ $user->nik }}" placeholder="16 Digit NIK" @if($personalDataLocked) readonly @else required @endif class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] outline-none transition text-sm font-medium text-gray-800 {{ $personalDataLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : '' }}">
+                        <input type="text" name="nik" value="{{ $user->nik }}" placeholder="16 Digit NIK" @if(! $personalDataEdit['nik']) readonly @else required @endif class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] outline-none transition text-sm font-medium text-gray-800 {{ $personalDataEdit['nik'] ? '' : 'bg-gray-100 text-gray-500 cursor-not-allowed' }}">
                     </div>
 
                     <!-- Jenis Kelamin -->
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-1.5">Jenis Kelamin</label>
-                        <select name="gender" @if($personalDataLocked) disabled @else required @endif class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] outline-none transition bg-white text-sm font-medium text-gray-800 {{ $personalDataLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : '' }}">
+                        <select name="gender" @if(! $personalDataEdit['gender']) disabled @else required @endif class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FBE39D] focus:border-[#E19404] outline-none transition bg-white text-sm font-medium text-gray-800 {{ $personalDataEdit['gender'] ? '' : 'bg-gray-100 text-gray-500 cursor-not-allowed' }}">
                             <option value="">Pilih Jenis Kelamin</option>
                             <option value="Laki-laki" {{ $user->gender == 'Laki-laki' ? 'selected' : '' }}>Laki-laki</option>
                             <option value="Perempuan" {{ $user->gender == 'Perempuan' ? 'selected' : '' }}>Perempuan</option>
@@ -198,11 +202,11 @@
 
             <!-- TOMBOL SIMPAN -->
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3 pt-2">
-                @if(! $personalDataLocked)
+                @if($hasEditablePersonalData)
                     <p class="text-xs text-gray-500 sm:mr-auto">Pastikan nama lengkap, NIK, dan jenis kelamin sudah benar dan sesuai dengan KTP. Data pribadi tidak dapat diubah setelah disimpan.</p>
                 @endif
                 <button type="submit" class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-3 px-8 rounded-lg shadow-sm transition transform active:scale-95 text-sm whitespace-nowrap">
-                    {{ $personalDataLocked ? 'Simpan Perubahan' : 'Simpan Data Pribadi' }}
+                    {{ $hasEditablePersonalData ? 'Simpan Data Pribadi' : 'Simpan Perubahan' }}
                 </button>
             </div>
         </form>

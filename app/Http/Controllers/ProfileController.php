@@ -44,10 +44,22 @@ class ProfileController extends Controller
             $ticket->wa_group_label = WaGroupLink::normalizeCategory((string) $ticket->ticket_category);
         }
 
+        $personalDataLocked = $user->isPersonalDataLocked();
+
+        // Saat terkunci, hanya field pribadi yang masih kosong yang boleh diisi
+        // sekali (mis. user lama yang belum mengisi jenis kelamin).
+        $personalDataEdit = [
+            'name' => ! $personalDataLocked || blank($user->name),
+            'nik' => ! $personalDataLocked || blank($user->nik),
+            'gender' => ! $personalDataLocked || blank($user->gender),
+        ];
+
         return view('profile.edit', compact('user') + [
             'emailOtpRemaining' => $emailOtpRemaining,
             'paidTickets' => $paidTickets,
-            'personalDataLocked' => $user->isPersonalDataLocked(),
+            'personalDataLocked' => $personalDataLocked,
+            'personalDataEdit' => $personalDataEdit,
+            'hasEditablePersonalData' => in_array(true, $personalDataEdit, true),
         ]);
     }
 
@@ -56,20 +68,30 @@ class ProfileController extends Controller
         $user = Auth::user();
         $personalDataLocked = $user->isPersonalDataLocked();
 
+        // Saat terkunci, hanya field pribadi yang masih kosong yang boleh diisi.
+        $canEditName = ! $personalDataLocked || blank($user->name);
+        $canEditNik = ! $personalDataLocked || blank($user->nik);
+        $canEditGender = ! $personalDataLocked || blank($user->gender);
+
         // 1. Aturan validasi ketat (tanpa address & tanpa gelar)
         $rules = [
             'phone_number' => 'required|string|max:20',
         ];
 
-        // Data pribadi hanya divalidasi & diubah selama belum dikunci.
-        if (! $personalDataLocked) {
+        if ($canEditName) {
             $rules['name'] = 'required|string|max:255';
+        }
+
+        if ($canEditNik) {
             $rules['nik'] = [
                 'required',
                 'string',
                 'size:16',
                 Rule::unique('users', 'nik')->ignore($user->id),
             ];
+        }
+
+        if ($canEditGender) {
             $rules['gender'] = 'required|in:Laki-laki,Perempuan';
         }
 
@@ -99,10 +121,25 @@ class ProfileController extends Controller
 
         // 4. Update data profil ke database (tanpa address). Nama KTP, NIK, dan
         //    jenis kelamin hanya boleh diisi sekali, lalu dikunci permanen.
-        if (! $personalDataLocked) {
+        //    Field yang sudah terisi saat terkunci tidak pernah ditimpa.
+        $updatedPersonalData = false;
+
+        if ($canEditName) {
             $user->name = $request->name;
+            $updatedPersonalData = true;
+        }
+
+        if ($canEditNik) {
             $user->nik = $request->nik;
+            $updatedPersonalData = true;
+        }
+
+        if ($canEditGender) {
             $user->gender = $request->gender;
+            $updatedPersonalData = true;
+        }
+
+        if ($updatedPersonalData && $user->personal_data_locked_at === null) {
             $user->personal_data_locked_at = now();
         }
 
@@ -114,7 +151,7 @@ class ProfileController extends Controller
 
         $user->save();
 
-        if (! $personalDataLocked) {
+        if ($updatedPersonalData) {
             return back()->with('success', 'Data pribadi berhasil disimpan dan dikunci permanen.');
         }
 

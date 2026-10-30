@@ -5,6 +5,7 @@ namespace App\Models;
 use Carbon\Carbon;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -47,12 +48,26 @@ class User extends Authenticatable implements MustVerifyEmail
         ];
     }
 
+    public function ticketBookings(): HasMany
+    {
+        return $this->hasMany(TicketBooking::class);
+    }
+
     /**
      * Cek apakah nama KTP, NIK, dan jenis kelamin sudah dikunci permanen.
+     *
+     * User yang punya tiket non-cancelled juga dianggap terkunci meski kolom
+     * `personal_data_locked_at` belum terisi (mis. data lama/impor).
      */
     public function isPersonalDataLocked(): bool
     {
-        return $this->personal_data_locked_at !== null;
+        if ($this->personal_data_locked_at !== null) {
+            return true;
+        }
+
+        return $this->ticketBookings()
+            ->where('status', '!=', 'cancelled')
+            ->exists();
     }
 
     /**
