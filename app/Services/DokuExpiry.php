@@ -117,8 +117,12 @@ class DokuExpiry
      *  - `response.payment.expiredDate`
      *  - format `yyyyMMddHHmmss` (UTC+7) maupun ISO 8601.
      */
-    public function parse(array $dokuResult): ?Carbon
+    public function parse(?array $dokuResult): ?Carbon
     {
+        if ($dokuResult === null) {
+            return null;
+        }
+
         $raw = $dokuResult['response']['payment']['expired_datetime']
             ?? $dokuResult['response']['payment']['expired_date']
             ?? $dokuResult['response']['payment']['expiredDate']

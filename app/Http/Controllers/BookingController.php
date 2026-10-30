@@ -567,7 +567,7 @@ class BookingController extends Controller
                 return back()->with('error', 'Gagal memproses ke gerbang pembayaran DOKU. Silakan coba lagi.');
             }
 
-            $dokuResult = $response->json();
+            $dokuResult = $response->json() ?? [];
 
             Log::info('DOKU checkout response', [
                 'booking_id' => $booking->id,
