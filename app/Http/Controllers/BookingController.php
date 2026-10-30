@@ -7,9 +7,11 @@ use App\Models\Ticket;
 use App\Models\TicketBooking;
 use App\Models\WaGroupLink;
 use App\Services\BookingCancellationService;
+use App\Services\DokuApiService;
 use App\Services\DokuCancelService;
 use App\Services\DokuExpiry;
 use App\Services\DokuReconciliationService;
+use App\Services\DokuStatus;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -221,12 +223,21 @@ class BookingController extends Controller
                 ->where('status', 'pending')
                 ->latest()
                 ->first();
+
             if ($stalePending && $this->isBookingExpired($stalePending)) {
                 app(DokuReconciliationService::class)->reconcileTicket($stalePending);
-                $hasPendingBooking = TicketBooking::where('user_id', $user->id)
-                    ->where('status', 'pending')
-                    ->exists();
+            } elseif ($stalePending) {
+                $resolution = $this->resolveUnpayablePendingBooking($stalePending);
+
+                if ($resolution === 'gateway_error') {
+                    return redirect()->route('booking.index')
+                        ->with('error', 'Gagal memproses ke gerbang pembayaran DOKU. Silakan coba lagi beberapa saat lagi.');
+                }
             }
+
+            $hasPendingBooking = TicketBooking::where('user_id', $user->id)
+                ->where('status', 'pending')
+                ->exists();
         }
 
         if ($hasPendingBooking) {
@@ -319,11 +330,29 @@ class BookingController extends Controller
 
         // ATURAN MULTI-TIKET:
         // 1) Beli tiket berikutnya hanya jika tidak ada pesanan PENDING (wajib lunas/batalkan dulu).
-        $hasPendingBooking = TicketBooking::where('user_id', $user->id)
+        $pendingBooking = TicketBooking::where('user_id', $user->id)
             ->where('status', 'pending')
-            ->exists();
-        if ($hasPendingBooking) {
-            return back()->with('error', 'Anda masih memiliki pesanan tiket yang belum lunas. Silakan selesaikan atau batalkan pembayaran tersebut terlebih dahulu sebelum membeli tiket lain.');
+            ->latest()
+            ->first();
+
+        if ($pendingBooking) {
+            if ($this->isBookingExpired($pendingBooking)) {
+                app(DokuReconciliationService::class)->reconcileTicket($pendingBooking);
+            } else {
+                $resolution = $this->resolveUnpayablePendingBooking($pendingBooking);
+
+                if ($resolution === 'gateway_error') {
+                    return back()->with('error', 'Gagal memproses ke gerbang pembayaran DOKU. Silakan coba lagi beberapa saat lagi.');
+                }
+            }
+
+            $hasPendingBooking = TicketBooking::where('user_id', $user->id)
+                ->where('status', 'pending')
+                ->exists();
+
+            if ($hasPendingBooking) {
+                return back()->with('error', 'Anda masih memiliki pesanan tiket yang belum lunas. Silakan selesaikan atau batalkan pembayaran tersebut terlebih dahulu sebelum membeli tiket lain.');
+            }
         }
 
         // 2) Satu kategori hanya boleh dimiliki satu tiket (tiket yang dibatalkan tidak dihitung).
@@ -463,10 +492,35 @@ class BookingController extends Controller
             }
 
             // Jika sebelumnya sudah ada invoice_number dari checkout yang belum selesai
-            // (timeout/gagal sebelum payment_url tersimpan), jangan buat payment baru
-            // tanpa memverifikasi status terlebih dahulu.
+            // (timeout/gagal sebelum payment_url tersimpan), verifikasi dulu ke DOKU
+            // agar user tidak tertahan saat DOKU sedang bermasalah (mis. 503).
             if ($booking->invoice_number) {
-                return back()->with('error', 'Pembayaran sebelumnya sedang diproses atau belum selesai. Jika tidak berhasil dalam beberapa menit, silakan hubungi panitia.');
+                $previous = app(DokuApiService::class)->checkStatus($booking->invoice_number);
+                $httpStatus = $previous['http_status'] ?? null;
+
+                if ($httpStatus === 404) {
+                    // DOKU tidak mengenal invoice ini: order tidak pernah terbentuk,
+                    // aman membuat invoice baru saat user mencoba lagi.
+                    $booking->update([
+                        'invoice_number' => null,
+                        'payment_url' => null,
+                        'payment_expired_at' => null,
+                    ]);
+                } elseif (in_array($previous['outcome'] ?? null, [DokuStatus::PAID, DokuStatus::EXPIRED], true)) {
+                    app(DokuReconciliationService::class)->reconcileTicket($booking);
+                    $booking->refresh();
+
+                    return redirect()->route('booking.index')->with(
+                        $booking->status === 'paid' ? 'success' : 'error',
+                        $booking->status === 'paid'
+                            ? 'Tiket ini sudah lunas.'
+                            : 'Pemesanan sebelumnya sudah kedaluwarsa. Silakan lakukan pemesanan ulang.'
+                    );
+                } elseif ($httpStatus === 200) {
+                    return back()->with('error', 'Pembayaran sebelumnya sedang diproses atau belum selesai. Jika tidak berhasil dalam beberapa menit, silakan hubungi panitia.');
+                } else {
+                    return back()->with('error', 'Gagal memproses ke gerbang pembayaran DOKU. Silakan coba lagi beberapa saat lagi.');
+                }
             }
 
             // Buat Nomor Invoice unik (Contoh: RC-BACT-1-1785...)
@@ -681,6 +735,59 @@ class BookingController extends Controller
                ! empty($user->name) &&
                ! empty($user->nik) &&
                ! empty($user->gender);
+    }
+
+    /**
+     * Tangani pesanan pending yang tidak punya link pembayaran, biasanya karena
+     * checkout gagal sebelum DOKU membuat order (mis. DOKU 503/maintenance).
+     *
+     * Tanpa ini, pesanan "hantu" menahan pembelian berikutnya sampai fallback
+     * lokal 24 jam habis.
+     *
+     * @return string 'blocked' (masih ada link yang bisa dibayar),
+     *                'resolved' (sudah lunas/dibatalkan sehingga tidak menahan),
+     *                atau 'gateway_error' (DOKU tidak bisa dipastikan).
+     */
+    private function resolveUnpayablePendingBooking(TicketBooking $pending): string
+    {
+        if ($pending->payment_url) {
+            return 'blocked';
+        }
+
+        // Belum pernah checkout: user masih punya pesanan yang harus diselesaikan
+        // atau dibatalkan manual, jadi tetap ditahan.
+        if (blank($pending->invoice_number)) {
+            return 'blocked';
+        }
+
+        $result = app(DokuApiService::class)->checkStatus($pending->invoice_number);
+        $httpStatus = $result['http_status'] ?? null;
+        $outcome = $result['outcome'] ?? DokuStatus::HOLD;
+
+        if ($outcome === DokuStatus::PAID) {
+            app(DokuReconciliationService::class)->reconcileTicket($pending);
+
+            return 'resolved';
+        }
+
+        // DOKU tidak mengenal invoice ini: order tidak pernah terbentuk, aman
+        // dibatalkan lokal dan kuota dikembalikan.
+        if ($outcome === DokuStatus::EXPIRED || $httpStatus === 404) {
+            app(BookingCancellationService::class)->cancelTicket(
+                $pending,
+                'Dibatalkan otomatis: checkout DOKU tidak menghasilkan link pembayaran'
+            );
+
+            return 'resolved';
+        }
+
+        // DOKU menjawab tetapi order belum final: jangan buat pesanan ganda.
+        if ($httpStatus === 200) {
+            return 'blocked';
+        }
+
+        // DOKU tidak dapat dihubungi (mis. 503 maintenance).
+        return 'gateway_error';
     }
 
     /**

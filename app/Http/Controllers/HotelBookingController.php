@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\HotelReservation;
 use App\Models\HotelRoom;
 use App\Services\BookingCancellationService;
+use App\Services\DokuApiService;
 use App\Services\DokuCancelService;
 use App\Services\DokuExpiry;
 use App\Services\DokuReconciliationService;
+use App\Services\DokuStatus;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -161,12 +163,23 @@ class HotelBookingController extends Controller
 
         // MULTI-RESERVASI: peserta boleh punya banyak reservasi (termasuk tipe kamar
         // yang sama), dengan syarat tidak ada pembayaran PENDING yang menggantung.
-        $hasPendingReservation = HotelReservation::where('user_id', $user->id)
+        $pendingReservation = HotelReservation::where('user_id', $user->id)
             ->where('status', 'pending')
-            ->exists();
-        if ($hasPendingReservation) {
-            return redirect()->route('hotels.index')
-                ->with('error', 'Anda masih memiliki reservasi hotel yang menunggu pembayaran. Selesaikan atau batalkan terlebih dahulu sebelum memesan kamar lain.');
+            ->latest()
+            ->first();
+
+        if ($pendingReservation) {
+            $resolution = $this->resolveUnpayablePendingReservation($pendingReservation);
+
+            if ($resolution === 'gateway_error') {
+                return redirect()->route('hotels.index')
+                    ->with('error', 'Gagal memproses ke gerbang pembayaran DOKU. Silakan coba lagi beberapa saat lagi.');
+            }
+
+            if ($resolution === 'blocked') {
+                return redirect()->route('hotels.index')
+                    ->with('error', 'Anda masih memiliki reservasi hotel yang menunggu pembayaran. Selesaikan atau batalkan terlebih dahulu sebelum memesan kamar lain.');
+            }
         }
 
         if ($quantity > (int) $room->quota) {
@@ -348,10 +361,35 @@ class HotelBookingController extends Controller
             }
 
             // Jika sebelumnya sudah ada invoice_number dari checkout yang belum selesai
-            // (timeout/gagal sebelum payment_url tersimpan), jangan buat payment baru
-            // tanpa memverifikasi status terlebih dahulu.
+            // (timeout/gagal sebelum payment_url tersimpan), verifikasi dulu ke DOKU
+            // agar user tidak tertahan saat DOKU sedang bermasalah (mis. 503).
             if ($reservation->invoice_number) {
-                return back()->with('error', 'Pembayaran sebelumnya sedang diproses atau belum selesai. Jika tidak berhasil dalam beberapa menit, silakan hubungi panitia.');
+                $previous = app(DokuApiService::class)->checkStatus($reservation->invoice_number);
+                $httpStatus = $previous['http_status'] ?? null;
+
+                if ($httpStatus === 404) {
+                    // DOKU tidak mengenal invoice ini: order tidak pernah terbentuk,
+                    // aman membuat invoice baru saat user mencoba lagi.
+                    $reservation->update([
+                        'invoice_number' => null,
+                        'payment_url' => null,
+                        'payment_expired_at' => null,
+                    ]);
+                } elseif (in_array($previous['outcome'] ?? null, [DokuStatus::PAID, DokuStatus::EXPIRED], true)) {
+                    app(DokuReconciliationService::class)->reconcileHotel($reservation);
+                    $reservation->refresh();
+
+                    return redirect()->route('hotels.index')->with(
+                        $reservation->status === 'paid' ? 'success' : 'error',
+                        $reservation->status === 'paid'
+                            ? 'Reservasi hotel ini sudah lunas.'
+                            : 'Timer pembayaran sudah habis, reservasi dibatalkan otomatis. Silakan pesan ulang.'
+                    );
+                } elseif ($httpStatus === 200) {
+                    return back()->with('error', 'Pembayaran sebelumnya sedang diproses atau belum selesai. Jika tidak berhasil dalam beberapa menit, silakan hubungi panitia.');
+                } else {
+                    return back()->with('error', 'Gagal memproses ke gerbang pembayaran DOKU. Silakan coba lagi beberapa saat lagi.');
+                }
             }
 
             // Buat Nomor Invoice unik (Contoh: RC-HTL-1-1785...)
@@ -585,6 +623,51 @@ class HotelBookingController extends Controller
         }
 
         return $existingReservation;
+    }
+
+    /**
+     * Tangani reservasi pending tanpa link pembayaran (checkout gagal sebelum
+     * DOKU membuat order, mis. DOKU 503/maintenance) agar tidak menahan
+     * pembelian berikutnya sampai fallback lokal 24 jam habis.
+     *
+     * @return string 'blocked' | 'resolved' | 'gateway_error'
+     */
+    private function resolveUnpayablePendingReservation(HotelReservation $pending): string
+    {
+        if ($pending->payment_url) {
+            return 'blocked';
+        }
+
+        // Belum pernah checkout: user masih punya pesanan yang harus diselesaikan
+        // atau dibatalkan manual, jadi tetap ditahan.
+        if (blank($pending->invoice_number)) {
+            return 'blocked';
+        }
+
+        $result = app(DokuApiService::class)->checkStatus($pending->invoice_number);
+        $httpStatus = $result['http_status'] ?? null;
+        $outcome = $result['outcome'] ?? DokuStatus::HOLD;
+
+        if ($outcome === DokuStatus::PAID) {
+            app(DokuReconciliationService::class)->reconcileHotel($pending);
+
+            return 'resolved';
+        }
+
+        if ($outcome === DokuStatus::EXPIRED || $httpStatus === 404) {
+            app(BookingCancellationService::class)->cancelHotel(
+                $pending,
+                'Dibatalkan otomatis: checkout DOKU tidak menghasilkan link pembayaran'
+            );
+
+            return 'resolved';
+        }
+
+        if ($httpStatus === 200) {
+            return 'blocked';
+        }
+
+        return 'gateway_error';
     }
 
     /**
