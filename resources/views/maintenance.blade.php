@@ -23,9 +23,21 @@
                 Website sedang dalam pemeliharaan sementara.
                 Silakan kembali lagi nanti. Terima kasih atas pengertian Anda.
             </p>
+
+            <div class="mt-8 p-4 rounded-xl bg-gray-50 border border-gray-100">
+                <p class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">Contact Person</p>
+                <a href="https://wa.me/6285190946166" target="_blank" rel="noopener"
+                   class="block text-sm text-[#234661] hover:text-[#1e9e5a] hover:underline transition">
+                    <span class="font-semibold">dr. Nisa</span> &middot; 0851-9094-6166
+                </a>
+                <a href="https://wa.me/628214062474" target="_blank" rel="noopener"
+                   class="mt-1 block text-sm text-[#234661] hover:text-[#1e9e5a] hover:underline transition">
+                    <span class="font-semibold">dr. Asri</span> &middot; 0821-4062-474
+                </a>
+            </div>
         </div>
 
-        <p class="text-xs text-gray-400 mt-6">BACT 2027 &middot; Simposium Bersama</p>
+        <p class="text-xs text-gray-400 mt-6">BACT 2027</p>
     </div>
 
 </body>
