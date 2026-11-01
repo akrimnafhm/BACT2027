@@ -56,6 +56,14 @@ class DokuReconciliationService
         $result = $this->api->checkStatus($booking->invoice_number);
         $this->api->rememberEvidence($booking, $result);
 
+        // Pembatalan adalah keputusan destruktif: jangan pernah mengambilnya
+        // hanya dari hasil cache. Bila hasil awal mengarah ke cancel/lapse,
+        // ulangi dengan Check Status fresh. Fresh gagal/404/5xx -> HOLD.
+        if ($this->requiresFreshDecision($booking, $result)) {
+            $result = $this->api->checkStatus($booking->invoice_number, fresh: true);
+            $this->api->rememberEvidence($booking, $result);
+        }
+
         if ($result['outcome'] === DokuStatus::PAID) {
             $transitioned = $this->markTicketPaid($booking, $result['transaction_date']);
 
@@ -155,6 +163,12 @@ class DokuReconciliationService
         $result = $this->api->checkStatus($reservation->invoice_number);
         $this->api->rememberEvidence($reservation, $result);
 
+        // Lihat reconcileTicket(): keputusan destruktif selalu lewat fresh check.
+        if ($this->requiresFreshDecision($reservation, $result)) {
+            $result = $this->api->checkStatus($reservation->invoice_number, fresh: true);
+            $this->api->rememberEvidence($reservation, $result);
+        }
+
         if ($result['outcome'] === DokuStatus::PAID) {
             $transitioned = $this->markHotelPaid($reservation);
 
@@ -229,7 +243,20 @@ class DokuReconciliationService
     }
 
     /**
-     * Predikat keputusan EKSPILISIT "checkout_lapsed_no_channel".
+     * Apakah hasil awal mengharuskan verifikasi fresh sebelum aksi destruktif.
+     *
+     * PAID tidak perlu fresh (status lunas monoton dan tidak pernah diturunkan).
+     * EXPIRED dan kandidat lapse HARUS diverifikasi fresh agar cache basi tidak
+     * pernah menjadi dasar pembatalan.
+     */
+    private function requiresFreshDecision(TicketBooking|HotelReservation $booking, array $result): bool
+    {
+        return ($result['outcome'] ?? null) === DokuStatus::EXPIRED
+            || $this->lapsedNoChannel($booking, $result) !== null;
+    }
+
+    /**
+     * Predikat keputusan EKSPLISIT "checkout_lapsed_no_channel".
      *
      * Mengembalikan string alasan bila SEMUA syarat terpenuhi, null bila tidak.
      * Syarat (kumulatif):
@@ -252,6 +279,15 @@ class DokuReconciliationService
             return null;
         }
 
+        $order = strtoupper(trim((string) ($result['order_status'] ?? '')));
+
+        // ORDER_RECOVERED berarti checkout dipulihkan dan pelanggan masih dapat
+        // membayar. Jangan pernah membatalkannya lewat jalur lapse, bahkan bila
+        // transaksi masih PENDING, channel kosong, dan timer lokal sudah lewat.
+        if ($order === 'ORDER_RECOVERED') {
+            return null;
+        }
+
         // Hanya respons Check Status yang BERHASIL (2xx) yang boleh dipakai untuk
         // menyimpulkan "tanpa channel". Saat API gagal/timeout/404 kita tidak tahu
         // apakah pelanggan sudah memilih channel atau bahkan sudah membayar, jadi
@@ -263,6 +299,12 @@ class DokuReconciliationService
         }
 
         $transaction = strtoupper(trim((string) ($result['transaction_status'] ?? '')));
+
+        // Respons 2xx tanpa status yang dikenali dianggap tidak valid: tahan,
+        // jangan jadikan dasar pembatalan.
+        if ($order !== 'ORDER_GENERATED' && $transaction !== 'PENDING') {
+            return null;
+        }
 
         if ($transaction !== '' && $transaction !== 'PENDING') {
             return null;

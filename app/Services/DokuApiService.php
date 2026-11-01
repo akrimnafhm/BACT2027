@@ -45,7 +45,7 @@ class DokuApiService
         }
 
         $cacheSeconds = (int) config('services.doku.check_status_cache_seconds', 60);
-        $cacheKey = 'doku_check_status:'.sha1($invoiceNumber);
+        $cacheKey = $this->statusCacheKey($invoiceNumber);
 
         // Cache dinonaktifkan (mis. DOKU_CHECK_STATUS_CACHE_SECONDS=0 saat uji
         // sandbox) atau pembacaan fresh diminta -> selalu tembak API langsung.
@@ -70,6 +70,29 @@ class DokuApiService
         }
 
         return $result;
+    }
+
+    /**
+     * Hapus cache Check Status untuk invoice tertentu saja.
+     *
+     * Dipakai webhook agar scheduler tidak memakai status basi setelah
+     * notifikasi PAID/EXPIRED/ORDER_EXPIRED/ORDER_RECOVERED. Key dibuat lewat
+     * helper yang sama dengan checkStatus() agar invalidasi tepat sasaran.
+     */
+    public function forgetStatusCache(string $invoiceNumber): void
+    {
+        $invoiceNumber = trim($invoiceNumber);
+
+        if ($invoiceNumber === '') {
+            return;
+        }
+
+        Cache::forget($this->statusCacheKey($invoiceNumber));
+    }
+
+    private function statusCacheKey(string $invoiceNumber): string
+    {
+        return 'doku_check_status:'.sha1($invoiceNumber);
     }
 
     /**

@@ -91,7 +91,7 @@ it('menampilkan error gateway (bukan pesan pending) saat DOKU 503', function () 
     expect($booking->fresh()->status)->toBe('pending');
 });
 
-it('membatalkan pesanan hantu dan mengembalikan kuota saat DOKU 404', function () {
+it('MENAHAN pesanan pending saat DOKU 404 (tidak membatalkan tanpa bukti cukup)', function () {
     $user = pcrUser();
     $ticket = pcrTicket(quota: 3);
     $ticket->decrement('quota');
@@ -103,8 +103,9 @@ it('membatalkan pesanan hantu dan mengembalikan kuota saat DOKU 404', function (
 
     $this->actingAs($user)
         ->get(route('booking.form'))
-        ->assertOk();
+        ->assertRedirect(route('booking.index'))
+        ->assertSessionHas('error', fn ($message) => str_contains($message, 'masih memiliki pesanan tiket'));
 
-    expect($booking->fresh()->status)->toBe('cancelled')
-        ->and($ticket->fresh()->quota)->toBe(3);
+    expect($booking->fresh()->status)->toBe('pending')
+        ->and($ticket->fresh()->quota)->toBe(2);
 });

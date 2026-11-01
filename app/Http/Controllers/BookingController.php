@@ -760,7 +760,9 @@ class BookingController extends Controller
             return 'blocked';
         }
 
-        $result = app(DokuApiService::class)->checkStatus($pending->invoice_number);
+        // Fresh check: jalur ini dapat berujung pada pembatalan, jadi hasil cache
+        // tidak boleh dipakai. Timeout/5xx/response invalid -> HOLD/gateway_error.
+        $result = app(DokuApiService::class)->checkStatus($pending->invoice_number, fresh: true);
         $httpStatus = $result['http_status'] ?? null;
         $outcome = $result['outcome'] ?? DokuStatus::HOLD;
 
@@ -770,15 +772,20 @@ class BookingController extends Controller
             return 'resolved';
         }
 
-        // DOKU tidak mengenal invoice ini: order tidak pernah terbentuk, aman
-        // dibatalkan lokal dan kuota dikembalikan.
-        if ($outcome === DokuStatus::EXPIRED || $httpStatus === 404) {
+        // Hanya EXPIRED yang dikonfirmasi fresh yang boleh membatalkan lokal.
+        if ($outcome === DokuStatus::EXPIRED) {
             app(BookingCancellationService::class)->cancelTicket(
                 $pending,
                 'Dibatalkan otomatis: checkout DOKU tidak menghasilkan link pembayaran'
             );
 
             return 'resolved';
+        }
+
+        // 404 TIDAK cukup untuk menyimpulkan order tidak pernah terbentuk
+        // (bisa propagasi/transien). Tahan; user tetap dapat membatalkan manual.
+        if ($httpStatus === 404) {
+            return 'blocked';
         }
 
         // DOKU menjawab tetapi order belum final: jangan buat pesanan ganda.

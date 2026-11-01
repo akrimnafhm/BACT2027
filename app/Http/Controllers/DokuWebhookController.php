@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\HotelReservation;
 use App\Models\TicketBooking;
 use App\Services\BookingCancellationService;
+use App\Services\DokuApiService;
 use App\Services\DokuReconciliationService;
 use App\Services\DokuSignatureService;
 use App\Services\DokuStatus;
@@ -71,6 +72,17 @@ class DokuWebhookController extends Controller
             'channel' => $paymentMethod,
             'outcome' => $outcome,
         ]);
+
+        // Invalidasi cache Check Status untuk invoice ini saja. Notifikasi final
+        // atau pemulihan membuat hasil cache berpotensi basi; scheduler harus
+        // membaca status terbaru, bukan cache lama.
+        $normalizedOrderStatus = strtoupper(trim((string) $orderStatus));
+        if (filled($invoiceNumber)
+            && ($outcome === DokuStatus::PAID
+                || $outcome === DokuStatus::EXPIRED
+                || $normalizedOrderStatus === 'ORDER_RECOVERED')) {
+            app(DokuApiService::class)->forgetStatusCache($invoiceNumber);
+        }
 
         // 6a. PAID -> tandai lunas (jangan pernah turunkan status).
         if ($outcome === DokuStatus::PAID) {
