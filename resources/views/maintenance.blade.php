@@ -21,7 +21,7 @@
             <h1 class="text-2xl font-black text-[#234661] mb-2">Sedang Maintenance</h1>
             <p class="text-sm text-gray-500 leading-relaxed">
                 Website sedang dalam pemeliharaan sementara.
-                Silakan kembali lagi nanti. Terima kasih atas pengertian Anda.
+                Registrasi peserta tetap kami layani melalui contact person berikut:
             </p>
 
             <div class="mt-8 p-4 rounded-xl bg-gray-50 border border-gray-100">
