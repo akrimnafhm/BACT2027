@@ -31,7 +31,11 @@ class BroadcastController extends Controller
 
         // Preload isi textarea dengan template notifikasi Ticket WA agar
         // admin tinggal edit seperlunya sebelum kirim (tetap bisa diubah bebas).
+        // Broadcast hanya teks: buang {qr} dan baris instruksi QR dari prefill.
         $templateBody = NotificationTemplate::where('key', 'ticket_paid_wa')->value('body') ?? '';
+        $templateBody = str_replace('{qr}', '', $templateBody);
+        $templateBody = preg_replace('/^.*Simpan QR.*$/mi', '', $templateBody);
+        $templateBody = trim(preg_replace("/\n{3,}/", "\n\n", $templateBody));
 
         return view('admin.broadcast', compact('totalParticipants', 'templateBody'));
     }

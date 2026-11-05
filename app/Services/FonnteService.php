@@ -217,8 +217,8 @@ class FonnteService
 
     /**
      * Ganti placeholder tiket per penerima (sama seperti template notifikasi).
-     * {qr} sengaja tidak diganti di broadcast (jalur bulk hanya teks);
-     * biarkan apa adanya agar admin sadar untuk menghapusnya.
+     * {qr} tidak didukung di broadcast (jalur bulk hanya teks), jadi dihapus
+     * agar tidak muncul sebagai teks literal di pesan penerima.
      *
      * Memakai strtr (penggantian serentak) agar tidak ada placeholder
      * yang tertimpa oleh penggantian sebelumnya.
@@ -241,6 +241,10 @@ class FonnteService
             '{email}'        => $recipient['email'] ?? '-',
             '{link_grup}'    => $recipient['link_grup'] ?? '-',
         ]);
+
+        // Broadcast hanya teks: buang {qr} dan rapikan baris kosong yang tersisa.
+        $message = str_replace('{qr}', '', $message);
+        $message = preg_replace("/\n{3,}/", "\n\n", $message);
 
         // Khusus penerima multi-tiket: daftar bernomor harus mulai di baris baru
         // agar "1." tidak menempel di samping kalimat (mis. "tiket *1. ..."
