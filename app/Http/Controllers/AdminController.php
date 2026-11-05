@@ -672,7 +672,7 @@ class AdminController extends Controller
         $dateFrom = $request->input('date_from');
         $dateTo = $request->input('date_to');
 
-        $query = TicketBooking::with('ticket')->oldest();
+        $query = TicketBooking::with(['ticket', 'user'])->oldest();
 
         if (! empty($search)) {
             $query->where(function ($q) use ($search) {
@@ -711,7 +711,7 @@ class AdminController extends Controller
         }
 
         $bookings = $query->get();
-        $fileName = ($tab === 'all' ? 'Data-All-Peserta' : 'Data-Peserta-BACT2026').'-'.date('Y-m-d-His').'.csv';
+        $fileName = ($tab === 'all' ? 'Data-All-Peserta-BACT2027' : 'Data-Peserta-BACT2027').'-'.date('Y-m-d-His').'.csv';
 
         $headers = [
             'Content-type' => 'text/csv; charset=UTF-8',
@@ -746,6 +746,7 @@ class AdminController extends Controller
                 'Catatan',
                 'Tanggal Dibeli',
                 'Tanggal Dibayar',
+                'Status Grup WA',
             ], ',');
 
             foreach ($bookings as $row) {
@@ -777,6 +778,9 @@ class AdminController extends Controller
                     str_replace(["\r", "\n"], ' ', $row->notes ?? ''),
                     $row->created_at ? $row->created_at->format('Y-m-d H:i:s') : '-',
                     $row->paid_at ? $row->paid_at->format('Y-m-d H:i:s') : '',
+                    $row->user && $row->user->hasJoinedWaGroup(WaGroupLink::normalizeCategory((string) $row->ticket_category))
+                        ? 'Sudah Join'
+                        : 'Belum Join',
                 ], ',');
             }
             fclose($file);
