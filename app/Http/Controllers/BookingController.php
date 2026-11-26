@@ -294,6 +294,9 @@ class BookingController extends Controller
             'institution_province' => 'required|string|max:255',
             'gelar_depan' => 'nullable|string|max:100',
             'gelar_belakang' => 'nullable|string|max:150',
+            'agree_terms' => 'accepted',
+        ], [
+            'agree_terms.accepted' => 'Anda wajib menyetujui Syarat & Ketentuan sebelum melanjutkan pembayaran.',
         ]);
 
         $user = Auth::user();

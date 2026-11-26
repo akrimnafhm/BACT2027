@@ -284,15 +284,70 @@
                             </div>
                         </div>
 
+                        <!-- 6. PERSETUJUAN SYARAT & KETENTUAN -->
+                        <div class="border-t border-gray-100 pt-6">
+                            <div class="flex items-start gap-3">
+                                <input type="checkbox" id="agree_terms" name="agree_terms" value="1" {{ old('agree_terms') ? 'checked' : '' }} required class="checkbox-custom mt-0.5 h-5 w-5 shrink-0 rounded border-gray-300 accent-[#E19404] focus:ring-2 focus:ring-[#FBE39D] cursor-pointer">
+                                <p class="text-sm text-gray-700 leading-relaxed">
+                                    <label for="agree_terms" class="cursor-pointer">Saya telah membaca, memahami, dan menyetujui Syarat & Ketentuan yang berlaku. </label><button type="button" id="open-terms" class="font-semibold text-blue-700 underline decoration-blue-400 underline-offset-2 hover:text-blue-900 focus:outline-none focus:ring-2 focus:ring-[#FBE39D] rounded">Lihat di sini </button><label for="agree_terms" class="cursor-pointer"><span class="text-red-500">*</span></label>
+                                </p>
+                            </div>
+                        </div>
+
                     </div>
 
                     <!-- TOMBOL PEMBAYARAN -->
                     <div class="flex justify-end">
-                        <button type="submit" class="w-full md:w-auto bg-blue-700 hover:bg-blue-800 text-white font-bold py-3 px-8 rounded-xl transition shadow-md text-[15px] transform hover:-translate-y-0.5 whitespace-nowrap">
+                        <button type="submit" id="submit-booking" {{ old('agree_terms') ? '' : 'disabled' }} class="w-full md:w-auto bg-blue-700 hover:bg-blue-800 text-white font-bold py-3 px-8 rounded-xl transition shadow-md text-[15px] transform hover:-translate-y-0.5 whitespace-nowrap disabled:bg-gray-300 disabled:text-gray-500 disabled:shadow-none disabled:cursor-not-allowed disabled:hover:translate-y-0">
                             Lanjutkan Pembayaran
                         </button>
                     </div>
                 </form>
+
+                <!-- MODAL SYARAT & KETENTUAN PESERTA -->
+                <div id="terms-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" role="dialog" aria-modal="true" aria-labelledby="terms-modal-title">
+                    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+                        <div class="flex items-start justify-between gap-4 px-6 py-5 border-b border-gray-200 bg-[#234661]">
+                            <div>
+                                <h3 id="terms-modal-title" class="text-base sm:text-lg font-extrabold text-white">SYARAT DAN KETENTUAN PESERTA</h3>
+                                <p class="text-xs sm:text-sm font-semibold text-[#FBE39D] mt-1">BASIC–ADVANCED COURSE IN TRANSFUSION (BACT) 2027</p>
+                            </div>
+                            <button type="button" data-close-terms aria-label="Tutup" class="text-white hover:text-[#FBE39D] text-2xl leading-none font-bold px-1 focus:outline-none focus:ring-2 focus:ring-[#FBE39D] rounded">&times;</button>
+                        </div>
+
+                        <div class="px-6 py-5 overflow-y-auto text-sm text-gray-700 space-y-5">
+                            <section>
+                                <h4 class="font-extrabold text-[#234661] mb-2">1. Kelengkapan Data Peserta</h4>
+                                <p>Peserta wajib mengisi dan memeriksa kembali seluruh data diri pada formulir pendaftaran. Memastikan data yang diinput sudah benar dan sesuai untuk keperluan registrasi serta akses Learning Management System (LMS).</p>
+                            </section>
+
+                            <section>
+                                <h4 class="font-extrabold text-[#234661] mb-2">2. Perubahan Paket Kepesertaan</h4>
+                                <ul class="list-disc pl-5 space-y-1.5">
+                                    <li>Upgrade paket kepesertaan diperbolehkan dengan membayarkan selisih harga selama kuota masih tersedia</li>
+                                    <li>Downgrade paket kepesertaan diperbolehkan dengan ketentuan dikenakan potongan sebesar 25% dari harga paket yang telah dibayarkan dan pengembalian dana akan diprosesnya 7 hari setelah acara.</li>
+                                </ul>
+                            </section>
+
+                            <section>
+                                <h4 class="font-extrabold text-[#234661] mb-2">3. Pembatalan Kepesertaan dan Ketentuan Pengembalian Dana (Refund)</h4>
+                                <ul class="list-disc pl-5 space-y-1.5">
+                                    <li>Pembatalan hingga tanggal 5 Januari 2027: Pengembalian dana sebesar 60% dari total harga paket kepesertaan yang telah dibayarkan</li>
+                                    <li>Pembatalan setelah tanggal 5 Januari 2027: Pengembalian dana sebesar 25% dari total harga paket kepesertaan yang telah dibayarkan</li>
+                                    <li>Pengembalian dana akan diproses 7 hari setelah acara berakhir.</li>
+                                </ul>
+                            </section>
+
+                            <div class="bg-[#FFF8E7] border-l-4 border-[#E19404] rounded-r-lg px-4 py-3">
+                                <p class="font-semibold text-gray-800">☑️ <em>Dengan melakukan pendaftaran, peserta dianggap telah membaca, memahami, dan menyetujui seluruh syarat dan ketentuan yang berlaku.</em></p>
+                            </div>
+                        </div>
+
+                        <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end">
+                            <button type="button" data-close-terms class="px-6 py-2.5 rounded-lg bg-[#234661] hover:bg-[#1a354b] text-white text-sm font-bold transition">Tutup</button>
+                        </div>
+                    </div>
+                </div>
             @endif
         </div>
     </div>
@@ -476,6 +531,48 @@
                 bookingForm.addEventListener('submit', function() {
                     localStorage.removeItem(DRAFT_KEY);
                 });
+            }
+
+            // --- 6. MODAL SYARAT & KETENTUAN ---
+            const termsModal = document.getElementById('terms-modal');
+            const openTermsButton = document.getElementById('open-terms');
+
+            if (termsModal && openTermsButton) {
+                function closeTermsModal() {
+                    termsModal.classList.add('hidden');
+                    document.body.classList.remove('overflow-hidden');
+                }
+
+                openTermsButton.addEventListener('click', function() {
+                    termsModal.classList.remove('hidden');
+                    document.body.classList.add('overflow-hidden');
+                    termsModal.querySelector('[data-close-terms]')?.focus();
+                });
+
+                termsModal.querySelectorAll('[data-close-terms]').forEach(function(button) {
+                    button.addEventListener('click', closeTermsModal);
+                });
+
+                termsModal.addEventListener('click', function(event) {
+                    if (event.target === termsModal) closeTermsModal();
+                });
+
+                document.addEventListener('keydown', function(event) {
+                    if (event.key === 'Escape' && !termsModal.classList.contains('hidden')) {
+                        closeTermsModal();
+                    }
+                });
+            }
+
+            const agreeTermsInput = document.getElementById('agree_terms');
+            const submitBookingButton = document.getElementById('submit-booking');
+            if (agreeTermsInput && submitBookingButton) {
+                function syncSubmitButton() {
+                    submitBookingButton.disabled = !agreeTermsInput.checked;
+                }
+
+                syncSubmitButton();
+                agreeTermsInput.addEventListener('change', syncSubmitButton);
             }
         });
     </script>
