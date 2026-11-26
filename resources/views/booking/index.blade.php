@@ -573,6 +573,15 @@
 
                 syncSubmitButton();
                 agreeTermsInput.addEventListener('change', syncSubmitButton);
+
+                if (bookingForm) {
+                    bookingForm.addEventListener('submit', function(event) {
+                        if (!agreeTermsInput.checked) {
+                            event.preventDefault();
+                            agreeTermsInput.focus();
+                        }
+                    });
+                }
             }
         });
     </script>
